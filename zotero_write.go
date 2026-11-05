@@ -62,6 +62,7 @@ func (c *Client) writeOnce(method, path string, body []byte, header map[string]s
 		return 0, nil, nil, err
 	}
 	req.Header.Set("Zotero-API-Version", "3")
+	req.Header.Set("User-Agent", "zotero-backup/"+version)
 	req.Header.Set("Zotero-API-Key", c.Key)
 	for k, v := range header {
 		req.Header.Set(k, v)

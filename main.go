@@ -16,6 +16,9 @@ import (
 	"time"
 )
 
+// version is set at build time: -ldflags "-X main.version=v1.2.3".
+var version = "dev"
+
 const usage = `usage: zotero-backup <command> [options]
 
 commands:
@@ -32,6 +35,7 @@ commands:
               (newest per day, ISO week and month); --dry-run only shows them
   key check   show the user, libraries and permissions of the API key
   config      print the effective configuration (all options with their values)
+  version     print the version
 
 options:
   --config PATH       configuration file (default: %s)
@@ -75,6 +79,10 @@ func run(args []string, out io.Writer) error {
 		return errors.New("no command given")
 	}
 	cmd, rest := args[0], args[1:]
+	if cmd == "version" || cmd == "--version" {
+		fmt.Fprintln(out, "zotero-backup", version)
+		return nil
+	}
 	if cmd == "key" && len(rest) > 0 {
 		cmd, rest = "key "+rest[0], rest[1:]
 	}

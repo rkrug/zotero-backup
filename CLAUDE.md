@@ -13,6 +13,7 @@ go build -o zotero-backup .     # build
 go vet ./...                    # lint (CI also checks gofmt -l .)
 go test -race ./...             # all tests (CI: Linux, macOS, Windows)
 go test -run TestKeyCheck ./... # one test
+.github/build.sh v0.0.0-test    # release archives for all systems into dist/ (CI runs it; tags v* release it)
 ```
 
 Run locally without a config file, using a keychain entry (macOS) or the environment:
@@ -24,13 +25,16 @@ ZOTERO_API_KEY=... ./zotero-backup key check
 ./zotero-backup backup --profile test [--exclude files,fulltext]
 ./zotero-backup list --profile test
 ./zotero-backup prune --profile test --dry-run
+./zotero-backup diff ~/zotero-backups/group-6719916-Safe_Edit_Test --profile test
+./zotero-backup restore ~/zotero-backups/group-6719916-Safe_Edit_Test --profile test --dry-run
 ```
 
 ## Structure
 
-One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key check`, `list`), `config.go` (JSON profiles), `zotero.go` (API client), `backup.go` (backup), `prune.go` (three-generation retention). Tests use `httptest` fake servers (`fakeZotero` in `main_test.go`, `fakeLibrary` in `backup_test.go`); no test talks to the real API.
+One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key check`, `list`), `config.go` (JSON profiles), `zotero.go` (API client), `backup.go` (backup), `prune.go` (three-generation retention), `restore.go` (diff, restore), `zotero_write.go` (API writes, file upload), `progress.go` (progress on stderr). Writes are tested against `fakeLibrary` (`backup_test.go` + `fake_write_test.go`), which applies preconditions, write tokens and the three-step upload like the API. Tests use `httptest` fake servers (`fakeZotero` in `main_test.go`, `fakeLibrary` in `backup_test.go`); no test talks to the real API.
 
 - **Backups:** `<to>/<group-ID-Name|user-ID-username>/<YYYY-MM-DDTHHMMSSZ>/` (name made safe, spaces as `_`; the folder is found by ID and renamed when the name changes), each **complete**: `items.json`, `collections.json`, `searches.json`, `settings.json`, `fulltext.json` (API `data` as is), `files.json`, `files/<attachment key>/<safe name>`, `meta.json` (version, counts, missing files, problems). No incremental metadata: every run reads everything. A file whose md5 matches one in the previous backup (or earlier in this run) is a **hard link** (copy where links fail), so unchanged files are neither downloaded nor stored twice. Files are never modified in place. A run writes `<date>.partial` and renames it when complete; a leftover `.partial` is resumed. The metadata is re-read (up to 3 times) if the library version differs between the reads.
+- **Restore:** plan = missing / changed objects (fields compared without server-managed ones), files whose md5 differs, settings; written in the tested order with per-object versions; `deleted` always sent explicitly; fields absent from the backup are cleared; ends by reading the library again and comparing. Output: plan and summary on stdout, progress on stderr.
 - **Prune:** `keep_daily` / `keep_weekly` / `keep_monthly` keep the newest backup of each of the last N days / ISO weeks / months; the newest backup always stays. Deleting a folder frees only files no other backup links to.
 
 - **Config:** JSON, `profiles` by name. Every profile starts from `defaultProfile()`; fields missing in the file keep the default. Unknown fields and invalid values are errors. Default path: `os.UserConfigDir()/zotero-backup/config.json`; a missing file means defaults only.

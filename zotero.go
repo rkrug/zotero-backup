@@ -106,6 +106,7 @@ func (c *Client) once(path string, handle func(io.Reader) error) (http.Header, i
 		return nil, 0, "", err
 	}
 	req.Header.Set("Zotero-API-Version", "3")
+	req.Header.Set("User-Agent", "zotero-backup/"+version)
 	req.Header.Set("Zotero-API-Key", c.Key)
 	resp, err := c.HTTP.Do(req)
 	if err != nil {

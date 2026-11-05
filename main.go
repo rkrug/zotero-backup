@@ -22,6 +22,12 @@ commands:
   backup      complete, dated backup of the profile's libraries; unchanged files
               are hard links to the previous backup
   list        list the backups in the profile's backup folder
+  diff BACKUP     compare a backup (a backup folder, or a library folder for its
+                  newest backup) with the library today
+  restore BACKUP  make the library match the backup again, keeping all keys;
+                  shows the plan and asks first (--dry-run: only show it;
+                  --yes: do not ask; --items K1,K2: only these items, their
+                  children and what they need)
   prune       delete backups not kept by keep_daily / keep_weekly / keep_monthly
               (newest per day, ISO week and month); --dry-run only shows them
   key check   show the user, libraries and permissions of the API key
@@ -30,7 +36,9 @@ commands:
 options:
   --config PATH       configuration file (default: %s)
   --profile NAME      profile to use (default: default)
-  --dry-run           prune: show what would be deleted, delete nothing
+  --dry-run           prune, restore: show what would be done, do nothing
+  --yes               restore: do not ask for confirmation
+  --items K1,K2       diff, restore: only these items (with children and parents)
   --exclude A,B       backup: leave out these parts instead of the profile's
                       exclude list ("" for none); one of files, attachments,
                       notes, annotations, fulltext, settings, trash
@@ -51,7 +59,9 @@ func run(args []string, out io.Writer) error {
 	cfgPath := fs.String("config", defaultConfigPath(), "configuration file")
 	profileName := fs.String("profile", "default", "profile to use")
 	excludeFlag := fs.String("exclude", "", "parts to leave out")
-	dryRun := fs.Bool("dry-run", false, "prune: only show what would be deleted")
+	dryRun := fs.Bool("dry-run", false, "prune / restore: only show what would be done")
+	yes := fs.Bool("yes", false, "restore: do not ask")
+	itemsFlag := fs.String("items", "", "diff / restore: only these item keys")
 	fs.Usage = func() { fmt.Fprintf(fs.Output(), usage, defaultConfigPath()) }
 
 	if len(args) == 0 {
@@ -62,8 +72,15 @@ func run(args []string, out io.Writer) error {
 	if cmd == "key" && len(rest) > 0 {
 		cmd, rest = "key "+rest[0], rest[1:]
 	}
-	if err := fs.Parse(rest); err != nil {
-		return err
+	var pos []string // positional arguments, flags may come before or after them
+	for {
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		if fs.NArg() == 0 {
+			break
+		}
+		pos, rest = append(pos, fs.Arg(0)), fs.Args()[1:]
 	}
 
 	cfg, err := loadConfig(*cfgPath)
@@ -102,6 +119,22 @@ func run(args []string, out io.Writer) error {
 		return runBackup(newClient(key), profile, out)
 	case "list":
 		return listBackups(expandHome(profile.To), out)
+	case "diff", "restore":
+		if len(pos) != 1 {
+			return fmt.Errorf("%s needs one backup folder", cmd)
+		}
+		key, err := apiKey(profile)
+		if err != nil {
+			return err
+		}
+		var sel []string
+		if *itemsFlag != "" {
+			sel = splitList(*itemsFlag)
+		}
+		if cmd == "diff" {
+			return runDiff(newClient(key), expandHome(pos[0]), profile, sel, out)
+		}
+		return runRestore(newClient(key), expandHome(pos[0]), profile, sel, *dryRun, *yes, out)
 	case "prune":
 		return prune(expandHome(profile.To), profile, *dryRun, out)
 	case "help", "-h", "--help":

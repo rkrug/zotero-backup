@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -32,13 +33,17 @@ type fakeLibrary struct {
 	downloads   map[string]int
 	failFile    map[string]bool // answer 400 for these files
 	bumpOnce    bool            // raise the version once, after the first collections read
+	readOnly    bool            // the key may not write
+	tokens      map[string][]byte
+	pending     map[string]string // upload key -> uploaded content
+	uploads     int               // files sent to the storage service
 }
 
 func newFakeLibrary() *fakeLibrary {
 	return &fakeLibrary{
 		version: 10, items: map[string]map[string]any{}, collections: map[string]map[string]any{},
 		settings: "{}", fulltext: map[string]string{}, files: map[string]string{},
-		downloads: map[string]int{}, failFile: map[string]bool{},
+		downloads: map[string]int{}, failFile: map[string]bool{}, tokens: map[string][]byte{}, pending: map[string]string{},
 	}
 }
 
@@ -64,7 +69,11 @@ func (f *fakeLibrary) list(w http.ResponseWriter, r *http.Request, objs map[stri
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	var page []map[string]any
 	for _, k := range keys[min(start, len(keys)):min(start+limit, len(keys))] {
-		page = append(page, map[string]any{"key": k, "data": objs[k]})
+		d := maps.Clone(objs[k])
+		if d["version"] == nil {
+			d["version"] = 10.0
+		}
+		page = append(page, map[string]any{"key": k, "data": d})
 	}
 	w.Header().Set("Total-Results", strconv.Itoa(len(keys)))
 	b, _ := json.Marshal(page)
@@ -77,11 +86,15 @@ func (f *fakeLibrary) list(w http.ResponseWriter, r *http.Request, objs map[stri
 func (f *fakeLibrary) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if r.Method != "GET" {
+		f.serveWrite(w, r)
+		return
+	}
 	w.Header().Set("Last-Modified-Version", strconv.Itoa(f.version))
 	p := r.URL.Path
 	switch {
 	case p == "/keys/current":
-		fmt.Fprint(w, `{"userID":7,"username":"tester","access":{"user":{"library":false},"groups":{"all":{"library":true}}}}`)
+		fmt.Fprintf(w, `{"userID":7,"username":"tester","access":{"user":{"library":false},"groups":{"all":{"library":true,"write":%v}}}}`, !f.readOnly)
 	case p == "/users/7/groups":
 		w.Header().Set("Total-Results", "1")
 		fmt.Fprint(w, `[{"id":1,"data":{"name":"Test group"}}]`)

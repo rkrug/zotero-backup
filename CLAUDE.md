@@ -30,6 +30,7 @@ One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key che
 - **Config:** JSON, `profiles` by name. Every profile starts from `defaultProfile()`; fields missing in the file keep the default. Unknown fields and invalid values are errors. Default path: `os.UserConfigDir()/zotero-backup/config.json`; a missing file means defaults only.
 - **API key:** `ZOTERO_API_KEY`, else the keychain entry named by the profile's `key` (macOS `security` tool for now). Never print, log or store the key, and never take it as a command-line argument.
 - **Library spec:** `all`, `user` or `group:<id>` (`parseLibrary`).
+- **API client:** all reads go through `Client.get` (retries network errors, 429 and 5xx; honours `Retry-After` and `Backoff`; `Sleep` is injectable for tests). `getAll[T]` reads every page and fails on a `Total-Results` mismatch or with `errLibraryChanged` if the library version moves between pages.
 
 ## Zotero API facts the design depends on (tested, see Issue #1)
 

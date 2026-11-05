@@ -51,6 +51,7 @@ Profiles are chosen with `--profile NAME` (default: `default`). Options a profil
       "key": "zotero-backup",
       "to": "~/zotero-backups",
       "exclude": [],
+      "write_key": "",
       "keep_daily": 7,
       "keep_weekly": 5,
       "keep_monthly": 12,
@@ -60,6 +61,7 @@ Profiles are chosen with `--profile NAME` (default: `default`). Options a profil
     "ldr": { "library": "group:2333076", "key": "zotero-readonly" },
     "mine": {
       "key": "readonly",
+      "write_key": "zotero-write",
       "keys": { "group:6719916": "safe-edit-write", "user": "personal" }
     }
   }
@@ -71,6 +73,7 @@ Profiles are chosen with `--profile NAME` (default: `default`). Options a profil
 | `library` | `all` (the personal library and every group the key can read), `user`, or `group:<id>` |
 | `key` | name of the keychain entry holding the API key (the default key) |
 | `keys` | per library, a different keychain entry: `"user"`, `"group:<id>"` or `"default"` → name. With `library: all`, the default key lists the libraries; a library listed here is read with its own key, also if the default key cannot read it. `diff` and `restore` use the key for the backup's library, so a write key can be kept for the libraries that need restores. `--key NAME` uses one entry for everything in a run |
+| `write_key` | keychain entry `restore` uses for every library (e.g. a key with write access), while `backup` and `diff` keep the read-only `key` / `keys`; empty: restore uses the library's key |
 | `to` | folder for the backups |
 | `exclude` | parts to leave out of backup and restore: `files` (records kept, file contents skipped), `attachments`, `notes`, `annotations`, `fulltext`, `settings`, `trash`; `--exclude a,b` overrides it for one run |
 | `keep_daily`, `keep_weekly`, `keep_monthly` | `prune` keeps the newest backup of each of the last N days, ISO weeks and months (three generations); the newest backup is always kept |
@@ -177,6 +180,12 @@ zotero-backup key set              # asks for the key (no echo), checks it with 
 zotero-backup key set readonly     # …under another name; use it with "key": "readonly" in a profile
 zotero-backup key check readonly   # user, libraries and rights of that key
 zotero-backup key check            # every key the profile uses, and what each is for
+```
+
+A read-only key as `key` and a write key as `write_key` keep scheduled backups from ever changing a library, while `restore` uses the write key without further options:
+
+```bash
+zotero-backup key set zotero-write    # then "write_key": "zotero-write" in the profile
 zotero-backup key remove readonly  # deletes the keychain entry (the key stays valid at zotero.org)
 ```
 

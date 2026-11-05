@@ -94,3 +94,27 @@ func TestRestoreAndKeyCheckUseTheLibrarysKey(t *testing.T) {
 		}
 	}
 }
+
+func TestRestoreUsesWriteKey(t *testing.T) {
+	store := fakeKeychain(t)
+	store["readonly"], store["writer"] = "K1", "K2"
+	t.Setenv("ZOTERO_API_KEY", "")
+	p := defaultProfile()
+	p.Key, p.WriteKey = "readonly", "writer"
+	newClientFor := twoKeyServer(t)
+
+	if c, _ := clientsFor(p, newClientFor)("group:2"); c.Key != "K1" {
+		t.Errorf("backup / diff use %q, want the read-only key", c.Key)
+	}
+	if c, _ := clientsFor(p.forRestore(), newClientFor)("group:2"); c.Key != "K2" {
+		t.Errorf("restore uses %q, want the write key", c.Key)
+	}
+	var out strings.Builder
+	keyCheckAll(p, newClientFor, &out)
+	if !strings.Contains(out.String(), `== key "writer", for: restore`) {
+		t.Errorf("key check:\n%s", out.String())
+	}
+	if q := defaultProfile(); q.forRestore().Key != q.Key {
+		t.Error("without write_key, restore must keep the profile's keys")
+	}
+}

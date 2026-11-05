@@ -51,7 +51,8 @@ options:
   --quiet             the same as --progress quiet
   --key NAME          use this keychain entry for every library in this run,
                       instead of the profile's "key" / "keys" (e.g. a write key
-                      for a restore)
+                      for a restore); without it, restore uses the profile's
+                      "write_key" if set
   --exclude A,B       backup: leave out these parts instead of the profile's
                       exclude list ("" for none); one of files, attachments,
                       notes, annotations, fulltext, settings, trash
@@ -123,7 +124,7 @@ func run(args []string, out io.Writer) error {
 				profile.Progress = "quiet"
 			}
 		case "key":
-			profile.Key, profile.Keys = *keyFlag, map[string]string{}
+			profile.Key, profile.Keys, profile.WriteKey = *keyFlag, map[string]string{}, ""
 		}
 	})
 	if err := profile.validate(); err != nil {
@@ -164,7 +165,7 @@ func run(args []string, out io.Writer) error {
 		if cmd == "diff" {
 			return runDiff(clientsFor(profile, newClient), expandHome(pos[0]), profile, sel, out)
 		}
-		return runRestore(clientsFor(profile, newClient), expandHome(pos[0]), profile, sel, *dryRun, *yes, out,
+		return runRestore(clientsFor(profile.forRestore(), newClient), expandHome(pos[0]), profile, sel, *dryRun, *yes, out,
 			newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "prune":
 		return prune(expandHome(profile.To), profile, *dryRun, out)

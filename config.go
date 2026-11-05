@@ -19,6 +19,7 @@ type Profile struct {
 	Library     string            `json:"library"`      // "all", "user" or "group:<id>"
 	Key         string            `json:"key"`          // keychain entry name of the default key, never the key itself
 	Keys        map[string]string `json:"keys"`         // per library ("user", "group:<id>", or "default"): keychain entry name
+	WriteKey    string            `json:"write_key"`    // keychain entry restore uses for every library ("" = the library's key)
 	To          string            `json:"to"`           // backup directory
 	Exclude     []string          `json:"exclude"`      // parts left out of backup and restore
 	KeepDaily   int               `json:"keep_daily"`   // prune: newest backup of each of the last N days
@@ -41,6 +42,7 @@ func defaultProfile() Profile {
 		Library:     "all",
 		Key:         "zotero-backup",
 		Keys:        map[string]string{},
+		WriteKey:    "",
 		To:          "~/zotero-backups",
 		Exclude:     []string{},
 		KeepDaily:   7,
@@ -159,7 +161,7 @@ func (p Profile) keyName(lib string) string {
 	return p.Key
 }
 
-// keyNames lists the profile's distinct key names, each with the libraries it is for.
+// keyNames lists the profile's distinct key names, each with what it is for.
 func (p Profile) keyNames() map[string][]string {
 	out := map[string][]string{p.keyName("default"): {"default"}}
 	for lib, name := range p.Keys {
@@ -167,5 +169,17 @@ func (p Profile) keyNames() map[string][]string {
 			out[name] = append(out[name], lib)
 		}
 	}
+	if p.WriteKey != "" {
+		out[p.WriteKey] = append(out[p.WriteKey], "restore")
+	}
 	return out
+}
+
+// forRestore returns the profile as restore uses it: with write_key set, that
+// key for every library.
+func (p Profile) forRestore() Profile {
+	if p.WriteKey != "" {
+		p.Key, p.Keys = p.WriteKey, map[string]string{}
+	}
+	return p
 }

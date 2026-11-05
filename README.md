@@ -165,12 +165,25 @@ schtasks /Create /SC DAILY /ST 06:00 /TN "zotero-backup" /TR "cmd /c \"C:\Tools\
 
 ## Keys
 
-Until keychain support is complete on all systems, use the environment variable where no keychain entry can be read:
+Keys are stored in the system keychain under a name; the configuration only holds the name (the profile's `key`, default `zotero-backup`):
 
-| System | Store |
+```bash
+zotero-backup key set              # asks for the key (no echo), checks it with Zotero, stores it as "zotero-backup"
+zotero-backup key set readonly     # …under another name; use it with "key": "readonly" in a profile
+zotero-backup key check readonly   # user, libraries and rights of that key
+zotero-backup key remove readonly  # deletes the keychain entry (the key stays valid at zotero.org)
+```
+
+A key can also be piped in (`… | zotero-backup key set`), e.g. from a password manager.
+
+| System | Keychain |
 |---|---|
-| macOS | Keychain: `security add-generic-password -a "$USER" -s zotero-backup -w` stores the key under the name `zotero-backup` (the profile's `key`) |
-| Windows, Linux | `ZOTERO_API_KEY` |
+| macOS | Keychain (entry: service = name) |
+| Windows | Credential Manager (generic credential, target = name) |
+| Linux desktop | Secret Service: GNOME Keyring, KWallet, KeePassXC, through `secret-tool` (package `libsecret-tools` or `libsecret`) |
+| Linux server | usually no keychain: set `ZOTERO_API_KEY`, e.g. from an encrypted systemd credential (see above) |
+
+`ZOTERO_API_KEY` always wins over the keychain.
 
 ## Not covered
 

@@ -21,6 +21,19 @@ jobs:
         run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
       - run: go vet ./...
       - run: go test -race ./...
+        env:
+          ZB_KEYCHAIN_TEST: ${{ runner.os != 'Linux' && '1' || '' }} # macOS Keychain, Windows Credential Manager
+
+  keychain-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: sudo apt-get update -q && sudo apt-get install -y -q gnome-keyring libsecret-tools dbus-x11
+      - name: Test against the Secret Service (GNOME Keyring)
+        run: dbus-run-session -- sh -c 'echo test | gnome-keyring-daemon --unlock --components=secrets >/dev/null && ZB_KEYCHAIN_TEST=1 go test -run TestOSKeychain -v ./...'
 
   build:
     runs-on: ubuntu-latest

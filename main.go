@@ -9,9 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -33,7 +31,10 @@ commands:
                   children and what they need)
   prune       delete backups not kept by keep_daily / keep_weekly / keep_monthly
               (newest per day, ISO week and month); --dry-run only shows them
-  key check   show the user, libraries and permissions of the API key
+  key set [NAME]     store an API key in the system keychain under NAME (default:
+                     the profile's "key"); asks for it without echo, checks it
+  key check [NAME]   show the user, libraries and permissions of the API key
+  key remove [NAME]  delete the keychain entry
   config      print the effective configuration (all options with their values)
   version     print the version
 
@@ -52,7 +53,8 @@ options:
                       notes, annotations, fulltext, settings, trash
 
 The API key is read from ZOTERO_API_KEY, or else from the keychain entry named
-by the profile's "key" (macOS only for now).
+by the profile's "key": macOS Keychain, Windows Credential Manager, Linux Secret
+Service (secret-tool).
 `
 
 func main() {
@@ -126,7 +128,19 @@ func run(args []string, out io.Writer) error {
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		return enc.Encode(cfg)
-	case "key check":
+	case "key check", "key set", "key remove":
+		if len(pos) > 1 {
+			return fmt.Errorf("%s takes at most one key name", cmd)
+		}
+		if len(pos) == 1 {
+			profile.Key = pos[0]
+		}
+		switch cmd {
+		case "key set":
+			return keySet(profile.Key, newClient, os.Stdin, out)
+		case "key remove":
+			return keyRemove(profile.Key, out)
+		}
 		key, err := apiKey(profile)
 		if err != nil {
 			return err
@@ -165,22 +179,6 @@ func run(args []string, out io.Writer) error {
 	}
 	fs.Usage()
 	return fmt.Errorf("unknown command %q", strings.Join(args[:min(len(args), 2)], " "))
-}
-
-// apiKey returns ZOTERO_API_KEY, or the keychain entry named by the profile.
-func apiKey(p Profile) (string, error) {
-	if k := os.Getenv("ZOTERO_API_KEY"); k != "" {
-		return k, nil
-	}
-	// ponytail: macOS keychain via the security tool; Linux / Windows keychains when needed
-	if runtime.GOOS != "darwin" {
-		return "", errors.New("set ZOTERO_API_KEY (keychain support is macOS-only for now)")
-	}
-	b, err := exec.Command("security", "find-generic-password", "-s", p.Key, "-w").Output()
-	if err != nil {
-		return "", fmt.Errorf("no API key: ZOTERO_API_KEY is not set and keychain entry %q was not found", p.Key)
-	}
-	return strings.TrimSpace(string(b)), nil
 }
 
 // keyCheck prints who the key belongs to and what it may do in each library,

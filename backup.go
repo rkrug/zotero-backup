@@ -289,6 +289,12 @@ func readMetadataOnce(c *Client, lib library, ex []string, prevFT map[string]Ful
 	}
 	var mu sync.Mutex
 	done := 0
+	if len(keys) == 0 {
+		if len(ftIndex) > 0 {
+			pr.Logf("full text: all %d entries unchanged, taken from the previous backup", s.ftReused)
+		}
+		return s, nil
+	}
 	pr.Phase("full text", len(keys))
 	err = parallel(keys, func(k string) error {
 		body, _, err := c.get(lib.Path + "/items/" + k + "/fulltext")

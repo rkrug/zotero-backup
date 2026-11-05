@@ -1,0 +1,230 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"maps"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+)
+
+// snapshotOf copies the fake library's state for later comparison.
+func snapshotOf(f *fakeLibrary) (map[string]map[string]any, map[string]map[string]any, map[string]string, string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return jsonRound(f.items), jsonRound(f.collections), maps.Clone(f.files), f.settings
+}
+
+// jsonRound gives objects the types JSON decoding gives (float64, []any, …).
+func jsonRound(m map[string]map[string]any) map[string]map[string]any {
+	b, _ := json.Marshal(m)
+	out := map[string]map[string]any{}
+	json.Unmarshal(b, &out)
+	return out
+}
+
+func sameJSON(a, b string) bool {
+	var x, y any
+	return json.Unmarshal([]byte(a), &x) == nil && json.Unmarshal([]byte(b), &y) == nil && fmt.Sprint(x) == fmt.Sprint(y)
+}
+
+func fakeClient(t *testing.T, f *fakeLibrary) *Client {
+	srv := httptest.NewServer(f)
+	t.Cleanup(srv.Close)
+	return &Client{Base: srv.URL, Key: "k", HTTP: srv.Client(), Sleep: func(time.Duration) {}}
+}
+
+// sameState compares a restored library with the original, ignoring versions.
+func sameState(t *testing.T, f *fakeLibrary, items, cols map[string]map[string]any, files map[string]string) {
+	t.Helper()
+	got := jsonRound(f.items)
+	for k, want := range items {
+		got := got[k]
+		if got == nil {
+			t.Errorf("item %s not restored", k)
+			continue
+		}
+		if fields := differingFields(want, got); len(fields) > 0 {
+			t.Errorf("item %s differs in %v: %v vs %v", k, fields, want, got)
+		}
+		if want["md5"] != got["md5"] {
+			t.Errorf("item %s md5 %v, want %v", k, got["md5"], want["md5"])
+		}
+	}
+	for k := range f.items {
+		if items[k] == nil {
+			t.Errorf("unexpected item %s", k)
+		}
+	}
+	for k, want := range cols {
+		if f.collections[k] == nil || len(differingFields(want, f.collections[k])) > 0 {
+			t.Errorf("collection %s: %v, want %v", k, f.collections[k], want)
+		}
+	}
+	for k, want := range files {
+		if f.files[k] != want {
+			t.Errorf("file %s = %q, want %q", k, f.files[k], want)
+		}
+	}
+}
+
+// damage deletes a whole family (book, PDF, annotation, note), a collection
+// and a file, changes and trashes items and changes the settings.
+func damage(f *fakeLibrary) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, k := range []string{"BOOK0001", "PDF00001", "NOFILE01", "ANNO0001", "NOTE0001"} {
+		delete(f.items, k)
+	}
+	delete(f.files, "PDF00001")
+	delete(f.fulltext, "PDF00001")
+	delete(f.collections, "COLL0001")
+	f.items["OTHER001"]["title"] = "changed title"
+	f.items["OTHER001"]["extra"] = "added on the server"
+	f.items["OTHER002"]["deleted"] = 1.0
+	f.items["TRASH001"]["deleted"] = nil
+	delete(f.items["TRASH001"], "deleted")
+	f.items["PDF00002"]["md5"] = md5hex("other content")
+	f.files["PDF00002"] = "other content"
+	f.items["NEW00001"] = map[string]any{"key": "NEW00001", "itemType": "book", "title": "added after the backup"}
+	f.settings = `{"tagColors":{"value":[],"version":20}}`
+	f.version += 5
+}
+
+func restoreSample(t *testing.T) (*fakeLibrary, *backupSet) {
+	t.Helper()
+	f := sampleLibrary()
+	f.items["OTHER001"] = map[string]any{"key": "OTHER001", "itemType": "book", "title": "other"}
+	f.items["OTHER002"] = map[string]any{"key": "OTHER002", "itemType": "book", "title": "will be trashed"}
+	f.addFile("PDF00002", "OTHER001", "two.pdf", "pdf-two", true)
+	dir, _ := runFake(t, f, t.TempDir(), nil, day(1))
+	b, err := loadBackup(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return f, b
+}
+
+func TestRestoreRoundTrip(t *testing.T) {
+	f, b := restoreSample(t)
+	items, cols, files, settings := snapshotOf(f)
+	ft := f.fulltext["PDF00001"]
+	damage(f)
+
+	c := fakeClient(t, f)
+	var out strings.Builder
+	if err := runRestore(c, b.dir, defaultProfile(), nil, false, true, &out, quietProgress()); err != nil {
+		t.Fatalf("%v\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "checked: the library matches the backup") {
+		t.Errorf("output:\n%s", out.String())
+	}
+	items["NEW00001"] = jsonRound(f.items)["NEW00001"] // added after the backup: kept, not deleted
+	sameState(t, f, items, cols, files)
+	value := func(s string) string {
+		var v map[string]struct{ Value any }
+		json.Unmarshal([]byte(s), &v)
+		return fmt.Sprint(v["tagColors"].Value)
+	}
+	if value(f.settings) != value(settings) {
+		t.Errorf("settings %s", f.settings)
+	}
+	if !sameJSON(f.fulltext["PDF00001"], ft) {
+		t.Errorf("full text %q, want %q", f.fulltext["PDF00001"], ft)
+	}
+	if f.uploads != 2 { // both files' content was gone from the storage service
+		t.Errorf("uploads %d, want 2", f.uploads)
+	}
+	if f.items["OTHER002"]["deleted"] != nil || f.items["TRASH001"]["deleted"] == nil {
+		t.Errorf("trash state not restored: OTHER002 %v, TRASH001 %v", f.items["OTHER002"]["deleted"], f.items["TRASH001"]["deleted"])
+	}
+	if f.items["OTHER001"]["extra"] != "" {
+		t.Errorf("field added on the server not cleared: %q", f.items["OTHER001"]["extra"])
+	}
+
+	var again strings.Builder
+	if err := runDiff(c, b.dir, defaultProfile(), nil, &again); err != nil || !strings.Contains(again.String(), "only in the library") ||
+		strings.Contains(again.String(), "missing in the library") {
+		t.Errorf("diff after restore: %v\n%s", err, again.String())
+	}
+}
+
+func TestRestoreUsesFileStillOnServer(t *testing.T) {
+	f, b := restoreSample(t)
+	f.mu.Lock()
+	delete(f.items, "PDF00002") // the attachment is gone, but the storage service still has its content
+	f.files["KEEPCONT"] = "pdf-two"
+	f.mu.Unlock()
+	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress()); err != nil {
+		t.Fatal(err)
+	}
+	if f.uploads != 0 || f.files["PDF00002"] != "pdf-two" {
+		t.Errorf("uploads %d, file %q", f.uploads, f.files["PDF00002"])
+	}
+}
+
+func TestRestoreDryRunWritesNothing(t *testing.T) {
+	f, b := restoreSample(t)
+	damage(f)
+	before := f.version
+	var out strings.Builder
+	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, true, false, &out, quietProgress()); err != nil {
+		t.Fatal(err)
+	}
+	if f.version != before || f.uploads != 0 {
+		t.Error("dry run wrote")
+	}
+	for _, want := range []string{"missing in the library", "BOOK0001", "different in the library", "OTHER001", "[extra, title]",
+		"files to upload: 2", "settings to set back: tagColors", "only in the library", "NEW00001"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("plan lacks %q:\n%s", want, out.String())
+		}
+	}
+}
+
+func TestRestoreSelectedItems(t *testing.T) {
+	f, b := restoreSample(t)
+	damage(f)
+	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), []string{"PDF00001"}, false, true, io.Discard, quietProgress()); err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range []string{"PDF00001", "ANNO0001", "BOOK0001"} { // the item, its annotation, its parent
+		if f.items[k] == nil {
+			t.Errorf("%s not restored", k)
+		}
+	}
+	if f.collections["COLL0001"] == nil {
+		t.Error("collection the parent belongs to not restored")
+	}
+	if f.items["NOTE0001"] != nil || f.items["OTHER001"]["title"] != "changed title" || strings.Contains(f.settings, "#FF6666") {
+		t.Error("restored more than the selection")
+	}
+}
+
+func TestRestoreRefusesReadOnlyKey(t *testing.T) {
+	f, b := restoreSample(t)
+	f.readOnly = true
+	err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress())
+	if err == nil || !strings.Contains(err.Error(), "may not write") {
+		t.Errorf("err = %v", err)
+	}
+}
+
+func TestRestoreReportsConflicts(t *testing.T) {
+	f, b := restoreSample(t)
+	damage(f)
+	c := fakeClient(t, f)
+	now, _ := readLibrary(c, b.libPath)
+	pl := makePlan(b, now, nil, nil)
+	f.mu.Lock()
+	f.items["OTHER001"]["version"] = 999.0 // changed by someone after the plan was made
+	f.mu.Unlock()
+	var out strings.Builder
+	failures, err := restore(c, b, now, pl, nil, &out, quietProgress())
+	if err != nil || failures != 1 || !strings.Contains(out.String(), "FAILED items OTHER001") {
+		t.Errorf("failures %d, err %v\n%s", failures, err, out.String())
+	}
+}

@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 go build -o zotero-backup .     # build
 go vet ./...                    # lint (CI also checks gofmt -l .)
-go test ./...                   # all tests
+go test -race ./...             # all tests (CI: Linux, macOS, Windows)
 go test -run TestKeyCheck ./... # one test
 ```
 
@@ -21,11 +21,17 @@ Run locally without a config file, using a keychain entry (macOS) or the environ
 ZOTERO_API_KEY=... ./zotero-backup key check
 ./zotero-backup key check --config cfg.json --profile test
 ./zotero-backup config          # prints the effective config incl. all defaults
+./zotero-backup backup --profile test [--exclude files,fulltext]
+./zotero-backup list --profile test
+./zotero-backup prune --profile test --dry-run
 ```
 
 ## Structure
 
-One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key check`), `config.go` (JSON profiles), `zotero.go` (API client). Tests use `httptest` fake servers (`fakeZotero` in `main_test.go`); no test talks to the real API.
+One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key check`, `list`), `config.go` (JSON profiles), `zotero.go` (API client), `backup.go` (backup), `prune.go` (three-generation retention). Tests use `httptest` fake servers (`fakeZotero` in `main_test.go`, `fakeLibrary` in `backup_test.go`); no test talks to the real API.
+
+- **Backups:** `<to>/<group-ID-Name|user-ID-username>/<YYYY-MM-DDTHHMMSSZ>/` (name made safe, spaces as `_`; the folder is found by ID and renamed when the name changes), each **complete**: `items.json`, `collections.json`, `searches.json`, `settings.json`, `fulltext.json` (API `data` as is), `files.json`, `files/<attachment key>/<safe name>`, `meta.json` (version, counts, missing files, problems). No incremental metadata: every run reads everything. A file whose md5 matches one in the previous backup (or earlier in this run) is a **hard link** (copy where links fail), so unchanged files are neither downloaded nor stored twice. Files are never modified in place. A run writes `<date>.partial` and renames it when complete; a leftover `.partial` is resumed. The metadata is re-read (up to 3 times) if the library version differs between the reads.
+- **Prune:** `keep_daily` / `keep_weekly` / `keep_monthly` keep the newest backup of each of the last N days / ISO weeks / months; the newest backup always stays. Deleting a folder frees only files no other backup links to.
 
 - **Config:** JSON, `profiles` by name. Every profile starts from `defaultProfile()`; fields missing in the file keep the default. Unknown fields and invalid values are errors. Default path: `os.UserConfigDir()/zotero-backup/config.json`; a missing file means defaults only.
 - **API key:** `ZOTERO_API_KEY`, else the keychain entry named by the profile's `key` (macOS `security` tool for now). Never print, log or store the key, and never take it as a command-line argument.
@@ -37,8 +43,8 @@ One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key che
 - Backups store the API's own JSON `data`. Restore sends it back with `version: 0` and without `dateModified` (attachments also without `md5`/`mtime`); the old key is reused.
 - Restore order: collections (parents first) → searches → top-level items → attachments/notes → files → annotations → settings → full text. Items or collections now in the trash need `"deleted": false` sent explicitly.
 - Write preconditions per object (`version` in the body), not the library-wide header. Each object in a batch gets its own version.
-- Deleting a collection removes it from items' `collections` without bumping the items' versions; incremental backup must derive this from `/deleted`.
 - Long runs need retries on network errors (not only 429/503 and `Backoff`) and must be resumable.
+- Attachments without `md5` usually have no file on the server (404); they are listed in `meta.json` as missing, not skipped silently.
 
 ## Git
 

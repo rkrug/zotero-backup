@@ -10,19 +10,30 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 const usage = `usage: zotero-backup <command> [options]
 
 commands:
+  backup      complete, dated backup of the profile's libraries; unchanged files
+              are hard links to the previous backup
+  list        list the backups in the profile's backup folder
+  prune       delete backups not kept by keep_daily / keep_weekly / keep_monthly
+              (newest per day, ISO week and month); --dry-run only shows them
   key check   show the user, libraries and permissions of the API key
   config      print the effective configuration (all options with their values)
 
 options:
-  --config PATH    configuration file (default: %s)
-  --profile NAME   profile to use (default: default)
+  --config PATH       configuration file (default: %s)
+  --profile NAME      profile to use (default: default)
+  --dry-run           prune: show what would be deleted, delete nothing
+  --exclude A,B       backup: leave out these parts instead of the profile's
+                      exclude list ("" for none); one of files, attachments,
+                      notes, annotations, fulltext, settings, trash
 
 The API key is read from ZOTERO_API_KEY, or else from the keychain entry named
 by the profile's "key" (macOS only for now).
@@ -39,6 +50,8 @@ func run(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("zotero-backup", flag.ContinueOnError)
 	cfgPath := fs.String("config", defaultConfigPath(), "configuration file")
 	profileName := fs.String("profile", "default", "profile to use")
+	excludeFlag := fs.String("exclude", "", "parts to leave out")
+	dryRun := fs.Bool("dry-run", false, "prune: only show what would be deleted")
 	fs.Usage = func() { fmt.Fprintf(fs.Output(), usage, defaultConfigPath()) }
 
 	if len(args) == 0 {
@@ -61,6 +74,14 @@ func run(args []string, out io.Writer) error {
 	if !ok {
 		return fmt.Errorf("no profile %q in %s", *profileName, *cfgPath)
 	}
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "exclude" {
+			profile.Exclude = splitList(*excludeFlag)
+		}
+	})
+	if err := profile.validate(); err != nil {
+		return err
+	}
 
 	switch cmd {
 	case "config":
@@ -73,6 +94,16 @@ func run(args []string, out io.Writer) error {
 			return err
 		}
 		return keyCheck(newClient(key), profile, out)
+	case "backup":
+		key, err := apiKey(profile)
+		if err != nil {
+			return err
+		}
+		return runBackup(newClient(key), profile, out)
+	case "list":
+		return listBackups(expandHome(profile.To), out)
+	case "prune":
+		return prune(expandHome(profile.To), profile, *dryRun, out)
 	case "help", "-h", "--help":
 		fs.Usage()
 		return nil
@@ -146,4 +177,97 @@ func rights(a Access, user bool) string {
 		}
 	}
 	return s
+}
+
+func splitList(s string) []string {
+	var out []string
+	for _, p := range strings.Split(s, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func expandHome(p string) string {
+	if p == "~" || strings.HasPrefix(p, "~/") || strings.HasPrefix(p, `~\`) {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, p[1:])
+		}
+	}
+	return p
+}
+
+// runBackup backs up every library of the profile; a failing library does not
+// stop the others, but makes the command fail at the end.
+func runBackup(c *Client, p Profile, out io.Writer) error {
+	libs, skipped, err := resolveLibraries(c, p.Library)
+	if err != nil {
+		return err
+	}
+	for _, s := range skipped {
+		fmt.Fprintln(out, "skipped", s)
+	}
+	root := expandHome(p.To)
+	failed := 0
+	for _, lib := range libs {
+		dir, m, err := backupLibrary(c, lib, root, p.Exclude, time.Now(), out)
+		if err != nil {
+			failed++
+			fmt.Fprintf(out, "%s: FAILED: %v\n", lib.ID, err)
+			continue
+		}
+		fmt.Fprintf(out, "%s: %s  version %d, %d items, %d files (%d downloaded, %.1f MB; %d linked), %d missing, %d problems, %.0f s\n",
+			lib.ID, dir, m.Version, itemCount(m.Counts), m.Counts["files"], m.Downloaded, float64(m.DownBytes)/1e6,
+			m.Linked, len(m.Missing), len(m.Problems), m.Seconds)
+	}
+	if failed > 0 {
+		return fmt.Errorf("%d of %d libraries failed", failed, len(libs))
+	}
+	return nil
+}
+
+// itemCount sums the item counts (the counts that are item types).
+func itemCount(c map[string]int) int {
+	n := 0
+	for k, v := range c {
+		if k != "collections" && k != "searches" && k != "fulltext" && k != "files" {
+			n += v
+		}
+	}
+	return n
+}
+
+// listBackups prints every backup below root, per library, oldest first.
+func listBackups(root string, out io.Writer) error {
+	libs, err := os.ReadDir(root)
+	if err != nil {
+		return err
+	}
+	for _, l := range libs {
+		if !l.IsDir() {
+			continue
+		}
+		libRoot := filepath.Join(root, l.Name())
+		names := backups(libRoot)
+		if len(names) == 0 {
+			continue
+		}
+		var last Meta
+		readJSON(filepath.Join(libRoot, names[len(names)-1], "meta.json"), &last)
+		fmt.Fprintln(out, l.Name())
+		for _, n := range names {
+			var m Meta
+			if err := readJSON(filepath.Join(libRoot, n, "meta.json"), &m); err != nil {
+				fmt.Fprintf(out, "  %s  (no meta.json)\n", n)
+				continue
+			}
+			fmt.Fprintf(out, "  %s  version %-7d %6d items %6d files  %3d missing  %d problems\n",
+				n, m.Version, itemCount(m.Counts), m.Counts["files"], len(m.Missing), len(m.Problems))
+		}
+		if p := findPartial(libRoot); p != "" {
+			fmt.Fprintf(out, "  %s  (interrupted; resumed by the next backup)\n", filepath.Base(p))
+		}
+	}
+	return nil
 }

@@ -20,8 +20,9 @@ type Profile struct {
 	Key         string   `json:"key"`          // keychain entry name, never the key itself
 	To          string   `json:"to"`           // backup directory
 	Exclude     []string `json:"exclude"`      // parts left out of backup and restore
-	KeepDaily   int      `json:"keep_daily"`   // prune: daily snapshots to keep
-	KeepMonthly int      `json:"keep_monthly"` // prune: monthly snapshots to keep
+	KeepDaily   int      `json:"keep_daily"`   // prune: newest backup of each of the last N days
+	KeepWeekly  int      `json:"keep_weekly"`  // prune: newest backup of each of the last N weeks
+	KeepMonthly int      `json:"keep_monthly"` // prune: newest backup of each of the last N months
 }
 
 type Config struct {
@@ -37,7 +38,8 @@ func defaultProfile() Profile {
 		Key:         "zotero-backup",
 		To:          "~/zotero-backups",
 		Exclude:     []string{},
-		KeepDaily:   30,
+		KeepDaily:   7,
+		KeepWeekly:  5,
 		KeepMonthly: 12,
 	}
 }
@@ -100,8 +102,8 @@ func (p Profile) validate() error {
 			return fmt.Errorf("exclude: unknown value %q (allowed: %s)", e, strings.Join(excludable, ", "))
 		}
 	}
-	if p.KeepDaily < 0 || p.KeepMonthly < 0 {
-		return errors.New("keep_daily and keep_monthly must not be negative")
+	if p.KeepDaily < 0 || p.KeepWeekly < 0 || p.KeepMonthly < 0 {
+		return errors.New("keep_daily, keep_weekly and keep_monthly must not be negative")
 	}
 	return nil
 }

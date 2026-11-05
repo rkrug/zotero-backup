@@ -42,11 +42,27 @@ func (e *HTTPError) Error() string { return fmt.Sprintf("GET %s: HTTP %d: %s", e
 // errLibraryChanged means the library was modified while its pages were read.
 var errLibraryChanged = errors.New("library changed while reading; read it again")
 
-// get performs a GET and returns the body and headers of a 200 response.
-// It retries on network errors, 429 and 5xx (waiting Retry-After, else 1, 2, 4 … s)
-// and honours Backoff by waiting that long before the next request.
-// ponytail: whole body in memory; stream when downloading large files.
-func (c *Client) get(path string) ([]byte, http.Header, error) {
+// netError marks an error reading from the network, which is worth retrying
+// (unlike, say, a full disk while writing a download).
+type netError struct{ error }
+
+func (e netError) Unwrap() error { return e.error }
+
+type netReader struct{ r io.Reader }
+
+func (n netReader) Read(p []byte) (int, error) {
+	k, err := n.r.Read(p)
+	if err != nil && err != io.EOF {
+		err = netError{err}
+	}
+	return k, err
+}
+
+// do performs a GET and passes the body of a 200 response to handle, which may
+// be called again on retry and must start from scratch each time. It retries
+// on network errors (also mid-body), 429 and 5xx, waiting Retry-After or else
+// 1, 2, 4 … s, and honours Backoff by waiting that long before the next request.
+func (c *Client) do(path string, handle func(io.Reader) error) (http.Header, error) {
 	attempts := c.Attempts
 	if attempts < 1 {
 		attempts = 5
@@ -54,48 +70,63 @@ func (c *Client) get(path string) ([]byte, http.Header, error) {
 	var lastErr error
 	for attempt := 0; attempt < attempts; attempt++ {
 		c.waitBackoff()
-		body, h, code, err := c.once(path)
+		h, code, body, err := c.once(path, handle)
 		if h != nil {
 			c.setBackoff(h.Get("Backoff"))
 		}
+		var ne netError
 		switch {
-		case err != nil: // network: connection reset, timeout, DNS
+		case err != nil && (errors.As(err, &ne) || code == 0): // connection reset, timeout, DNS
 			lastErr = fmt.Errorf("GET %s: %w", path, err)
+		case err != nil: // e.g. writing to disk failed
+			return h, err
 		case code == http.StatusOK:
-			return body, h, nil
+			return h, nil
 		case code == http.StatusTooManyRequests || code >= 500:
-			lastErr = &HTTPError{path, code, strings.TrimSpace(string(body))}
+			lastErr = &HTTPError{path, code, body}
 			if s, err := strconv.Atoi(h.Get("Retry-After")); err == nil {
 				c.sleep(time.Duration(s) * time.Second)
 				continue
 			}
 		default: // 4xx: retrying will not help
-			return nil, h, &HTTPError{path, code, strings.TrimSpace(string(body))}
+			return h, &HTTPError{path, code, body}
 		}
 		if attempt < attempts-1 {
 			c.sleep(time.Duration(1<<attempt) * time.Second)
 		}
 	}
-	return nil, nil, fmt.Errorf("giving up after %d attempts: %w", attempts, lastErr)
+	return nil, fmt.Errorf("giving up after %d attempts: %w", attempts, lastErr)
 }
 
-func (c *Client) once(path string) ([]byte, http.Header, int, error) {
+// once sends one request; code is 0 if no response arrived. For non-200
+// responses it returns the start of the body as text.
+func (c *Client) once(path string, handle func(io.Reader) error) (http.Header, int, string, error) {
 	req, err := http.NewRequest("GET", c.Base+path, nil)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, 0, "", err
 	}
 	req.Header.Set("Zotero-API-Version", "3")
 	req.Header.Set("Zotero-API-Key", c.Key)
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, 0, "", netError{err}
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil { // connection dropped mid-body
-		return nil, resp.Header, 0, err
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 300))
+		return resp.Header, resp.StatusCode, strings.TrimSpace(string(b)), nil
 	}
-	return body, resp.Header, resp.StatusCode, nil
+	return resp.Header, resp.StatusCode, "", handle(netReader{resp.Body})
+}
+
+// get returns the whole body of a 200 response.
+func (c *Client) get(path string) ([]byte, http.Header, error) {
+	var body []byte
+	h, err := c.do(path, func(r io.Reader) (err error) {
+		body, err = io.ReadAll(r)
+		return err
+	})
+	return body, h, err
 }
 
 func (c *Client) setBackoff(v string) {

@@ -22,14 +22,19 @@ var (
 	keychainDelete = osKeychainDelete
 )
 
-// apiKey returns ZOTERO_API_KEY, or else the keychain entry named by the profile.
-func apiKey(p Profile) (string, error) {
+// apiKey returns ZOTERO_API_KEY, or else the keychain entry named by the profile
+// for its default key.
+func apiKey(p Profile) (string, error) { return apiKeyNamed(p.keyName("default")) }
+
+// apiKeyNamed returns ZOTERO_API_KEY (which wins for every library), or else the
+// keychain entry name.
+func apiKeyNamed(name string) (string, error) {
 	if k := os.Getenv("ZOTERO_API_KEY"); k != "" {
 		return k, nil
 	}
-	k, err := keychainGet(p.Key)
+	k, err := keychainGet(name)
 	if errors.Is(err, errNoEntry) {
-		return "", fmt.Errorf("no API key: ZOTERO_API_KEY is not set and there is no keychain entry %q (zotero-backup key set %s)", p.Key, p.Key)
+		return "", fmt.Errorf("no API key: ZOTERO_API_KEY is not set and there is no keychain entry %q (zotero-backup key set %s)", name, name)
 	}
 	if err != nil {
 		return "", fmt.Errorf("no API key: ZOTERO_API_KEY is not set and the keychain could not be read: %w", err)
@@ -76,4 +81,23 @@ func keyRemove(name string, out io.Writer) error {
 	}
 	fmt.Fprintf(out, "removed %q from the keychain (the key itself stays valid at zotero.org/settings/keys)\n", name)
 	return nil
+}
+
+// clientsFor returns a function giving the client for a library ("default",
+// "user", "group:<id>"), with the key the profile names for it. Clients are
+// shared between libraries that use the same key.
+func clientsFor(p Profile, newClientFor func(string) *Client) func(lib string) (*Client, error) {
+	clients := map[string]*Client{}
+	return func(lib string) (*Client, error) {
+		name := p.keyName(lib)
+		if c := clients[name]; c != nil {
+			return c, nil
+		}
+		key, err := apiKeyNamed(name)
+		if err != nil {
+			return nil, err
+		}
+		clients[name] = newClientFor(key)
+		return clients[name], nil
+	}
 }

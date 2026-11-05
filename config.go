@@ -16,13 +16,14 @@ import (
 // Profile holds the settings of one named profile. Fields missing from a
 // profile in the config file keep the values of defaultProfile.
 type Profile struct {
-	Library     string   `json:"library"`      // "all", "user" or "group:<id>"
-	Key         string   `json:"key"`          // keychain entry name, never the key itself
-	To          string   `json:"to"`           // backup directory
-	Exclude     []string `json:"exclude"`      // parts left out of backup and restore
-	KeepDaily   int      `json:"keep_daily"`   // prune: newest backup of each of the last N days
-	KeepWeekly  int      `json:"keep_weekly"`  // prune: newest backup of each of the last N weeks
-	KeepMonthly int      `json:"keep_monthly"` // prune: newest backup of each of the last N months
+	Library     string            `json:"library"`      // "all", "user" or "group:<id>"
+	Key         string            `json:"key"`          // keychain entry name of the default key, never the key itself
+	Keys        map[string]string `json:"keys"`         // per library ("user", "group:<id>", or "default"): keychain entry name
+	To          string            `json:"to"`           // backup directory
+	Exclude     []string          `json:"exclude"`      // parts left out of backup and restore
+	KeepDaily   int               `json:"keep_daily"`   // prune: newest backup of each of the last N days
+	KeepWeekly  int               `json:"keep_weekly"`  // prune: newest backup of each of the last N weeks
+	KeepMonthly int               `json:"keep_monthly"` // prune: newest backup of each of the last N months
 
 	Progress         string `json:"progress"`          // auto, line, log or quiet
 	ProgressInterval int    `json:"progress_interval"` // seconds between progress lines in log mode
@@ -39,6 +40,7 @@ func defaultProfile() Profile {
 	return Profile{
 		Library:     "all",
 		Key:         "zotero-backup",
+		Keys:        map[string]string{},
 		To:          "~/zotero-backups",
 		Exclude:     []string{},
 		KeepDaily:   7,
@@ -103,6 +105,16 @@ func (p Profile) validate() error {
 	if _, _, err := parseLibrary(p.Library); err != nil {
 		return err
 	}
+	for lib, name := range p.Keys {
+		if lib != "default" {
+			if kind, _, err := parseLibrary(lib); err != nil || kind == "all" {
+				return fmt.Errorf("keys: %q is not \"default\", \"user\" or \"group:<id>\"", lib)
+			}
+		}
+		if strings.TrimSpace(name) == "" {
+			return fmt.Errorf("keys: no key name for %q", lib)
+		}
+	}
 	for _, e := range p.Exclude {
 		if !slices.Contains(excludable, e) {
 			return fmt.Errorf("exclude: unknown value %q (allowed: %s)", e, strings.Join(excludable, ", "))
@@ -133,4 +145,27 @@ func parseLibrary(s string) (kind string, groupID int, err error) {
 		return "group", id, nil
 	}
 	return "", 0, fmt.Errorf("library %q: use \"all\", \"user\" or \"group:<id>\"", s)
+}
+
+// keyName is the keychain entry to use for a library ("user", "group:<id>"):
+// its entry in "keys", else keys["default"], else "key".
+func (p Profile) keyName(lib string) string {
+	if n := p.Keys[lib]; n != "" {
+		return n
+	}
+	if n := p.Keys["default"]; n != "" {
+		return n
+	}
+	return p.Key
+}
+
+// keyNames lists the profile's distinct key names, each with the libraries it is for.
+func (p Profile) keyNames() map[string][]string {
+	out := map[string][]string{p.keyName("default"): {"default"}}
+	for lib, name := range p.Keys {
+		if lib != "default" {
+			out[name] = append(out[name], lib)
+		}
+	}
+	return out
 }

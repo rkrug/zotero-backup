@@ -57,7 +57,11 @@ Profiles are chosen with `--profile NAME` (default: `default`). Options a profil
       "progress": "auto",
       "progress_interval": 30
     },
-    "ldr": { "library": "group:2333076", "key": "zotero-readonly" }
+    "ldr": { "library": "group:2333076", "key": "zotero-readonly" },
+    "mine": {
+      "key": "readonly",
+      "keys": { "group:6719916": "safe-edit-write", "user": "personal" }
+    }
   }
 }
 ```
@@ -65,7 +69,8 @@ Profiles are chosen with `--profile NAME` (default: `default`). Options a profil
 | Option | Meaning |
 |---|---|
 | `library` | `all` (the personal library and every group the key can read), `user`, or `group:<id>` |
-| `key` | name of the keychain entry holding the API key |
+| `key` | name of the keychain entry holding the API key (the default key) |
+| `keys` | per library, a different keychain entry: `"user"`, `"group:<id>"` or `"default"` → name. With `library: all`, the default key lists the libraries; a library listed here is read with its own key, also if the default key cannot read it. `diff` and `restore` use the key for the backup's library, so a write key can be kept for the libraries that need restores. `--key NAME` uses one entry for everything in a run |
 | `to` | folder for the backups |
 | `exclude` | parts to leave out of backup and restore: `files` (records kept, file contents skipped), `attachments`, `notes`, `annotations`, `fulltext`, `settings`, `trash`; `--exclude a,b` overrides it for one run |
 | `keep_daily`, `keep_weekly`, `keep_monthly` | `prune` keeps the newest backup of each of the last N days, ISO weeks and months (three generations); the newest backup is always kept |
@@ -171,6 +176,7 @@ Keys are stored in the system keychain under a name; the configuration only hold
 zotero-backup key set              # asks for the key (no echo), checks it with Zotero, stores it as "zotero-backup"
 zotero-backup key set readonly     # …under another name; use it with "key": "readonly" in a profile
 zotero-backup key check readonly   # user, libraries and rights of that key
+zotero-backup key check            # every key the profile uses, and what each is for
 zotero-backup key remove readonly  # deletes the keychain entry (the key stays valid at zotero.org)
 ```
 

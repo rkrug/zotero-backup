@@ -79,6 +79,9 @@ func loadBackup(path string) (*backupSet, error) {
 	return b, nil
 }
 
+// spec is the backup's library as written in a profile: "user" or "group:<id>".
+func (b *backupSet) spec() string { return library{ID: b.meta.Library}.Spec() }
+
 // libraryNow is the library's current state.
 type libraryNow struct {
 	version     int
@@ -627,8 +630,12 @@ func canWrite(c *Client, libPath string) error {
 }
 
 // runRestore is the restore command: plan, show, confirm, apply, check.
-func runRestore(c *Client, path string, p Profile, sel []string, dryRun, yes bool, out io.Writer, pr *progress) error {
+func runRestore(clientFor func(string) (*Client, error), path string, p Profile, sel []string, dryRun, yes bool, out io.Writer, pr *progress) error {
 	b, err := loadBackup(path)
+	if err != nil {
+		return err
+	}
+	c, err := clientFor(b.spec())
 	if err != nil {
 		return err
 	}
@@ -676,8 +683,12 @@ func runRestore(c *Client, path string, p Profile, sel []string, dryRun, yes boo
 }
 
 // runDiff is the diff command.
-func runDiff(c *Client, path string, p Profile, sel []string, out io.Writer) error {
+func runDiff(clientFor func(string) (*Client, error), path string, p Profile, sel []string, out io.Writer) error {
 	b, err := loadBackup(path)
+	if err != nil {
+		return err
+	}
+	c, err := clientFor(b.spec())
 	if err != nil {
 		return err
 	}

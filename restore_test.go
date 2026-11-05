@@ -31,6 +31,11 @@ func sameJSON(a, b string) bool {
 	return json.Unmarshal([]byte(a), &x) == nil && json.Unmarshal([]byte(b), &y) == nil && fmt.Sprint(x) == fmt.Sprint(y)
 }
 
+// fixed gives the same client for every library.
+func fixed(c *Client) func(string) (*Client, error) {
+	return func(string) (*Client, error) { return c, nil }
+}
+
 func fakeClient(t *testing.T, f *fakeLibrary) *Client {
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
@@ -116,7 +121,7 @@ func TestRestoreRoundTrip(t *testing.T) {
 
 	c := fakeClient(t, f)
 	var out strings.Builder
-	if err := runRestore(c, b.dir, defaultProfile(), nil, false, true, &out, quietProgress()); err != nil {
+	if err := runRestore(fixed(c), b.dir, defaultProfile(), nil, false, true, &out, quietProgress()); err != nil {
 		t.Fatalf("%v\n%s", err, out.String())
 	}
 	if !strings.Contains(out.String(), "checked: the library matches the backup") {
@@ -146,7 +151,7 @@ func TestRestoreRoundTrip(t *testing.T) {
 	}
 
 	var again strings.Builder
-	if err := runDiff(c, b.dir, defaultProfile(), nil, &again); err != nil || !strings.Contains(again.String(), "only in the library") ||
+	if err := runDiff(fixed(c), b.dir, defaultProfile(), nil, &again); err != nil || !strings.Contains(again.String(), "only in the library") ||
 		strings.Contains(again.String(), "missing in the library") {
 		t.Errorf("diff after restore: %v\n%s", err, again.String())
 	}
@@ -158,7 +163,7 @@ func TestRestoreUsesFileStillOnServer(t *testing.T) {
 	delete(f.items, "PDF00002") // the attachment is gone, but the storage service still has its content
 	f.files["KEEPCONT"] = "pdf-two"
 	f.mu.Unlock()
-	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress()); err != nil {
+	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress()); err != nil {
 		t.Fatal(err)
 	}
 	if f.uploads != 0 || f.files["PDF00002"] != "pdf-two" {
@@ -171,7 +176,7 @@ func TestRestoreDryRunWritesNothing(t *testing.T) {
 	damage(f)
 	before := f.version
 	var out strings.Builder
-	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, true, false, &out, quietProgress()); err != nil {
+	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, true, false, &out, quietProgress()); err != nil {
 		t.Fatal(err)
 	}
 	if f.version != before || f.uploads != 0 {
@@ -188,7 +193,7 @@ func TestRestoreDryRunWritesNothing(t *testing.T) {
 func TestRestoreSelectedItems(t *testing.T) {
 	f, b := restoreSample(t)
 	damage(f)
-	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), []string{"PDF00001"}, false, true, io.Discard, quietProgress()); err != nil {
+	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), []string{"PDF00001"}, false, true, io.Discard, quietProgress()); err != nil {
 		t.Fatal(err)
 	}
 	for _, k := range []string{"PDF00001", "ANNO0001", "BOOK0001"} { // the item, its annotation, its parent
@@ -207,7 +212,7 @@ func TestRestoreSelectedItems(t *testing.T) {
 func TestRestoreRefusesReadOnlyKey(t *testing.T) {
 	f, b := restoreSample(t)
 	f.readOnly = true
-	err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress())
+	err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress())
 	if err == nil || !strings.Contains(err.Error(), "may not write") {
 		t.Errorf("err = %v", err)
 	}

@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -48,6 +49,10 @@ options:
                       on stderr (profile option "progress"; "progress_interval"
                       sets the seconds between lines in log mode)
   --quiet             the same as --progress quiet
+  --key NAME          use this keychain entry for every library in this run,
+                      instead of the profile's "key" / "keys" (e.g. a write key
+                      for a restore); without it, restore uses the profile's
+                      "write_key" if set
   --exclude A,B       backup: leave out these parts instead of the profile's
                       exclude list ("" for none); one of files, attachments,
                       notes, annotations, fulltext, settings, trash
@@ -74,6 +79,7 @@ func run(args []string, out io.Writer) error {
 	itemsFlag := fs.String("items", "", "diff / restore: only these item keys")
 	progressFlag := fs.String("progress", "", "auto, line, log or quiet")
 	quiet := fs.Bool("quiet", false, "only the summary and errors")
+	keyFlag := fs.String("key", "", "keychain entry to use for every library in this run")
 	fs.Usage = func() { fmt.Fprintf(fs.Output(), usage, defaultConfigPath()) }
 
 	if len(args) == 0 {
@@ -117,6 +123,8 @@ func run(args []string, out io.Writer) error {
 			if *quiet {
 				profile.Progress = "quiet"
 			}
+		case "key":
+			profile.Key, profile.Keys, profile.WriteKey = *keyFlag, map[string]string{}, ""
 		}
 	})
 	if err := profile.validate(); err != nil {
@@ -133,7 +141,7 @@ func run(args []string, out io.Writer) error {
 			return fmt.Errorf("%s takes at most one key name", cmd)
 		}
 		if len(pos) == 1 {
-			profile.Key = pos[0]
+			profile.Key, profile.Keys = pos[0], map[string]string{}
 		}
 		switch cmd {
 		case "key set":
@@ -141,35 +149,23 @@ func run(args []string, out io.Writer) error {
 		case "key remove":
 			return keyRemove(profile.Key, out)
 		}
-		key, err := apiKey(profile)
-		if err != nil {
-			return err
-		}
-		return keyCheck(newClient(key), profile, out)
+		return keyCheckAll(profile, newClient, out)
 	case "backup":
-		key, err := apiKey(profile)
-		if err != nil {
-			return err
-		}
-		return runBackup(newClient(key), profile, out, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
+		return runBackup(clientsFor(profile, newClient), profile, out, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "list":
 		return listBackups(expandHome(profile.To), out)
 	case "diff", "restore":
 		if len(pos) != 1 {
 			return fmt.Errorf("%s needs one backup folder", cmd)
 		}
-		key, err := apiKey(profile)
-		if err != nil {
-			return err
-		}
 		var sel []string
 		if *itemsFlag != "" {
 			sel = splitList(*itemsFlag)
 		}
 		if cmd == "diff" {
-			return runDiff(newClient(key), expandHome(pos[0]), profile, sel, out)
+			return runDiff(clientsFor(profile, newClient), expandHome(pos[0]), profile, sel, out)
 		}
-		return runRestore(newClient(key), expandHome(pos[0]), profile, sel, *dryRun, *yes, out,
+		return runRestore(clientsFor(profile.forRestore(), newClient), expandHome(pos[0]), profile, sel, *dryRun, *yes, out,
 			newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "prune":
 		return prune(expandHome(profile.To), profile, *dryRun, out)
@@ -179,6 +175,32 @@ func run(args []string, out io.Writer) error {
 	}
 	fs.Usage()
 	return fmt.Errorf("unknown command %q", strings.Join(args[:min(len(args), 2)], " "))
+}
+
+// keyCheckAll checks every key the profile uses, saying which libraries each is for.
+func keyCheckAll(p Profile, newClientFor func(string) *Client, out io.Writer) error {
+	names := p.keyNames()
+	var failed []string
+	for _, name := range sortedKeys(names) {
+		if len(names) > 1 {
+			fmt.Fprintf(out, "== key %q, for: %s\n", name, strings.Join(names[name], ", "))
+		}
+		key, err := apiKeyNamed(name)
+		if err == nil {
+			err = keyCheck(newClientFor(key), p, out)
+		}
+		if err != nil {
+			fmt.Fprintf(out, "%v\n", err)
+			failed = append(failed, name)
+		}
+		if len(names) > 1 {
+			fmt.Fprintln(out)
+		}
+	}
+	if len(failed) > 0 {
+		return fmt.Errorf("key check failed for %s", strings.Join(failed, ", "))
+	}
+	return nil
 }
 
 // keyCheck prints who the key belongs to and what it may do in each library,
@@ -253,8 +275,8 @@ func expandHome(p string) string {
 
 // runBackup backs up every library of the profile; a failing library does not
 // stop the others, but makes the command fail at the end.
-func runBackup(c *Client, p Profile, out io.Writer, pr *progress) error {
-	libs, skipped, err := resolveLibraries(c, p.Library)
+func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer, pr *progress) error {
+	jobs, skipped, err := libraryJobs(p, clientFor)
 	if err != nil {
 		return err
 	}
@@ -263,9 +285,10 @@ func runBackup(c *Client, p Profile, out io.Writer, pr *progress) error {
 	}
 	root := expandHome(p.To)
 	failed := 0
-	for i, lib := range libs {
-		pr.SetPrefix(fmt.Sprintf("%d/%d %s", i+1, len(libs), lib.Dir()))
-		dir, m, err := backupLibrary(c, lib, root, p.Exclude, time.Now(), pr)
+	for i, j := range jobs {
+		lib := j.lib
+		pr.SetPrefix(fmt.Sprintf("%d/%d %s", i+1, len(jobs), lib.Dir()))
+		dir, m, err := backupLibrary(j.c, lib, root, p.Exclude, time.Now(), pr)
 		if err != nil {
 			failed++
 			pr.Warnf("FAILED: %v", err)
@@ -277,7 +300,7 @@ func runBackup(c *Client, p Profile, out io.Writer, pr *progress) error {
 			m.Linked, len(m.Missing), len(m.Problems), m.Seconds)
 	}
 	if failed > 0 {
-		return fmt.Errorf("%d of %d libraries failed", failed, len(libs))
+		return fmt.Errorf("%d of %d libraries failed", failed, len(jobs))
 	}
 	return nil
 }
@@ -325,4 +348,63 @@ func listBackups(root string, out io.Writer) error {
 		}
 	}
 	return nil
+}
+
+type libraryJob struct {
+	lib library
+	c   *Client
+}
+
+// libraryJobs resolves the profile's libraries, each with the client for its
+// key. For "all", the default key lists the libraries; a library with a key of
+// its own in "keys" is read with that key, also when the default key cannot.
+func libraryJobs(p Profile, clientFor func(string) (*Client, error)) ([]libraryJob, []string, error) {
+	kind, _, err := parseLibrary(p.Library)
+	if err != nil {
+		return nil, nil, err
+	}
+	if kind != "all" {
+		c, err := clientFor(p.Library)
+		if err != nil {
+			return nil, nil, err
+		}
+		libs, skipped, err := resolveLibraries(c, p.Library)
+		if err != nil {
+			return nil, nil, err
+		}
+		return []libraryJob{{libs[0], c}}, skipped, nil
+	}
+	c, err := clientFor("default")
+	if err != nil {
+		return nil, nil, err
+	}
+	libs, skipped, err := resolveLibraries(c, "all")
+	if err != nil {
+		return nil, nil, err
+	}
+	var jobs []libraryJob
+	done := map[string]bool{}
+	for _, l := range libs {
+		if _, own := p.Keys[l.Spec()]; own {
+			continue // read with its own key below
+		}
+		jobs = append(jobs, libraryJob{l, c})
+		done[l.Spec()] = true
+	}
+	for _, spec := range sortedKeys(p.Keys) {
+		if spec == "default" || done[spec] {
+			continue
+		}
+		c2, err := clientFor(spec)
+		if err == nil {
+			var ls []library
+			if ls, _, err = resolveLibraries(c2, spec); err == nil {
+				jobs = append(jobs, libraryJob{ls[0], c2})
+				skipped = slices.DeleteFunc(skipped, func(s string) bool { return strings.HasPrefix(s, ls[0].ID+" ") || strings.HasPrefix(s, ls[0].ID+":") })
+				continue
+			}
+		}
+		skipped = append(skipped, fmt.Sprintf("%s (key %q): %v", spec, p.keyName(spec), err))
+	}
+	return jobs, skipped, nil
 }

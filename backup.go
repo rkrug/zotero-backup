@@ -65,6 +65,14 @@ type library struct {
 	Name string
 }
 
+// Spec is the library as written in a profile: "user" or "group:<id>".
+func (l library) Spec() string {
+	if strings.HasPrefix(l.ID, "group-") {
+		return "group:" + strings.TrimPrefix(l.ID, "group-")
+	}
+	return "user"
+}
+
 // Dir is the library's folder name, e.g. "group-6719916-Safe_Edit_Test":
 // the name made safe, without spaces.
 func (l library) Dir() string {

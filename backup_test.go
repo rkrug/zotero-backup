@@ -37,6 +37,7 @@ type fakeLibrary struct {
 	tokens      map[string][]byte
 	pending     map[string]string // upload key -> uploaded content
 	uploads     int               // files sent to the storage service
+	ftGets      int               // full-text contents fetched
 }
 
 func newFakeLibrary() *fakeLibrary {
@@ -117,6 +118,7 @@ func (f *fakeLibrary) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewEncoder(w).Encode(idx)
 	case strings.HasSuffix(p, "/fulltext"):
+		f.ftGets++
 		fmt.Fprint(w, f.fulltext[strings.Split(p, "/")[4]])
 	case strings.HasSuffix(p, "/file"):
 		key := strings.Split(p, "/")[4]
@@ -162,7 +164,7 @@ func runFake(t *testing.T, f *fakeLibrary, root string, exclude []string, at tim
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir, m, err := backupLibrary(c, libs[0], root, exclude, at, io.Discard)
+	dir, m, err := backupLibrary(c, libs[0], root, exclude, at, quietProgress())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -323,7 +325,7 @@ func TestBackupResumesAfterFailure(t *testing.T) {
 	srv := httptest.NewServer(f)
 	c := &Client{Base: srv.URL, Key: "k", HTTP: srv.Client(), Sleep: func(time.Duration) {}}
 	libs, _, _ := resolveLibraries(c, "group:1")
-	if _, _, err := backupLibrary(c, libs[0], root, nil, day(1), io.Discard); err == nil {
+	if _, _, err := backupLibrary(c, libs[0], root, nil, day(1), quietProgress()); err == nil {
 		t.Fatal("backup with a failing file did not fail")
 	}
 	srv.Close()
@@ -444,5 +446,25 @@ func TestLibraryFolderFollowsRename(t *testing.T) {
 	os.MkdirAll(filepath.Join(root, "group-1"), 0o755) // old style without a name, next to the new one
 	if _, err := libraryFolder(root, library{ID: "group-1", Name: "New: name"}); err == nil {
 		t.Error("two folders for one library not reported")
+	}
+}
+
+func TestFulltextReusedWhenUnchanged(t *testing.T) {
+	root := t.TempDir()
+	f := sampleLibrary()
+	runFake(t, f, root, nil, day(1))
+	b2, m2 := runFake(t, f, root, nil, day(2))
+	if f.ftGets != 1 || m2.FulltextReused != 1 {
+		t.Errorf("fetched %d times, reused %d; want the unchanged entry taken from the previous backup", f.ftGets, m2.FulltextReused)
+	}
+	var ft map[string]FulltextEntry
+	readJSON(filepath.Join(b2, "fulltext.json"), &ft)
+	if !strings.Contains(string(ft["PDF00001"].Data), `"text"`) {
+		t.Errorf("reused entry lost its content: %s", ft["PDF00001"].Data)
+	}
+	f.version++ // the index now reports a new version for the entry
+	runFake(t, f, root, nil, day(3))
+	if f.ftGets != 2 {
+		t.Errorf("changed entry not fetched again (%d fetches)", f.ftGets)
 	}
 }

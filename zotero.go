@@ -167,7 +167,8 @@ func (c *Client) getJSON(path string, v any) (http.Header, error) {
 // getAll reads every page of a multi-object request (100 per page) and returns
 // the objects and the library version. It fails if the count does not match
 // Total-Results, and with errLibraryChanged if the version moved between pages.
-func getAll[T any](c *Client, path string) ([]T, int, error) {
+// onPage, if given, is called after every page with the objects read so far and the total.
+func getAll[T any](c *Client, path string, onPage ...func(done, total int)) ([]T, int, error) {
 	sep := "?"
 	if strings.Contains(path, "?") {
 		sep = "&"
@@ -191,6 +192,9 @@ func getAll[T any](c *Client, path string) ([]T, int, error) {
 			return nil, 0, fmt.Errorf("GET %s: no Total-Results header", path)
 		}
 		all = append(all, page...)
+		for _, f := range onPage {
+			f(len(all), total)
+		}
 		if len(page) == 0 || len(all) >= total {
 			if len(all) != total {
 				return nil, 0, fmt.Errorf("GET %s: got %d objects, Total-Results says %d", path, len(all), total)

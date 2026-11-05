@@ -41,6 +41,8 @@ func TestConfigErrors(t *testing.T) {
 		"bad library":      {`{"profiles":{"p":{"library":"group:abc"}}}`, "positive number"},
 		"bad library kind": {`{"profiles":{"p":{"library":"users"}}}`, `use "all"`},
 		"negative keep":    {`{"profiles":{"p":{"keep_weekly":-1}}}`, "negative"},
+		"bad progress":     {`{"profiles":{"p":{"progress":"verbose"}}}`, "not one of"},
+		"zero interval":    {`{"profiles":{"p":{"progress_interval":0}}}`, "at least 1"},
 		"unknown top key":  {`{"profile":{}}`, "unknown field"},
 	} {
 		_, err := parseConfig([]byte(tc.json))

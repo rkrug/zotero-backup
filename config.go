@@ -23,6 +23,9 @@ type Profile struct {
 	KeepDaily   int      `json:"keep_daily"`   // prune: newest backup of each of the last N days
 	KeepWeekly  int      `json:"keep_weekly"`  // prune: newest backup of each of the last N weeks
 	KeepMonthly int      `json:"keep_monthly"` // prune: newest backup of each of the last N months
+
+	Progress         string `json:"progress"`          // auto, line, log or quiet
+	ProgressInterval int    `json:"progress_interval"` // seconds between progress lines in log mode
 }
 
 type Config struct {
@@ -41,6 +44,9 @@ func defaultProfile() Profile {
 		KeepDaily:   7,
 		KeepWeekly:  5,
 		KeepMonthly: 12,
+
+		Progress:         "auto",
+		ProgressInterval: 30,
 	}
 }
 
@@ -101,6 +107,12 @@ func (p Profile) validate() error {
 		if !slices.Contains(excludable, e) {
 			return fmt.Errorf("exclude: unknown value %q (allowed: %s)", e, strings.Join(excludable, ", "))
 		}
+	}
+	if !slices.Contains([]string{"auto", "line", "log", "quiet"}, p.Progress) {
+		return fmt.Errorf("progress: %q is not one of auto, line, log, quiet", p.Progress)
+	}
+	if p.ProgressInterval < 1 {
+		return errors.New("progress_interval must be at least 1 (seconds)")
 	}
 	if p.KeepDaily < 0 || p.KeepWeekly < 0 || p.KeepMonthly < 0 {
 		return errors.New("keep_daily, keep_weekly and keep_monthly must not be negative")

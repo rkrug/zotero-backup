@@ -467,7 +467,7 @@ func printPlan(out io.Writer, b *backupSet, now *libraryNow, p plan, limit int) 
 
 // restore applies the plan. It writes collections, searches and items in plan
 // order, then files, settings and full text, and returns the number of failures.
-func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string, log io.Writer) (int, error) {
+func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string, log io.Writer, pr *progress) (int, error) {
 	failures := 0
 	created := map[string]bool{}
 	payload := func(ch change) map[string]any {
@@ -491,6 +491,7 @@ func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string,
 		return d
 	}
 	// write in groups of the same kind and depth, so parents exist before children
+	pr.Phase("objects", len(p.objects))
 	for i := 0; i < len(p.objects); {
 		j := i
 		var batch []map[string]any
@@ -515,10 +516,16 @@ func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string,
 		}
 		fmt.Fprintf(log, "%s: %d written, %d unchanged, %d failed\n", p.objects[i].Kind, len(res.Written), len(res.Unchanged), len(res.Failed))
 		i = j
+		pr.Set(i, 0, "")
 	}
+	pr.Done()
 
 	uploaded := map[string]bool{}
-	for _, k := range p.files {
+	if len(p.files) > 0 {
+		pr.Phase("files", len(p.files))
+	}
+	for n, k := range p.files {
+		pr.Set(n, 0, "")
 		f := b.files[k]
 		serverMD5 := ""
 		if s := now.items[k]; s != nil && !created[k] {
@@ -537,6 +544,10 @@ func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string,
 			how = "already on the server, attached"
 		}
 		fmt.Fprintf(log, "file %s %s: %s\n", k, f.Filename, how)
+	}
+	if len(p.files) > 0 {
+		pr.Set(len(p.files), 0, "")
+		pr.Done()
 	}
 
 	if len(p.settings) > 0 {
@@ -616,7 +627,7 @@ func canWrite(c *Client, libPath string) error {
 }
 
 // runRestore is the restore command: plan, show, confirm, apply, check.
-func runRestore(c *Client, path string, p Profile, sel []string, dryRun, yes bool, out io.Writer) error {
+func runRestore(c *Client, path string, p Profile, sel []string, dryRun, yes bool, out io.Writer, pr *progress) error {
 	b, err := loadBackup(path)
 	if err != nil {
 		return err
@@ -644,7 +655,8 @@ func runRestore(c *Client, path string, p Profile, sel []string, dryRun, yes boo
 			return errors.New("not restored")
 		}
 	}
-	failures, err := restore(c, b, now, pl, p.Exclude, out)
+	pr.SetPrefix(b.meta.Library)
+	failures, err := restore(c, b, now, pl, p.Exclude, out, pr)
 	if err != nil {
 		return err
 	}

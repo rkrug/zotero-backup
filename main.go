@@ -39,6 +39,10 @@ options:
   --dry-run           prune, restore: show what would be done, do nothing
   --yes               restore: do not ask for confirmation
   --items K1,K2       diff, restore: only these items (with children and parents)
+  --progress MODE     auto (default), line, log or quiet: how progress is shown
+                      on stderr (profile option "progress"; "progress_interval"
+                      sets the seconds between lines in log mode)
+  --quiet             the same as --progress quiet
   --exclude A,B       backup: leave out these parts instead of the profile's
                       exclude list ("" for none); one of files, attachments,
                       notes, annotations, fulltext, settings, trash
@@ -62,6 +66,8 @@ func run(args []string, out io.Writer) error {
 	dryRun := fs.Bool("dry-run", false, "prune / restore: only show what would be done")
 	yes := fs.Bool("yes", false, "restore: do not ask")
 	itemsFlag := fs.String("items", "", "diff / restore: only these item keys")
+	progressFlag := fs.String("progress", "", "auto, line, log or quiet")
+	quiet := fs.Bool("quiet", false, "only the summary and errors")
 	fs.Usage = func() { fmt.Fprintf(fs.Output(), usage, defaultConfigPath()) }
 
 	if len(args) == 0 {
@@ -92,8 +98,15 @@ func run(args []string, out io.Writer) error {
 		return fmt.Errorf("no profile %q in %s", *profileName, *cfgPath)
 	}
 	fs.Visit(func(f *flag.Flag) {
-		if f.Name == "exclude" {
+		switch f.Name {
+		case "exclude":
 			profile.Exclude = splitList(*excludeFlag)
+		case "progress":
+			profile.Progress = *progressFlag
+		case "quiet":
+			if *quiet {
+				profile.Progress = "quiet"
+			}
 		}
 	})
 	if err := profile.validate(); err != nil {
@@ -116,7 +129,7 @@ func run(args []string, out io.Writer) error {
 		if err != nil {
 			return err
 		}
-		return runBackup(newClient(key), profile, out)
+		return runBackup(newClient(key), profile, out, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "list":
 		return listBackups(expandHome(profile.To), out)
 	case "diff", "restore":
@@ -134,7 +147,8 @@ func run(args []string, out io.Writer) error {
 		if cmd == "diff" {
 			return runDiff(newClient(key), expandHome(pos[0]), profile, sel, out)
 		}
-		return runRestore(newClient(key), expandHome(pos[0]), profile, sel, *dryRun, *yes, out)
+		return runRestore(newClient(key), expandHome(pos[0]), profile, sel, *dryRun, *yes, out,
+			newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "prune":
 		return prune(expandHome(profile.To), profile, *dryRun, out)
 	case "help", "-h", "--help":
@@ -233,20 +247,22 @@ func expandHome(p string) string {
 
 // runBackup backs up every library of the profile; a failing library does not
 // stop the others, but makes the command fail at the end.
-func runBackup(c *Client, p Profile, out io.Writer) error {
+func runBackup(c *Client, p Profile, out io.Writer, pr *progress) error {
 	libs, skipped, err := resolveLibraries(c, p.Library)
 	if err != nil {
 		return err
 	}
 	for _, s := range skipped {
-		fmt.Fprintln(out, "skipped", s)
+		pr.Warnf("skipped %s", s)
 	}
 	root := expandHome(p.To)
 	failed := 0
-	for _, lib := range libs {
-		dir, m, err := backupLibrary(c, lib, root, p.Exclude, time.Now(), out)
+	for i, lib := range libs {
+		pr.SetPrefix(fmt.Sprintf("%d/%d %s", i+1, len(libs), lib.Dir()))
+		dir, m, err := backupLibrary(c, lib, root, p.Exclude, time.Now(), pr)
 		if err != nil {
 			failed++
+			pr.Warnf("FAILED: %v", err)
 			fmt.Fprintf(out, "%s: FAILED: %v\n", lib.ID, err)
 			continue
 		}

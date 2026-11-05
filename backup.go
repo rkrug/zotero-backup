@@ -112,20 +112,21 @@ type MissingFile struct {
 
 // Meta is written as meta.json into every backup.
 type Meta struct {
-	Library    string         `json:"library"`
-	Name       string         `json:"name"`
-	Version    int            `json:"version"`
-	Date       string         `json:"date"`
-	Exclude    []string       `json:"exclude"`
-	Previous   string         `json:"previous,omitempty"`
-	Counts     map[string]int `json:"counts"`
-	Downloaded int            `json:"files_downloaded"`
-	Linked     int            `json:"files_linked"`
-	DownBytes  int64          `json:"bytes_downloaded"`
-	TotalBytes int64          `json:"bytes_total"`
-	Missing    []MissingFile  `json:"missing_files"`
-	Problems   []string       `json:"problems"`
-	Seconds    float64        `json:"seconds"`
+	Library        string         `json:"library"`
+	Name           string         `json:"name"`
+	Version        int            `json:"version"`
+	Date           string         `json:"date"`
+	Exclude        []string       `json:"exclude"`
+	Previous       string         `json:"previous,omitempty"`
+	Counts         map[string]int `json:"counts"`
+	Downloaded     int            `json:"files_downloaded"`
+	Linked         int            `json:"files_linked"`
+	FulltextReused int            `json:"fulltext_reused"`
+	DownBytes      int64          `json:"bytes_downloaded"`
+	TotalBytes     int64          `json:"bytes_total"`
+	Missing        []MissingFile  `json:"missing_files"`
+	Problems       []string       `json:"problems"`
+	Seconds        float64        `json:"seconds"`
 }
 
 // resolveLibraries turns the profile's library spec into libraries the key can read.
@@ -182,28 +183,39 @@ type snapshot struct {
 	collections []object
 	searches    []object
 	settings    json.RawMessage
-	fulltext    map[string]json.RawMessage
+	fulltext    map[string]FulltextEntry
+	ftReused    int
+}
+
+// FulltextEntry is one attachment's full-text content with the version the
+// index gave it, so an unchanged entry can be taken from the previous backup.
+type FulltextEntry struct {
+	Version int             `json:"version"`
+	Data    json.RawMessage `json:"data"`
 }
 
 // readMetadata reads everything but the files, retrying when the library
-// changes while it is being read.
-func readMetadata(c *Client, lib library, exclude []string) (snapshot, error) {
+// changes while it is being read. Full-text entries whose version did not
+// change since the previous backup (prevFT) are taken from it.
+func readMetadata(c *Client, lib library, exclude []string, prevFT map[string]FulltextEntry, pr *progress) (snapshot, error) {
 	for try := 1; ; try++ {
-		s, err := readMetadataOnce(c, lib, exclude)
+		s, err := readMetadataOnce(c, lib, exclude, prevFT, pr)
 		if !errors.Is(err, errLibraryChanged) || try == 3 {
 			return s, err
 		}
 	}
 }
 
-func readMetadataOnce(c *Client, lib library, ex []string) (snapshot, error) {
+func readMetadataOnce(c *Client, lib library, ex []string, prevFT map[string]FulltextEntry, pr *progress) (snapshot, error) {
 	var s snapshot
 	versions := map[int]bool{}
 	itemsPath := lib.Path + "/items?includeTrashed=1"
 	if slices.Contains(ex, "trash") {
 		itemsPath = lib.Path + "/items"
 	}
-	items, v, err := getAll[object](c, itemsPath)
+	pr.Phase("items", 0)
+	items, v, err := getAll[object](c, itemsPath, func(d, t int) { pr.Set(d, t, "") })
+	pr.Done()
 	if err != nil {
 		return s, err
 	}
@@ -226,7 +238,7 @@ func readMetadataOnce(c *Client, lib library, ex []string) (snapshot, error) {
 		v, _ = strconv.Atoi(h.Get("Last-Modified-Version"))
 		versions[v] = true
 	}
-	var ftIndex map[string]int
+	var ftIndex map[string]int // key -> version
 	if !slices.Contains(ex, "fulltext") {
 		h, err := c.getJSON(lib.Path+"/fulltext?since=0", &ftIndex)
 		if err != nil {
@@ -262,28 +274,41 @@ func readMetadataOnce(c *Client, lib library, ex []string) (snapshot, error) {
 		s.searches = slices.DeleteFunc(s.searches, func(o object) bool { return inTrash(o.fields()) })
 	}
 
-	s.fulltext = map[string]json.RawMessage{}
+	s.fulltext = map[string]FulltextEntry{}
 	var keys []string
-	for k := range ftIndex {
-		if kept[k] {
+	for k, v := range ftIndex {
+		if !kept[k] {
+			continue
+		}
+		if p, ok := prevFT[k]; ok && p.Version == v && len(p.Data) > 0 {
+			s.fulltext[k] = p
+			s.ftReused++
+		} else {
 			keys = append(keys, k)
 		}
 	}
 	var mu sync.Mutex
+	done := 0
+	pr.Phase("full text", len(keys))
 	err = parallel(keys, func(k string) error {
 		body, _, err := c.get(lib.Path + "/items/" + k + "/fulltext")
 		var he *HTTPError
 		if errors.As(err, &he) && he.Code == 404 { // index entry without content: nothing to keep
-			return nil
+			body, err = nil, nil
 		}
 		if err != nil {
 			return err
 		}
 		mu.Lock()
-		s.fulltext[k] = body
-		mu.Unlock()
+		defer mu.Unlock()
+		if body != nil {
+			s.fulltext[k] = FulltextEntry{ftIndex[k], body}
+		}
+		done++
+		pr.Set(done, 0, fmt.Sprintf("%d unchanged, taken from the previous backup", s.ftReused))
 		return nil
 	})
+	pr.Done()
 	return s, err
 }
 
@@ -315,7 +340,7 @@ func parallel(keys []string, fn func(string) error) error {
 // backupLibrary writes one complete backup of lib below root and
 // returns its folder (root/<ID>-<name>/<date>). It is written as <date>.partial and renamed when complete;
 // a .partial left by an interrupted run is reused.
-func backupLibrary(c *Client, lib library, root string, exclude []string, now time.Time, log io.Writer) (string, Meta, error) {
+func backupLibrary(c *Client, lib library, root string, exclude []string, now time.Time, pr *progress) (string, Meta, error) {
 	start := time.Now()
 	libRoot, err := libraryFolder(root, lib)
 	if err != nil {
@@ -329,11 +354,14 @@ func backupLibrary(c *Client, lib library, root string, exclude []string, now ti
 			return "", Meta{}, err
 		}
 	} else {
-		fmt.Fprintf(log, "%s: resuming %s\n", lib.ID, filepath.Base(work))
+		pr.Logf("resuming %s", filepath.Base(work))
 	}
 
-	fmt.Fprintf(log, "%s: reading metadata\n", lib.ID)
-	s, err := readMetadata(c, lib, exclude)
+	prevFT := map[string]FulltextEntry{}
+	if prev != "" {
+		readJSON(filepath.Join(prev, "fulltext.json"), &prevFT) // older backups without versions: nothing reused
+	}
+	s, err := readMetadata(c, lib, exclude, prevFT, pr)
 	if err != nil {
 		return "", Meta{}, err
 	}
@@ -350,6 +378,7 @@ func backupLibrary(c *Client, lib library, root string, exclude []string, now ti
 	m.Counts["collections"] = len(s.collections)
 	m.Counts["searches"] = len(s.searches)
 	m.Counts["fulltext"] = len(s.fulltext)
+	m.FulltextReused = s.ftReused
 
 	datas := func(objs []object) []json.RawMessage {
 		out := make([]json.RawMessage, len(objs))
@@ -369,7 +398,7 @@ func backupLibrary(c *Client, lib library, root string, exclude []string, now ti
 
 	files := map[string]FileEntry{}
 	if !slices.Contains(exclude, "files") && !slices.Contains(exclude, "attachments") {
-		if files, err = backupFiles(c, lib, s.items, work, prev, &m, log); err != nil {
+		if files, err = backupFiles(c, lib, s.items, work, prev, &m, pr); err != nil {
 			return "", Meta{}, err
 		}
 	}
@@ -391,7 +420,7 @@ func backupLibrary(c *Client, lib library, root string, exclude []string, now ti
 // backupFiles puts every stored attachment file into work/files: a hard link
 // when the previous backup (or this one) already has the same content, else a
 // download checked against the md5 Zotero records.
-func backupFiles(c *Client, lib library, items []object, work, prev string, m *Meta, log io.Writer) (map[string]FileEntry, error) {
+func backupFiles(c *Client, lib library, items []object, work, prev string, m *Meta, pr *progress) (map[string]FileEntry, error) {
 	prevFiles := map[string]FileEntry{}
 	if prev != "" {
 		readJSON(filepath.Join(prev, "files.json"), &prevFiles)
@@ -412,8 +441,8 @@ func backupFiles(c *Client, lib library, items []object, work, prev string, m *M
 		}
 	}
 	sort.Strings(keys)
-	fmt.Fprintf(log, "%s: %d stored files\n", lib.ID, len(keys))
 	done := 0
+	pr.Phase("files", len(keys))
 
 	// Files with the same content as an earlier one in this run are done in a
 	// second pass, so they become links instead of parallel duplicate downloads.
@@ -447,9 +476,8 @@ func backupFiles(c *Client, lib library, items []object, work, prev string, m *M
 				m.Linked++
 			}
 			byMD5[e.MD5] = dst
-			if done++; done%250 == 0 {
-				fmt.Fprintf(log, "%s: files %d/%d\n", lib.ID, done, len(keys))
-			}
+			done++
+			pr.Set(done+len(m.Missing), 0, fmt.Sprintf("%d linked, %d downloaded (%.0f MB)", m.Linked, m.Downloaded, float64(m.DownBytes)/1e6))
 		}
 
 		if f.MD5 != "" {
@@ -503,6 +531,7 @@ func backupFiles(c *Client, lib library, items []object, work, prev string, m *M
 	if err == nil {
 		err = parallel(again, one)
 	}
+	pr.Done()
 	sort.Slice(m.Missing, func(i, j int) bool { return m.Missing[i].Key < m.Missing[j].Key })
 	sort.Strings(m.Problems)
 	return files, err

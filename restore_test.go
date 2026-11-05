@@ -116,7 +116,7 @@ func TestRestoreRoundTrip(t *testing.T) {
 
 	c := fakeClient(t, f)
 	var out strings.Builder
-	if err := runRestore(c, b.dir, defaultProfile(), nil, false, true, &out); err != nil {
+	if err := runRestore(c, b.dir, defaultProfile(), nil, false, true, &out, quietProgress()); err != nil {
 		t.Fatalf("%v\n%s", err, out.String())
 	}
 	if !strings.Contains(out.String(), "checked: the library matches the backup") {
@@ -158,7 +158,7 @@ func TestRestoreUsesFileStillOnServer(t *testing.T) {
 	delete(f.items, "PDF00002") // the attachment is gone, but the storage service still has its content
 	f.files["KEEPCONT"] = "pdf-two"
 	f.mu.Unlock()
-	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, false, true, io.Discard); err != nil {
+	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress()); err != nil {
 		t.Fatal(err)
 	}
 	if f.uploads != 0 || f.files["PDF00002"] != "pdf-two" {
@@ -171,7 +171,7 @@ func TestRestoreDryRunWritesNothing(t *testing.T) {
 	damage(f)
 	before := f.version
 	var out strings.Builder
-	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, true, false, &out); err != nil {
+	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, true, false, &out, quietProgress()); err != nil {
 		t.Fatal(err)
 	}
 	if f.version != before || f.uploads != 0 {
@@ -188,7 +188,7 @@ func TestRestoreDryRunWritesNothing(t *testing.T) {
 func TestRestoreSelectedItems(t *testing.T) {
 	f, b := restoreSample(t)
 	damage(f)
-	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), []string{"PDF00001"}, false, true, io.Discard); err != nil {
+	if err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), []string{"PDF00001"}, false, true, io.Discard, quietProgress()); err != nil {
 		t.Fatal(err)
 	}
 	for _, k := range []string{"PDF00001", "ANNO0001", "BOOK0001"} { // the item, its annotation, its parent
@@ -207,7 +207,7 @@ func TestRestoreSelectedItems(t *testing.T) {
 func TestRestoreRefusesReadOnlyKey(t *testing.T) {
 	f, b := restoreSample(t)
 	f.readOnly = true
-	err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, false, true, io.Discard)
+	err := runRestore(fakeClient(t, f), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress())
 	if err == nil || !strings.Contains(err.Error(), "may not write") {
 		t.Errorf("err = %v", err)
 	}
@@ -223,7 +223,7 @@ func TestRestoreReportsConflicts(t *testing.T) {
 	f.items["OTHER001"]["version"] = 999.0 // changed by someone after the plan was made
 	f.mu.Unlock()
 	var out strings.Builder
-	failures, err := restore(c, b, now, pl, nil, &out)
+	failures, err := restore(c, b, now, pl, nil, &out, quietProgress())
 	if err != nil || failures != 1 || !strings.Contains(out.String(), "FAILED items OTHER001") {
 		t.Errorf("failures %d, err %v\n%s", failures, err, out.String())
 	}

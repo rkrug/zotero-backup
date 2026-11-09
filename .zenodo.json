@@ -1,0 +1,37 @@
+{
+  "title": "zotero-backup: backup and restore of Zotero libraries, keeping the item keys",
+  "upload_type": "software",
+  "description": "<p>Back up and restore Zotero libraries (personal library and groups) through the Zotero web API, <strong>keeping the item keys</strong>, so restored items are the same items and citations in Word, LibreOffice and Google Docs keep working.</p><ul><li><strong>Complete backups:</strong> every backup is a dated folder with the whole library: items (with notes, annotations and the trash), collections, saved searches, library settings such as tag colours, the full-text index, and the attachment files.</li><li><strong>Small and fast after the first run:</strong> unchanged files are hard links to the previous backup; old backups are pruned by day, week and month.</li><li><strong>Restore into the same library</strong>, everything or selected items, with a preview first.</li><li>One executable for macOS, Windows and Linux (Go, standard library only); API keys in the system keychain.</li></ul><p>Tested on macOS, including an end-to-end stress test against the Zotero API and Zotero desktop. Documentation: <a href=\"https://rkrug.github.io/zotero-backup/\">rkrug.github.io/zotero-backup</a>.</p><p>No warranty: zotero-backup comes as it is; users are responsible for their data. It is an independent project, not made, endorsed or supported by Zotero or the Corporation for Digital Scholarship.</p>",
+  "creators": [
+    {
+      "name": "Krug, Rainer M.",
+      "affiliation": "SIB Swiss Institute of Bioinformatics",
+      "orcid": "0000-0002-7490-0066"
+    }
+  ],
+  "license": "MIT",
+  "access_right": "open",
+  "keywords": [
+    "Zotero",
+    "backup",
+    "restore",
+    "reference management",
+    "bibliography",
+    "citations",
+    "Zotero web API",
+    "command-line tool",
+    "Go"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/rkrug/zotero-backup",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://rkrug.github.io/zotero-backup/",
+      "relation": "isDocumentedBy",
+      "scheme": "url"
+    }
+  ]
+}

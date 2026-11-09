@@ -103,7 +103,7 @@ func run(args []string, out io.Writer) error {
 		cmd, rest = "key "+rest[0], rest[1:]
 	}
 	if cmd == "stresstest" {
-		fs.Usage = func() { fmt.Fprint(fs.Output(), stressUsage) }
+		fs.Usage = func() { fmt.Fprint(fs.Output(), stressUsage()) }
 	}
 	var pos []string // positional arguments, flags may come before or after them
 	for {

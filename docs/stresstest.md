@@ -44,6 +44,24 @@ Safe Edit and Fix Proposals, if installed, are not used: neither intercepts how 
 
 ## Running it
 
+`zotero-backup stresstest` without `--library` shows these steps as help.
+
+A profile for the test in the configuration file (`zotero-backup help` shows its path; or any file with `--config PATH`):
+
+```json
+{
+  "profiles": {
+    "test": {
+      "key": "zb-test-read",
+      "write_key": "zb-test-write",
+      "to": "~/zotero-backups"
+    }
+  }
+}
+```
+
+`key` is the keychain entry of a read-only key (only for the check that it is refused; may be left out), `write_key` that of the write key used for all changes (write access to the test libraries only), `to` the backup folder: safety backups go there, the test's own backups and reports into `stresstest/<run>/` below it.
+
 ```bash
 zotero-backup stresstest --profile test --library group:6719916 --library user
 zotero-backup stresstest --profile test --library group:6719916 --scenarios desktop-synced,unsynced-remote --ops edit-title,erase-item,replace-file

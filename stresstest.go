@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-const stressUsage = `usage: zotero-backup stresstest --library LIB [--library LIB …] [options]
+const stressUsageText = `usage: zotero-backup stresstest --library LIB [--library LIB …] [options]
 
 Tests backup and restore against the real Zotero server and a running Zotero
 desktop: local changes, syncs, deletions, the trash, conflicts. It CHANGES the
@@ -43,9 +43,29 @@ Steps:
        zotero-backup key set zb-test-write
        zotero-backup key set zb-test-read
 
-  3. A profile in the configuration file (zotero-backup help shows its path):
+  3. A configuration file with a profile "test". Create the file
 
-       "test": { "key": "zb-test-read", "write_key": "zb-test-write", "to": "~/zotero-backups" }
+       %s
+
+     with this content (if the file exists, add the "test" part to its "profiles"):
+
+       {
+         "profiles": {
+           "test": {
+             "key": "zb-test-read",
+             "write_key": "zb-test-write",
+             "to": "~/zotero-backups"
+           }
+         }
+       }
+
+       key        the keychain entry of the read-only key from step 2 (only used to
+                  check that a read-only key is refused; leave it out if you have none)
+       write_key  the keychain entry of the write key from step 2 (used for all changes)
+       to         the backup folder: safety backups go here, the test's own backups
+                  and its reports into stresstest/<run>/ below it
+
+     A file elsewhere works too: add --config PATH to the commands below.
 
   4. A short run first, then everything. The test asks before it touches each
      library; answer y only for a test library (Enter = no):
@@ -69,6 +89,9 @@ Options:
                          (default: the default profile in Zotero's profiles.ini)
   --profile NAME         zotero-backup profile with the keys (write_key, else key) and the folder (to)
 `
+
+// stressUsage is the stresstest help, with this system's configuration path.
+func stressUsage() string { return fmt.Sprintf(stressUsageText, defaultConfigPath()) }
 
 type stressScenario struct {
 	name, desc, expect string
@@ -166,7 +189,7 @@ type stressTarget struct {
 // library by library and writes the reports. It fails if any check failed.
 func runStresstest(p Profile, o stressOptions, in *os.File, out io.Writer, pr *progress) error {
 	if len(o.libraries) == 0 {
-		fmt.Fprint(out, stressUsage)
+		fmt.Fprint(out, stressUsage())
 		return errors.New("stresstest needs at least one --library (a test group or library)")
 	}
 	for _, sc := range o.scenarios {

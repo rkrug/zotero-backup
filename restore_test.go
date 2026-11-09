@@ -307,3 +307,35 @@ func TestDifferingFieldsIgnoresOrderAndEmpty(t *testing.T) {
 		t.Errorf("differ in %v, want [collections]", d)
 	}
 }
+
+// Zotero desktop trashes subcollections with their parent only locally; the
+// server only has the parent as deleted. Restore must give the subcollection a
+// new version (and leave it as in the backup) so Zotero desktop downloads it.
+func TestRestoreTouchesSubcollectionsOfUntrashedCollection(t *testing.T) {
+	f := sampleLibrary()
+	f.collections["PARENT01"] = map[string]any{"key": "PARENT01", "version": 3.0, "name": "parent", "parentCollection": false}
+	f.collections["SUBCOL01"] = map[string]any{"key": "SUBCOL01", "version": 3.0, "name": "sub", "parentCollection": "PARENT01"}
+	dir, _ := runFake(t, f, t.TempDir(), nil, day(1))
+	b, err := loadBackup(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.mu.Lock()
+	f.version++
+	f.collections["PARENT01"]["deleted"] = true // as Zotero desktop syncs a trashed collection
+	f.collections["PARENT01"]["version"] = float64(f.version)
+	f.mu.Unlock()
+	var out strings.Builder
+	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, false, true, &out, quietProgress()); err != nil {
+		t.Fatalf("%v\n%s", err, out.String())
+	}
+	if trashed(f.collections["PARENT01"]) || trashed(f.collections["SUBCOL01"]) {
+		t.Errorf("still trashed: %v %v", f.collections["PARENT01"], f.collections["SUBCOL01"])
+	}
+	if v, _ := f.collections["SUBCOL01"]["version"].(float64); v <= 3 {
+		t.Errorf("subcollection not touched: version %v", v)
+	}
+	if !strings.Contains(out.String(), "subcollections touched") || !strings.Contains(out.String(), "checked: the library matches the backup") {
+		t.Errorf("output:\n%s", out.String())
+	}
+}

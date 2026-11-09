@@ -20,7 +20,7 @@ Restore **never deletes** anything that is not in the backup. Everything that **
 |---|---|
 | Items, collections and saved searches missing from the library: recreated with their old keys | Items, notes, annotations, attachments, collections and saved searches **created after the backup** |
 | Objects changed since the backup: all fields, tags, collection memberships, note text; a field that was empty in the backup is cleared again | The collection memberships of those new items (a new item in an old collection stays there) |
-| Trash state: items and collections put back into or taken out of the trash as they were | |
+| Trash state: items and collections put back into or taken out of the trash as they were; subcollections of a collection taken out of the trash are written once more, so that Zotero desktop takes them out of its trash too (Zotero desktop trashes them with their parent only locally) | |
 | Files whose content differs from the backup: uploaded again | |
 | Library settings, e.g. tag colours, **as a whole**: a tag colour assigned after the backup is removed | |
 

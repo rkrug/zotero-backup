@@ -50,6 +50,8 @@ One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key che
 - Write preconditions per object (`version` in the body), not the library-wide header. Each object in a batch gets its own version.
 - Long runs need retries on network errors (not only 429/503 and `Backoff`) and must be resumable.
 - Attachments without `md5` usually have no file on the server (404); they are listed in `meta.json` as missing, not skipped silently.
+- Zotero desktop trashes subcollections with their parent only in its local database (only the parent is synced with `deleted`), and a synced un-trash of the parent leaves them in its trash. Restore therefore writes each subcollection of a collection it takes out of the trash twice (`deleted` true, then false; `touchSubcollections`), so Zotero desktop downloads it.
+- Zotero desktop merges changes to different fields of one object without a conflict (the conflict window only appears when both sides changed the same field): an unsynced local change to another field survives a restore.
 - Zotero desktop uploads text/* attachments (snapshots too) and attachments with several files as a ZIP (`zipMD5`, `zipFilename` in the upload authorisation); the API then serves that ZIP, while the item's `md5` is the file's inside. Backups keep it as `<name>.zip` with `"zip": true` in `files.json`; restore uploads it the same way; `loadBackup` recognises such ZIPs in older backups (kept under the file's own name with the ZIP's md5).
 
 ## Documentation

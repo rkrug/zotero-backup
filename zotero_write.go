@@ -88,6 +88,7 @@ type WriteResult struct {
 	Written   []string
 	Unchanged []string
 	Failed    map[string]string
+	Version   int // the library version after the last batch (each written object has it)
 }
 
 // writeObjects POSTs objects (items, collections or searches) in batches of 50.
@@ -100,7 +101,7 @@ func (c *Client) writeObjects(libPath, kind string, objs []map[string]any) (Writ
 		if err != nil {
 			return res, err
 		}
-		code, _, b, err := c.write("POST", libPath+"/"+kind, body,
+		code, h, b, err := c.write("POST", libPath+"/"+kind, body,
 			map[string]string{"Content-Type": "application/json", "Zotero-Write-Token": writeToken()}, true)
 		if err != nil {
 			return res, err
@@ -123,6 +124,7 @@ func (c *Client) writeObjects(libPath, kind string, objs []map[string]any) (Writ
 		for _, k := range r.Success {
 			res.Written = append(res.Written, k)
 		}
+		res.Version, _ = strconv.Atoi(h.Get("Last-Modified-Version"))
 		for _, k := range r.Unchanged {
 			res.Unchanged = append(res.Unchanged, k)
 		}

@@ -724,7 +724,11 @@ func (s *stress) checkDesktop(sc, when string, f family, now *libraryNow) {
 		if l.Exists != (sv != nil) {
 			diffs = append(diffs, fmt.Sprintf("collection %s: desktop has it %v, server %v", k, l.Exists, sv != nil))
 		} else if sv != nil {
-			if d := differingFields(l.JSON, sv); len(d) > 0 {
+			d := differingFields(l.JSON, sv)
+			if trashed(l.JSON) && parentTrashed(now.collections, k) { // Zotero syncs only the trashed parent
+				d = slices.DeleteFunc(d, func(f string) bool { return f == "deleted" })
+			}
+			if len(d) > 0 {
 				diffs = append(diffs, fmt.Sprintf("collection %s fields %v", k, d))
 			}
 		}
@@ -734,6 +738,22 @@ func (s *stress) checkDesktop(sc, when string, f family, now *libraryNow) {
 		diffs = append(diffs, fmt.Sprintf("tag colour: desktop %q, server %q", lc, sc))
 	}
 	s.record(sc, f.Op, when+": desktop = server", len(diffs) == 0, "%v", diffs)
+}
+
+// parentTrashed: a parent (or further up) of collection k is in the trash.
+// Zotero desktop trashes subcollections with their parent, but syncs only the
+// parent as deleted.
+func parentTrashed(cols map[string]map[string]any, k string) bool {
+	for n, pk := 0, k; n < 100; n++ {
+		pk, _ = cols[pk]["parentCollection"].(string)
+		if pk == "" || cols[pk] == nil {
+			return false
+		}
+		if trashed(cols[pk]) {
+			return true
+		}
+	}
+	return false
 }
 
 // extras: dry run, idempotence, item selection, read-only key, interrupted

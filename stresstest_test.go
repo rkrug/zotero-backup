@@ -196,3 +196,15 @@ func TestBridgeRequest(t *testing.T) {
 		t.Errorf("request %+v", got)
 	}
 }
+
+func TestParentTrashed(t *testing.T) {
+	cols := map[string]map[string]any{
+		"TOP": {"deleted": true}, "MID": {"parentCollection": "TOP"}, "LOW": {"parentCollection": "MID"},
+		"OTHER": {"parentCollection": false},
+	}
+	for k, want := range map[string]bool{"TOP": false, "MID": true, "LOW": true, "OTHER": false, "NONE": false} {
+		if got := parentTrashed(cols, k); got != want {
+			t.Errorf("%s: %v, want %v", k, got, want)
+		}
+	}
+}

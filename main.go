@@ -80,6 +80,14 @@ func run(args []string, out io.Writer) error {
 	progressFlag := fs.String("progress", "", "auto, line, log or quiet")
 	quiet := fs.Bool("quiet", false, "only the summary and errors")
 	keyFlag := fs.String("key", "", "keychain entry to use for every library in this run")
+	// stresstest (not in the help text; see docs/stresstest.md)
+	var stressLibs listFlag
+	fs.Var(&stressLibs, "library", "stresstest: a test library (repeat)")
+	stressScen := fs.String("scenarios", "", "stresstest: scenarios")
+	stressOpsFlag := fs.String("ops", "", "stresstest: operations")
+	stressReportDir := fs.String("report", "", "stresstest: report folder")
+	stressKeep := fs.Bool("keep", false, "stresstest: keep the test objects")
+	zoteroProfile := fs.String("zotero-profile", "", "stresstest: Zotero profile")
 	fs.Usage = func() { fmt.Fprintf(fs.Output(), usage, defaultConfigPath()) }
 
 	if len(args) == 0 {
@@ -167,6 +175,10 @@ func run(args []string, out io.Writer) error {
 		}
 		return runRestore(clientsFor(profile.forRestore(), newClient), expandHome(pos[0]), profile, sel, *dryRun, *yes, out,
 			newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
+	case "stresstest":
+		return runStresstest(profile, stressOptions{libraries: stressLibs, scenarios: splitList(*stressScen),
+			ops: splitList(*stressOpsFlag), report: *stressReportDir, keep: *stressKeep, zoteroProfile: *zoteroProfile},
+			os.Stdin, out, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "prune":
 		return prune(expandHome(profile.To), profile, *dryRun, out)
 	case "help", "-h", "--help":
@@ -408,3 +420,9 @@ func libraryJobs(p Profile, clientFor func(string) (*Client, error)) ([]libraryJ
 	}
 	return jobs, skipped, nil
 }
+
+// listFlag collects a repeated option (--library A --library B).
+type listFlag []string
+
+func (l *listFlag) String() string     { return strings.Join(*l, ",") }
+func (l *listFlag) Set(v string) error { *l = append(*l, v); return nil }

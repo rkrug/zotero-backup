@@ -86,7 +86,12 @@ func (s *stress) zipChecks() {
 func (s *stress) restoreZip(op, dir, k, filename, check string) {
 	var out strings.Builder
 	err := runRestore(fixedClient(s.c), dir, s.profile, []string{k}, false, true, &out, quietProgress())
-	s.record("extras", op, check, err == nil && strings.Contains(out.String(), "file "+k+" "+filename+": uploaded\n"), "%v\n%s", err, out.String())
+	ok := err == nil && strings.Contains(out.String(), "file "+k+" "+filename+": uploaded\n")
+	detail := ""
+	if !ok {
+		detail = fmt.Sprintf("%v\n%s", err, out.String())
+	}
+	s.record("extras", op, check, ok, "%s", detail)
 }
 
 // checkServedZip backs up and checks that the server has the page's md5 and

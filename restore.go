@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -65,6 +66,15 @@ func loadBackup(path string) (*backupSet, error) {
 	}
 	readJSON(filepath.Join(path, "settings.json"), &b.settings)
 	readJSON(filepath.Join(path, "files.json"), &b.files)
+	for k, e := range b.files { // older backups recorded a ZIP's own md5 and no "zip"
+		want, _ := b.items[k]["md5"].(string)
+		if !e.Zip && want != "" && e.MD5 != want {
+			if sum, err := zippedMD5(filepath.Join(path, filepath.FromSlash(e.Path)), e.Filename); err == nil && sum == want {
+				e.Zip, e.MD5 = true, want
+				b.files[k] = e
+			}
+		}
+	}
 	var ft map[string]json.RawMessage
 	readJSON(filepath.Join(path, "fulltext.json"), &ft)
 	for k, raw := range ft {
@@ -157,13 +167,14 @@ func trashed(d map[string]any) bool {
 // server-managed ones; being in the trash counts as the field "deleted".
 func differingFields(b, s map[string]any) []string {
 	var out []string
-	for k := range b {
-		if k != "deleted" && !slices.Contains(serverManaged, k) && !reflect.DeepEqual(b[k], s[k]) {
-			out = append(out, k)
+	for k := range s {
+		if _, ok := b[k]; !ok {
+			b = maps.Clone(b)
+			b[k] = nil
 		}
 	}
-	for k := range s {
-		if _, ok := b[k]; !ok && k != "deleted" && !slices.Contains(serverManaged, k) && !isEmpty(s[k]) {
+	for k := range b {
+		if k != "deleted" && !slices.Contains(serverManaged, k) && !sameValue(k, b[k], s[k]) {
 			out = append(out, k)
 		}
 	}
@@ -171,6 +182,29 @@ func differingFields(b, s map[string]any) []string {
 		out = append(out, "deleted")
 	}
 	sort.Strings(out)
+	return out
+}
+
+// sameValue: empty and absent are the same; collections and tags have no order
+// (Zotero desktop lists them in its own order, the server alphabetically).
+func sameValue(k string, a, b any) bool {
+	if isEmpty(a) && isEmpty(b) {
+		return true
+	}
+	if k == "collections" || k == "tags" {
+		return slices.Equal(sortedJSON(a), sortedJSON(b))
+	}
+	return reflect.DeepEqual(a, b)
+}
+
+func sortedJSON(v any) []string {
+	l, _ := v.([]any)
+	out := make([]string, len(l))
+	for i, x := range l {
+		j, _ := json.Marshal(x)
+		out[i] = string(j)
+	}
+	slices.Sort(out)
 	return out
 }
 
@@ -538,7 +572,7 @@ func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string,
 			serverMD5, _ = s["md5"].(string)
 		}
 		mtime, _ := b.items[k]["mtime"].(float64)
-		existed, err := c.uploadFile(b.libPath, k, filepath.Join(b.dir, filepath.FromSlash(f.Path)), f.Filename, f.MD5, int64(mtime), serverMD5)
+		existed, err := c.uploadFile(b.libPath, k, filepath.Join(b.dir, filepath.FromSlash(f.Path)), f.Filename, f.MD5, int64(mtime), serverMD5, f.Zip)
 		if err != nil {
 			failures++
 			fmt.Fprintf(log, "FAILED file %s (%s): %v\n", k, f.Filename, err)

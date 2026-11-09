@@ -5,6 +5,7 @@ package main
 // are neither downloaded again nor stored twice.
 
 import (
+	"archive/zip"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
@@ -118,7 +119,32 @@ type FileEntry struct {
 	Path     string `json:"path"`     // relative to the backup folder
 	MD5      string `json:"md5"`
 	Size     int64  `json:"size"`
-	Source   string `json:"source"` // downloaded, linked or resumed
+	Source   string `json:"source"`        // downloaded, linked or resumed
+	Zip      bool   `json:"zip,omitempty"` // a ZIP of the attachment's files, as Zotero desktop uploads text files and snapshots; md5 is the file's inside
+}
+
+// zippedMD5 is the md5 of the file name inside the ZIP at path.
+func zippedMD5(path, name string) (string, error) {
+	r, err := zip.OpenReader(path)
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+	for _, f := range r.File {
+		if f.Name == name {
+			rc, err := f.Open()
+			if err != nil {
+				return "", err
+			}
+			defer rc.Close()
+			h := md5.New()
+			if _, err := io.Copy(h, rc); err != nil {
+				return "", err
+			}
+			return hex.EncodeToString(h.Sum(nil)), nil
+		}
+	}
+	return "", fmt.Errorf("%s: no %q inside", path, name)
 }
 
 type MissingFile struct {
@@ -450,9 +476,13 @@ func backupFiles(c *Client, lib library, items []object, work, prev string, m *M
 		readJSON(filepath.Join(prev, "files.json"), &prevFiles)
 	}
 	var mu sync.Mutex
-	byMD5 := map[string]string{} // md5 -> existing file with that content
+	type stored struct {
+		path string
+		zip  bool
+	}
+	byMD5 := map[string]stored{} // md5 -> existing file with that content
 	for _, e := range prevFiles {
-		byMD5[e.MD5] = filepath.Join(prev, e.Path)
+		byMD5[e.MD5] = stored{filepath.Join(prev, e.Path), e.Zip}
 	}
 	files := map[string]FileEntry{}
 	atts := map[string]fields{}
@@ -499,23 +529,34 @@ func backupFiles(c *Client, lib library, items []object, work, prev string, m *M
 			} else {
 				m.Linked++
 			}
-			byMD5[e.MD5] = dst
+			byMD5[e.MD5] = stored{dst, e.Zip}
 			done++
 			pr.Set(done+len(m.Missing), 0, fmt.Sprintf("%d linked, %d downloaded (%.0f MB)", m.Linked, m.Downloaded, float64(m.DownBytes)/1e6))
 		}
 
-		if f.MD5 != "" {
-			if sum, size, err := md5File(dst); err == nil && sum == f.MD5 { // left by an interrupted run
+		asZip := func() { dst, e.Path, e.Zip = dst+".zip", e.Path+".zip", true }
+		if f.MD5 != "" { // left by an interrupted run
+			if sum, size, err := md5File(dst); err == nil && sum == f.MD5 {
 				e.Size, e.Source = size, "resumed"
+				record()
+				return nil
+			}
+			if sum, err := zippedMD5(dst+".zip", f.Filename); err == nil && sum == f.MD5 {
+				asZip()
+				st, _ := os.Stat(dst)
+				e.Size, e.Source = st.Size(), "resumed"
 				record()
 				return nil
 			}
 			mu.Lock()
 			src := byMD5[f.MD5]
 			mu.Unlock()
-			if src != "" {
+			if src.path != "" {
+				if src.zip {
+					asZip()
+				}
 				os.Remove(dst)
-				if err := linkOrCopy(src, dst); err == nil {
+				if err := linkOrCopy(src.path, dst); err == nil {
 					st, _ := os.Stat(dst)
 					e.Size, e.Source = st.Size(), "linked"
 					record()
@@ -541,6 +582,11 @@ func backupFiles(c *Client, lib library, items []object, work, prev string, m *M
 		}
 		if f.MD5 == "" {
 			e.MD5 = sum
+		} else if zs, err := zippedMD5(dst, f.Filename); sum != f.MD5 && err == nil && zs == f.MD5 {
+			if err := os.Rename(dst, dst+".zip"); err != nil {
+				return err
+			}
+			asZip()
 		} else if sum != f.MD5 {
 			mu.Lock()
 			m.Problems = append(m.Problems, fmt.Sprintf("%s: downloaded md5 %s differs from Zotero's %s", key, sum, f.MD5))

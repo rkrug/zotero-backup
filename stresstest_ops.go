@@ -207,6 +207,6 @@ func (a serverOps) replaceFile(key string) error {
 	}
 	defer os.Remove(p)
 	m, _, _ := md5File(p)
-	_, err = a.c.uploadFile(a.lib, key, p, fmt.Sprint(d["filename"]), m, 1_700_000_000_000, fmt.Sprint(d["md5"]))
+	_, err = a.c.uploadFile(a.lib, key, p, fmt.Sprint(d["filename"]), m, 1_700_000_000_000, fmt.Sprint(d["md5"]), false)
 	return err
 }

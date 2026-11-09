@@ -414,6 +414,19 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Scheduled backups
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -425,6 +438,34 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#when-nobody-is-logged-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      When nobody is logged in
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -494,6 +535,23 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#when-nobody-is-logged-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      When nobody is logged in
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -513,6 +571,8 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
 <h1 id="scheduled-backups">Scheduled backups<a class="headerlink" href="#scheduled-backups" title="Permanent link">&para;</a></h1>
 <p>Run <code>backup</code> and then <code>prune</code>, e.g. daily. With no terminal, progress is written as plain lines every <code>progress_interval</code> seconds; use <code>--quiet</code> for only the summary and errors.</p>
+<p>The computer has to be on and online at that time; Zotero desktop does not need to run (backups use the web API only). Use a <strong>read-only</strong> key for scheduled backups, so a key that is stored for unattended runs cannot change any library.</p>
+<p>The setups below run while you are logged in (a locked screen is fine). For runs <strong>when nobody is logged in</strong>, see <a href="#when-nobody-is-logged-in">below</a>: the schedule is easy, the key is the point, because a keychain is only unlocked by logging in.</p>
 <p><strong>macOS</strong> (launchd): save as <code>~/Library/LaunchAgents/org.zotero-backup.plist</code>, then <code>launchctl load ~/Library/LaunchAgents/org.zotero-backup.plist</code>. Runs as you, so the keychain entry is available.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>
 <span class="cp">&lt;!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;</span>
@@ -550,6 +610,65 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 <p><strong>Windows</strong> (Task Scheduler), in a command prompt:</p>
 <div class="highlight"><pre><span></span><code>schtasks /Create /SC DAILY /ST 06:00 /TN <span class="s2">"zotero-backup"</span> /TR <span class="s2">"cmd /c \"</span>C:\Tools\zotero-backup.exe backup <span class="p">&amp;&amp;</span> C:\Tools\zotero-backup.exe prune\<span class="s2">""</span>
 </code></pre></div>
+<h2 id="when-nobody-is-logged-in">When nobody is logged in<a class="headerlink" href="#when-nobody-is-logged-in" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Schedule</th>
+<th>API key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>macOS</td>
+<td>a LaunchDaemon that runs as you</td>
+<td>your login keychain is locked: a key file only you can read</td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>the user timer above with <code>loginctl enable-linger</code></td>
+<td>GNOME Keyring is locked: the encrypted systemd credential shown above</td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>the task with "Run whether user is logged on or not"</td>
+<td>Credential Manager works, as long as Windows stores your password for the task</td>
+</tr>
+</tbody>
+</table>
+<p><strong>macOS.</strong> Most Macs are only without a logged-in user after <strong>Log Out</strong>: with FileVault on, nothing runs after a restart until someone unlocks the disk at the login screen, which logs that person in. If the LaunchAgent above is enough for you, keep it.</p>
+<p>For runs while logged out, store the read-only key in a file that only you can read (FileVault encrypts it on disk):</p>
+<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.config/zotero-backup
+<span class="o">(</span><span class="w"> </span><span class="nb">umask</span><span class="w"> </span><span class="m">077</span><span class="p">;</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-rs<span class="w"> </span><span class="s2">"k?API key: "</span><span class="p">;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span>%s<span class="w"> </span><span class="s2">"</span><span class="nv">$k</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>~/.config/zotero-backup/key<span class="w"> </span><span class="o">)</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>(<code>read -rs "k?…"</code> is zsh, the macOS shell; in bash: <code>read -rsp "API key: " k</code>.) Then save the following as <code>org.zotero-backup.plist</code>, with <code>YOU</code> replaced by your user name, and install it as a LaunchDaemon:</p>
+<div class="highlight"><pre><span></span><code><span class="cp">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>
+<span class="cp">&lt;!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;</span>
+<span class="nt">&lt;plist</span><span class="w"> </span><span class="na">version=</span><span class="s">"1.0"</span><span class="nt">&gt;&lt;dict&gt;</span>
+<span class="w">  </span><span class="nt">&lt;key&gt;</span>Label<span class="nt">&lt;/key&gt;&lt;string&gt;</span>org.zotero-backup<span class="nt">&lt;/string&gt;</span>
+<span class="w">  </span><span class="nt">&lt;key&gt;</span>UserName<span class="nt">&lt;/key&gt;&lt;string&gt;</span>YOU<span class="nt">&lt;/string&gt;</span>
+<span class="w">  </span><span class="nt">&lt;key&gt;</span>EnvironmentVariables<span class="nt">&lt;/key&gt;&lt;dict&gt;&lt;key&gt;</span>HOME<span class="nt">&lt;/key&gt;&lt;string&gt;</span>/Users/YOU<span class="nt">&lt;/string&gt;&lt;/dict&gt;</span>
+<span class="w">  </span><span class="nt">&lt;key&gt;</span>ProgramArguments<span class="nt">&lt;/key&gt;&lt;array&gt;</span>
+<span class="w">    </span><span class="nt">&lt;string&gt;</span>/bin/sh<span class="nt">&lt;/string&gt;&lt;string&gt;</span>-c<span class="nt">&lt;/string&gt;</span>
+<span class="w">    </span><span class="nt">&lt;string&gt;</span>ZOTERO_API_KEY=$(cat<span class="w"> </span>"$HOME/.config/zotero-backup/key")<span class="w"> </span><span class="ni">&amp;amp;&amp;amp;</span><span class="w"> </span>export<span class="w"> </span>ZOTERO_API_KEY<span class="w"> </span><span class="ni">&amp;amp;&amp;amp;</span><span class="w"> </span>/usr/local/bin/zotero-backup<span class="w"> </span>backup<span class="w"> </span><span class="ni">&amp;amp;&amp;amp;</span><span class="w"> </span>/usr/local/bin/zotero-backup<span class="w"> </span>prune<span class="nt">&lt;/string&gt;</span>
+<span class="w">  </span><span class="nt">&lt;/array&gt;</span>
+<span class="w">  </span><span class="nt">&lt;key&gt;</span>StartCalendarInterval<span class="nt">&lt;/key&gt;&lt;dict&gt;&lt;key&gt;</span>Hour<span class="nt">&lt;/key&gt;&lt;integer&gt;</span>6<span class="nt">&lt;/integer&gt;&lt;key&gt;</span>Minute<span class="nt">&lt;/key&gt;&lt;integer&gt;</span>0<span class="nt">&lt;/integer&gt;&lt;/dict&gt;</span>
+<span class="w">  </span><span class="nt">&lt;key&gt;</span>StandardOutPath<span class="nt">&lt;/key&gt;&lt;string&gt;</span>/Users/YOU/Library/Logs/zotero-backup.log<span class="nt">&lt;/string&gt;</span>
+<span class="w">  </span><span class="nt">&lt;key&gt;</span>StandardErrorPath<span class="nt">&lt;/key&gt;&lt;string&gt;</span>/Users/YOU/Library/Logs/zotero-backup.log<span class="nt">&lt;/string&gt;</span>
+<span class="nt">&lt;/dict&gt;&lt;/plist&gt;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>launchctl<span class="w"> </span>unload<span class="w"> </span>~/Library/LaunchAgents/org.zotero-backup.plist<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w">   </span><span class="c1"># the LaunchAgent, if you had it</span>
+sudo<span class="w"> </span>cp<span class="w"> </span>org.zotero-backup.plist<span class="w"> </span>/Library/LaunchDaemons/
+sudo<span class="w"> </span>chown<span class="w"> </span>root:wheel<span class="w"> </span>/Library/LaunchDaemons/org.zotero-backup.plist
+sudo<span class="w"> </span>launchctl<span class="w"> </span>bootstrap<span class="w"> </span>system<span class="w"> </span>/Library/LaunchDaemons/org.zotero-backup.plist
+</code></pre></div>
+<p>It runs as you (the backups belong to you), whether you are logged in or not; a run missed while the Mac was asleep follows when it wakes. <code>ZOTERO_API_KEY</code> wins over the keychain, so the key file is used even while you are logged in. To remove it: <code>sudo launchctl bootout system/org.zotero-backup</code> and delete the plist.</p>
+<p><strong>Linux.</strong> The user timer already runs without a login once <code>loginctl enable-linger $USER</code> is set. The keyring is locked then: use the encrypted systemd credential from the service above instead of <code>secret-tool</code>.</p>
+<p><strong>Windows.</strong> Create the task with your user and password, so it runs whether you are logged on or not (<code>/RP *</code> asks for the password; Windows stores it for the task):</p>
+<div class="highlight"><pre><span></span><code>schtasks /Create /SC DAILY /ST 06:00 /TN <span class="s2">"zotero-backup"</span> /RU <span class="s2">"</span><span class="nv">%USERNAME%</span><span class="s2">"</span> /RP * /TR <span class="s2">"cmd /c \"</span>C:\Tools\zotero-backup.exe backup <span class="p">&amp;&amp;</span> C:\Tools\zotero-backup.exe prune\<span class="s2">""</span>
+</code></pre></div>
+<p>The task then logs on as you, so the key in Credential Manager is available. Not with "Do not store password": Windows then cannot open your stored credentials. To catch up on a run missed while the computer was off: Task Scheduler → the task → Settings → "Run task as soon as possible after a scheduled start is missed".</p>
 
 
 

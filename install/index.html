@@ -345,6 +345,15 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#macos-the-first-start-is-blocked" class="md-nav__link">
+    <span class="md-ellipsis">
+      macOS: the first start is blocked
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-key" class="md-nav__link">
     <span class="md-ellipsis">
       API key
@@ -542,6 +551,15 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#macos-the-first-start-is-blocked" class="md-nav__link">
+    <span class="md-ellipsis">
+      macOS: the first start is blocked
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-key" class="md-nav__link">
     <span class="md-ellipsis">
       API key
@@ -570,9 +588,24 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
 
 <h1 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h1>
-<p>Download the archive for your system from the <a href="https://github.com/rkrug/zotero-backup/releases">releases</a>, unpack it and put <code>zotero-backup</code> (<code>zotero-backup.exe</code> on Windows) somewhere on your <code>PATH</code>. On macOS, the first start of a downloaded binary may need <code>xattr -d com.apple.quarantine zotero-backup</code>.</p>
+<p>Download the archive for your system from the <a href="https://github.com/rkrug/zotero-backup/releases">releases</a>, unpack it and put <code>zotero-backup</code> (<code>zotero-backup.exe</code> on Windows) somewhere on your <code>PATH</code>.</p>
 <p>Or build it with Go: <code>go install github.com/rkrug/zotero-backup@latest</code>.</p>
 <p>Check the version with <code>zotero-backup version</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Windows and Linux: not yet tried on a real system</p>
+<p>Only the macOS version has been checked by hand so far; the Windows and Linux versions pass the unit tests in CI but are untested in real use (<a href="https://github.com/rkrug/zotero-backup/issues/15">#15</a>, <a href="https://github.com/rkrug/zotero-backup/issues/16">#16</a>). See <a href="../">Platform status</a>.</p>
+</div>
+<h2 id="macos-the-first-start-is-blocked">macOS: the first start is blocked<a class="headerlink" href="#macos-the-first-start-is-blocked" title="Permanent link">&para;</a></h2>
+<p>zotero-backup is not signed and notarised by Apple, so macOS blocks a binary downloaded with a browser on its first start: a dialog says it was "Not Opened" because Apple could not check it for malicious software. Click <strong>Done</strong> (not "Move to Trash"), then either</p>
+<ul>
+<li>open System Settings → <strong>Privacy &amp; Security</strong>, scroll down to the message about <code>zotero-backup</code> and click <strong>Open Anyway</strong>; start it again and confirm with <strong>Open</strong> (with your password or Touch ID), or</li>
+<li>
+<p>remove the download's quarantine flag in Terminal, in the folder with the binary:</p>
+<div class="highlight"><pre><span></span><code>xattr<span class="w"> </span>-d<span class="w"> </span>com.apple.quarantine<span class="w"> </span>zotero-backup
+</code></pre></div>
+</li>
+</ul>
+<p>Either is needed once per downloaded binary. Archives downloaded with <code>curl</code> or <code>gh release download</code> carry no quarantine flag and start without this.</p>
 <h2 id="api-key">API key<a class="headerlink" href="#api-key" title="Permanent link">&para;</a></h2>
 <p>Create a key at <a href="https://www.zotero.org/settings/keys">https://www.zotero.org/settings/keys</a>. For backups a <strong>read-only</strong> key is enough (personal library with notes and files, groups read). Restore needs a key with <strong>write</strong> access; keep that one for restores only.</p>
 <p>The key is read from the environment variable <code>ZOTERO_API_KEY</code>, or else from the system keychain entry named by the profile's <code>key</code> (see <a href="../keys/">Keys</a>). It is never written to the configuration, the backups or the logs, and never taken as a command-line argument.</p>

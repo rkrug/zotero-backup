@@ -593,19 +593,50 @@ Read the <a href="disclaimer/">disclaimer</a> before you restore or prune.
 <li><strong>Restore into the same library</strong>, everything or selected items, with a preview first.</li>
 <li>One executable for Windows, macOS and Linux; nothing else to install.</li>
 </ul>
+<div class="admonition note">
+<p class="admonition-title">Platform status: tested on macOS</p>
+<p>zotero-backup is used and checked by hand on macOS, including the end-to-end <a href="stresstest/">stress test</a> against Zotero desktop. The Windows and Linux versions are built for every release and pass all unit tests in CI on those systems, including the keychains, but have <strong>not yet been tried on a real Windows or Linux system</strong>: see <a href="https://github.com/rkrug/zotero-backup/issues/15">#15</a> (Windows) and <a href="https://github.com/rkrug/zotero-backup/issues/16">#16</a> (Linux). Reports are welcome.</p>
+</div>
 <p>The plan and the tests behind the design are in <a href="https://github.com/rkrug/zotero-backup/issues/1">Issue #1</a>.</p>
 <div class="admonition warning">
 <p class="admonition-title">No warranty: you are responsible for your data</p>
 <p>zotero-backup comes <strong>as it is, without any warranty</strong>. Nobody guarantees that a backup is complete or that a restore brings a library back as it was. <code>restore</code> writes into your Zotero library and <code>prune</code> deletes backups: look at what they will do first (<code>diff</code>, <code>--dry-run</code>), and keep other, independent copies of libraries that matter. Read the <a href="disclaimer/">disclaimer</a>.</p>
 </div>
 <h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>backup<span class="w">                </span><span class="c1"># all libraries the key can read, into ~/zotero-backups</span>
-zotero-backup<span class="w"> </span>list
-zotero-backup<span class="w"> </span>diff<span class="w"> </span>~/zotero-backups/group-2333076-IPBES_LDR
-zotero-backup<span class="w"> </span>restore<span class="w"> </span>~/zotero-backups/group-2333076-IPBES_LDR<span class="w"> </span>--dry-run
-zotero-backup<span class="w"> </span>prune<span class="w"> </span>--dry-run
+<ol>
+<li>
+<p><strong>Create an API key</strong> at <a href="https://www.zotero.org/settings/keys">https://www.zotero.org/settings/keys</a>. For backups, a <strong>read-only</strong> key is enough: allow library access and notes for the personal library, and read access to the groups. <strong>Store it</strong> in the system keychain:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># asks for the key (not shown), checks it with Zotero, stores it</span>
+zotero-backup<span class="w"> </span>key<span class="w"> </span><span class="nb">set</span>
+<span class="c1"># the key's user, its libraries and what it may do in each</span>
+zotero-backup<span class="w"> </span>key<span class="w"> </span>check
 </code></pre></div>
-<p>Next: <a href="install/">install</a> it, store an <a href="keys/">API key</a>, and read about <a href="backups/">backups</a> and <a href="restore/">restore</a>.</p>
+<p>On a server without a keychain, set <code>ZOTERO_API_KEY</code> instead (<a href="keys/">Keys</a>).</p>
+</li>
+<li>
+<p><strong>Back up</strong> and look at what is there:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># all libraries the key can read, into ~/zotero-backups</span>
+zotero-backup<span class="w"> </span>backup
+zotero-backup<span class="w"> </span>list
+</code></pre></div>
+</li>
+<li>
+<p><strong>Restore</strong> needs a second key with <strong>write</strong> access, used only for restores:</p>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>key<span class="w"> </span><span class="nb">set</span><span class="w"> </span>zotero-write
+<span class="c1"># what differs from the library today</span>
+zotero-backup<span class="w"> </span>diff<span class="w"> </span>~/zotero-backups/group-&lt;id&gt;-&lt;name&gt;
+<span class="c1"># what restore would do (without --dry-run: shows the plan, asks, restores)</span>
+zotero-backup<span class="w"> </span>restore<span class="w"> </span>~/zotero-backups/group-&lt;id&gt;-&lt;name&gt;<span class="w"> </span>--key<span class="w"> </span>zotero-write<span class="w"> </span>--dry-run
+</code></pre></div>
+<p>With <code>"write_key": "zotero-write"</code> in the <a href="configuration/">configuration</a>, <code>restore</code> uses it without <code>--key</code>.</p>
+</li>
+<li>
+<p><strong>Clean up</strong> old backups (keeps the newest of each of the last 7 days, 5 weeks and 12 months):</p>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>prune<span class="w"> </span>--dry-run
+</code></pre></div>
+</li>
+</ol>
+<p>First <a href="install/">install</a> it; more about <a href="keys/">keys</a>, <a href="backups/">backups</a> and <a href="restore/">restore</a>.</p>
 <h2 id="not-covered">Not covered<a class="headerlink" href="#not-covered" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Linked files (only the link is on the Zotero server).</li>

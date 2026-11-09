@@ -834,6 +834,11 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
 <td>keep the test objects at the end, to look at them in Zotero (the cleanup check is skipped)</td>
 </tr>
 <tr>
+<td><code>--cleanup RUN</code></td>
+<td></td>
+<td>only erase the test objects run <code>RUN</code> left behind and sync, e.g. after Zotero was closed during a run (<code>RUN</code> is the name of the run's report folder, e.g. <code>20261109T140228</code>). Asks per library like a run</td>
+</tr>
+<tr>
 <td><code>--zotero-profile P</code></td>
 <td>the default profile</td>
 <td>the Zotero profile whose Debug Bridge token is used</td>
@@ -971,9 +976,9 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
 </tr>
 <tr>
 <td><code>unsynced-remote</code></td>
-<td>change in desktop, synced; then a second change in desktop, <strong>not synced</strong></td>
+<td>change in desktop, synced; then a second change in desktop, <strong>not synced</strong> (a line in Extra, a note paragraph or a title suffix on the first item of the family still there)</td>
 <td>server</td>
-<td>server and desktop back to B0</td>
+<td>server and desktop back to B0. The conflict window comes only where the restore changed the object with the second change; where it did not (e.g. the restore brought back an erased note, but the second change is on the parent item), the second change is simply uploaded and stays: checked as "second change … uploaded"</td>
 </tr>
 <tr>
 <td><code>unsynced-local</code></td>
@@ -989,13 +994,19 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
 </tr>
 </tbody>
 </table>
-<p><strong>Extras</strong> (<code>--scenarios extras</code>), once per library on two families of their own:</p>
+<p><strong>Extras</strong> (<code>--scenarios extras</code>), once per library on two families of their own, plus one web page item for the zipped attachments:</p>
 <ul>
 <li><code>restore --dry-run</code> writes nothing: the library version stays the same.</li>
 <li><code>restore --items</code> restores only the selected item's family; the other stays changed.</li>
 <li>A read-only key is refused before anything is written.</li>
 <li>A second full restore right after the first finds nothing to do.</li>
 <li>An interrupted backup (dropped connections simulated after 2 file downloads) fails, leaves a <code>.partial</code> folder, and the next run finishes and reuses the files already downloaded.</li>
+<li><strong>Zipped attachments</strong> (operation <code>zip</code> in the report): an HTML attachment with a second file (a stylesheet) in its folder, made in Zotero desktop, which uploads both as one ZIP.<ul>
+<li>The backup keeps that ZIP as <code>&lt;name&gt;.zip</code>, with <code>"zip": true</code>, the page's md5 and both files inside.</li>
+<li>A copy of the backup with a changed page (under <code>zip/upload</code> in the run's folder) is restored: restore really <strong>uploads</strong> the ZIP (anything in a real backup came from the server, which then only answers "exists"); the next backup gets exactly that ZIP back; after a sync Zotero desktop has both files with the right md5 in its storage folder.</li>
+<li>The same in the form backups made before v0.2.0 kept ZIPs in (under the file's own name, with the ZIP's own md5, no <code>"zip"</code>): recognised as a ZIP, no file difference to the library; with a changed page, restore uploads it as a ZIP and the server has the page's md5.</li>
+</ul>
+</li>
 <li><code>prune --dry-run</code> with one daily backup kept lists all but the newest backup.</li>
 </ul>
 <h2 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">&para;</a></h2>

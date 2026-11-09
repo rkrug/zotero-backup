@@ -102,6 +102,9 @@ func run(args []string, out io.Writer) error {
 	if cmd == "key" && len(rest) > 0 {
 		cmd, rest = "key "+rest[0], rest[1:]
 	}
+	if cmd == "stresstest" {
+		fs.Usage = func() { fmt.Fprint(fs.Output(), stressUsage) }
+	}
 	var pos []string // positional arguments, flags may come before or after them
 	for {
 		if err := fs.Parse(rest); err != nil {

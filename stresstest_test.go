@@ -39,6 +39,27 @@ func TestStressDialogNeedsTerminal(t *testing.T) {
 	}
 }
 
+func TestStressHelp(t *testing.T) {
+	var out strings.Builder
+	runStresstest(defaultProfile(), stressOptions{}, os.Stdin, &out, quietProgress())
+	for _, w := range []string{"Steps:", "Zotero Debug Bridge", "zotero-backup key set zb-test-write", `"write_key": "zb-test-write"`,
+		"--scenarios desktop-synced", "report.json", "ONLY on test groups or libraries"} {
+		if !strings.Contains(out.String(), w) {
+			t.Errorf("help lacks %q", w)
+		}
+	}
+	for _, sc := range stressScenarios {
+		if !strings.Contains(stressUsage, sc.name) {
+			t.Errorf("help does not list scenario %s", sc.name)
+		}
+	}
+	for _, o := range stressOps {
+		if !strings.Contains(stressUsage, o.name) {
+			t.Errorf("help does not list operation %s", o.name)
+		}
+	}
+}
+
 func TestStressRefusals(t *testing.T) {
 	p := defaultProfile()
 	for _, c := range []struct {

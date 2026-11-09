@@ -25,19 +25,49 @@ import (
 
 const stressUsage = `usage: zotero-backup stresstest --library LIB [--library LIB …] [options]
 
-Changes the libraries it runs on: run it ONLY on test groups or libraries.
-Needs Zotero running with the Zotero Debug Bridge plugin, automatic sync off,
-and each library synced. Asks before it touches each library.
+Tests backup and restore against the real Zotero server and a running Zotero
+desktop: local changes, syncs, deletions, the trash, conflicts. It CHANGES the
+libraries it runs on: run it ONLY on test groups or libraries, ideally of a
+separate Zotero account just for testing. Details: docs/stresstest.md.
+
+Steps:
+
+  1. Zotero: running, with the Zotero Debug Bridge plugin (token set in its
+     settings), automatic sync off (Settings → Sync), and every library under
+     test synced completely.
+
+  2. A write key with write access ONLY to the libraries under test (created at
+     zotero.org/settings/keys); the test refuses a key that could write anywhere
+     else. Store it, and optionally a read-only key, in the keychain:
+
+       zotero-backup key set zb-test-write
+       zotero-backup key set zb-test-read
+
+  3. A profile in the configuration file (zotero-backup help shows its path):
+
+       "test": { "key": "zb-test-read", "write_key": "zb-test-write", "to": "~/zotero-backups" }
+
+  4. A short run first, then everything. The test asks before it touches each
+     library; answer y only for a test library (Enter = no):
+
+       zotero-backup stresstest --profile test --library group:<id> --scenarios desktop-synced --ops edit-title,erase-item,replace-file
+       zotero-backup stresstest --profile test --library group:<id> [--library user]
+
+  5. The report: <to>/stresstest/<run>/report.html (to read) and report.json
+     (for further processing). The command fails if any check failed.
+
+Options:
 
   --library LIB          group:<id> or user (the key's personal library); repeat for several
-  --scenarios A,B        scenarios to run (default: all, and extras)
-  --ops A,B              operations to apply (default: all)
-  --report DIR           where report.html and report.json go (default: next to the run's backups)
+  --scenarios A,B        desktop-synced, api, unsynced-remote, unsynced-local, unsynced-only, extras (default: all)
+  --ops A,B              edit-title, fill-extra, trash-item, erase-item, erase-note, erase-attachment,
+                         erase-annotation, edit-note, replace-file, trash-collection, erase-collection,
+                         move-membership, tags, tag-colour, new-item (default: all)
+  --report DIR           where report.html and report.json go (default: <to>/stresstest/<run>)
   --keep                 keep the test objects at the end
   --zotero-profile P     Zotero profile (name or folder) whose Debug Bridge token to use
-                         (default: the default profile in profiles.ini)
-
-The write key is the profile's write_key (else its key); see docs/stresstest.md.
+                         (default: the default profile in Zotero's profiles.ini)
+  --profile NAME         zotero-backup profile with the keys (write_key, else key) and the folder (to)
 `
 
 type stressScenario struct {

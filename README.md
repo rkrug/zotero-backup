@@ -208,7 +208,7 @@ A key can also be piped in (`… | zotero-backup key set`), e.g. from a password
 
 ## Stress test
 
-`zotero-backup stresstest` runs backup and restore against the real Zotero server and a running Zotero desktop, with local changes, syncs and conflicts, and writes an HTML and a JSON report. **It changes the libraries it runs on: use it only on test groups or libraries.** See [docs/stresstest.md](docs/stresstest.md).
+`zotero-backup stresstest` runs backup and restore against the real Zotero server and a running Zotero desktop, with local changes, syncs and conflicts, and writes an HTML and a JSON report. **It changes the libraries it runs on: use it only on test groups or libraries**, ideally with a separate Zotero account just for testing; it refuses a write key that could also write to libraries it does not test. See [docs/stresstest.md](docs/stresstest.md).
 
 ## Development
 

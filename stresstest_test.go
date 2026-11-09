@@ -3,7 +3,10 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,9 +77,9 @@ func TestStressReports(t *testing.T) {
 	dir := t.TempDir()
 	r := &stressReport{Run: "20261109T120000", Tool: "v0.1.0", Started: time.Now()}
 	r.Libraries = []stressLibrary{{"group-6719916", "Safe Edit Test", "/b/x"}}
-	r.add(stressResult{"group-6719916", "api", "edit-title", "server = backup", "pass", "", time.Now()})
-	r.add(stressResult{"group-6719916", "api", "erase-item", "desktop = server", "fail", "item ABC <b>fields</b> [title]", time.Now()})
-	r.add(stressResult{"group-6719916", "unsynced-local", "*", "conflicts", "info", "2", time.Now()})
+	r.add(stressResult{"group-6719916", "Safe Edit Test", "api", "edit-title", "server = backup", "pass", "", time.Now()})
+	r.add(stressResult{"group-6719916", "Safe Edit Test", "api", "erase-item", "desktop = server", "fail", "item ABC <b>fields</b> [title]", time.Now()})
+	r.add(stressResult{"group-6719916", "Safe Edit Test", "unsynced-local", "*", "conflicts", "info", "2", time.Now()})
 	if err := r.write(dir); err != nil {
 		t.Fatal(err)
 	}
@@ -101,5 +104,45 @@ func TestStressReports(t *testing.T) {
 	}
 	if strings.Contains(html, "<b>fields</b>") {
 		t.Error("detail not escaped in the HTML report")
+	}
+}
+
+// scopeServer: user 7 is in groups 1, 2 and 3. Key "narrow" writes only to
+// group 1; "wide" also to the personal library and group 2; "all" to every group.
+func scopeServer(t *testing.T) func(string) *Client {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/keys/current":
+			switch r.Header.Get("Zotero-API-Key") {
+			case "narrow":
+				fmt.Fprint(w, `{"userID":7,"username":"tester","access":{"user":{"library":true},"groups":{"all":{"library":true},"1":{"library":true,"write":true}}}}`)
+			case "wide":
+				fmt.Fprint(w, `{"userID":7,"username":"tester","access":{"user":{"library":true,"write":true},"groups":{"1":{"library":true,"write":true},"2":{"library":true,"write":true}}}}`)
+			case "all":
+				fmt.Fprint(w, `{"userID":7,"username":"tester","access":{"user":{"library":true},"groups":{"all":{"library":true,"write":true}}}}`)
+			}
+		case "/users/7/groups":
+			w.Header().Set("Total-Results", "3")
+			fmt.Fprint(w, `[{"id":1,"data":{"name":"Test group"}},{"id":2,"data":{"name":"Real work"}},{"id":3,"data":{"name":"Other"}}]`)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return func(key string) *Client { return &Client{Base: srv.URL, Key: key, HTTP: srv.Client()} }
+}
+
+func TestStressKeyScope(t *testing.T) {
+	c := scopeServer(t)
+	if err := checkKeyScope(c("narrow"), map[string]bool{"group-1": true}); err != nil {
+		t.Errorf("narrow key refused: %v", err)
+	}
+	err := checkKeyScope(c("wide"), map[string]bool{"group-1": true})
+	if err == nil || !strings.Contains(err.Error(), `user-7 "tester", group-2 "Real work"`) || !strings.Contains(err.Error(), "separate Zotero account") {
+		t.Errorf("wide key: %v", err)
+	}
+	if err := checkKeyScope(c("wide"), map[string]bool{"group-1": true, "group-2": true, "user-7": true}); err != nil {
+		t.Errorf("wide key with all its libraries named: %v", err)
+	}
+	if err := checkKeyScope(c("all"), map[string]bool{"group-1": true}); err == nil || !strings.Contains(err.Error(), `group-3 "Other"`) {
+		t.Errorf("key writing to all groups: %v", err)
 	}
 }

@@ -182,7 +182,7 @@ func TestRestoreDryRunWritesNothing(t *testing.T) {
 	if f.version != before || f.uploads != 0 {
 		t.Error("dry run wrote")
 	}
-	for _, want := range []string{"missing in the library", "BOOK0001", "different in the library", "OTHER001", "[extra, title]",
+	for _, want := range []string{`library  group-1 "Test group"`, "missing in the library", "BOOK0001", "different in the library", "OTHER001", "[extra, title]",
 		"files to upload: 2", "settings to set back: tagColors", "only in the library", "NEW00001"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("plan lacks %q:\n%s", want, out.String())

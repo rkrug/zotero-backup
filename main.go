@@ -304,11 +304,11 @@ func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer
 		if err != nil {
 			failed++
 			pr.Warnf("FAILED: %v", err)
-			fmt.Fprintf(out, "%s: FAILED: %v\n", lib.ID, err)
+			fmt.Fprintf(out, "%s: FAILED: %v\n", lib.Label(), err)
 			continue
 		}
 		fmt.Fprintf(out, "%s: %s  version %d, %d items, %d files (%d downloaded, %.1f MB; %d linked), %d missing, %d problems, %.0f s\n",
-			lib.ID, dir, m.Version, itemCount(m.Counts), m.Counts["files"], m.Downloaded, float64(m.DownBytes)/1e6,
+			lib.Label(), dir, m.Version, itemCount(m.Counts), m.Counts["files"], m.Downloaded, float64(m.DownBytes)/1e6,
 			m.Linked, len(m.Missing), len(m.Problems), m.Seconds)
 	}
 	if failed > 0 {

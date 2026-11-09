@@ -16,6 +16,7 @@ import (
 // observation, e.g. which conflicts Zotero's window would have shown).
 type stressResult struct {
 	Library   string    `json:"library"`
+	Name      string    `json:"library_name"`
 	Scenario  string    `json:"scenario"`
 	Operation string    `json:"operation"`
 	Check     string    `json:"check"`
@@ -154,7 +155,7 @@ code{font-size:12px}.wrap{overflow-x:auto}
 <p class="meta">Backups of this run: <code>{{.Backups}}</code></p>
 {{with failed .Results}}<h2 class="fail">Failed checks</h2>
 <div class="wrap"><table><tr><th>Library</th><th>Scenario</th><th>Operation</th><th>Check</th><th>Detail</th></tr>
-{{range .}}<tr><td>{{.Library}}</td><td>{{.Scenario}}</td><td>{{.Operation}}</td><td>{{.Check}}</td><td>{{.Detail}}</td></tr>{{end}}
+{{range .}}<tr><td>{{.Library}} <span class="meta">{{.Name}}</span></td><td>{{.Scenario}}</td><td>{{.Operation}}</td><td>{{.Check}}</td><td>{{.Detail}}</td></tr>{{end}}
 </table></div>{{end}}
 <h2>Scenarios</h2>
 <div class="wrap"><table><tr><th>Scenario</th><th>Sequence</th><th>Expected</th></tr>
@@ -162,7 +163,7 @@ code{font-size:12px}.wrap{overflow-x:auto}
 </table></div>
 <h2>All checks</h2>
 <div class="wrap"><table><tr><th>Library</th><th>Scenario</th><th>Operation</th><th>Check</th><th>Result</th><th>Detail</th></tr>
-{{range .Results}}<tr><td>{{.Library}}</td><td>{{.Scenario}}</td><td>{{.Operation}}</td><td>{{.Check}}</td><td class="r {{.Result}}">{{if eq .Result "pass"}}✔ pass{{else if eq .Result "fail"}}✘ fail{{else}}ℹ info{{end}}</td><td>{{.Detail}}</td></tr>{{end}}
+{{range .Results}}<tr><td>{{.Library}} <span class="meta">{{.Name}}</span></td><td>{{.Scenario}}</td><td>{{.Operation}}</td><td>{{.Check}}</td><td class="r {{.Result}}">{{if eq .Result "pass"}}✔ pass{{else if eq .Result "fail"}}✘ fail{{else}}ℹ info{{end}}</td><td>{{.Detail}}</td></tr>{{end}}
 </table></div>
 </main></body></html>
 `))

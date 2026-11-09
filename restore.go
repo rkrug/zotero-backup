@@ -82,6 +82,9 @@ func loadBackup(path string) (*backupSet, error) {
 // spec is the backup's library as written in a profile: "user" or "group:<id>".
 func (b *backupSet) spec() string { return library{ID: b.meta.Library}.Spec() }
 
+// label is the backup's library with its name: group-6719916 "Safe Edit Test".
+func (b *backupSet) label() string { return libraryLabel(b.meta.Library, b.meta.Name) }
+
 // libraryNow is the library's current state.
 type libraryNow struct {
 	version     int
@@ -404,7 +407,7 @@ func typeOf(c change) string {
 // printPlan describes the plan; limit caps the lines per section (0: all).
 func printPlan(out io.Writer, b *backupSet, now *libraryNow, p plan, limit int) {
 	fmt.Fprintf(out, "backup   %s (library version %d)\n", b.dir, b.meta.Version)
-	fmt.Fprintf(out, "library  %s, now at version %d\n\n", b.meta.Library, now.version)
+	fmt.Fprintf(out, "library  %s, now at version %d\n\n", b.label(), now.version)
 	section := func(title string, cs []change) {
 		if len(cs) == 0 {
 			return
@@ -641,7 +644,7 @@ func runRestore(clientFor func(string) (*Client, error), path string, p Profile,
 	}
 	if !dryRun {
 		if err := canWrite(c, b.libPath); err != nil {
-			return err
+			return fmt.Errorf("%s: %w", b.label(), err)
 		}
 	}
 	now, err := readLibrary(c, b.libPath)
@@ -654,7 +657,7 @@ func runRestore(clientFor func(string) (*Client, error), path string, p Profile,
 		return nil
 	}
 	if !yes {
-		ok, err := confirm(fmt.Sprintf("Restore %d objects, %d files, %d settings into %s?", len(pl.objects), len(pl.files), len(pl.settings), b.meta.Library))
+		ok, err := confirm(fmt.Sprintf("Restore %d objects, %d files, %d settings into %s?", len(pl.objects), len(pl.files), len(pl.settings), b.label()))
 		if err != nil {
 			return err
 		}
@@ -662,7 +665,7 @@ func runRestore(clientFor func(string) (*Client, error), path string, p Profile,
 			return errors.New("not restored")
 		}
 	}
-	pr.SetPrefix(b.meta.Library)
+	pr.SetPrefix(b.label())
 	failures, err := restore(c, b, now, pl, p.Exclude, out, pr)
 	if err != nil {
 		return err

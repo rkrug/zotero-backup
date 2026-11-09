@@ -88,14 +88,14 @@ func (s *stress) record(sc, op, check string, ok bool, detail string, args ...an
 	if ok && (d == "<nil>" || d == "[]" || d == "<nil> map[]" || d == "<nil>, 0 resumed") {
 		d = ""
 	}
-	s.rep.add(stressResult{s.lib.ID, sc, op, check, res, d, time.Now().UTC()})
+	s.rep.add(stressResult{s.lib.ID, s.lib.Name, sc, op, check, res, d, time.Now().UTC()})
 	if !ok {
-		s.pr.Warnf("FAILED %s / %s / %s: %s", sc, op, check, d)
+		s.pr.Warnf("FAILED %s / %s / %s / %s: %s", s.lib.Label(), sc, op, check, d)
 	}
 }
 
 func (s *stress) note(sc, op, check, detail string, args ...any) {
-	s.rep.add(stressResult{s.lib.ID, sc, op, check, "info", fmt.Sprintf(detail, args...), time.Now().UTC()})
+	s.rep.add(stressResult{s.lib.ID, s.lib.Name, sc, op, check, "info", fmt.Sprintf(detail, args...), time.Now().UTC()})
 }
 
 func (s *stress) selectedOps() []stressOp {
@@ -163,6 +163,22 @@ func runStresstest(p Profile, o stressOptions, in *os.File, out io.Writer, pr *p
 		}
 		targets = append(targets, t)
 	}
+	// least privilege: no write key may reach any library that was not named
+	named := map[string]bool{}
+	for _, t := range targets {
+		named[t.lib.ID] = true
+	}
+	checked := map[*Client]bool{}
+	for _, t := range targets {
+		if checked[t.c] {
+			continue
+		}
+		checked[t.c] = true
+		if err := checkKeyScope(t.c, named); err != nil {
+			return err
+		}
+	}
+
 	for _, t := range targets {
 		kind := "group"
 		if t.lib.Spec() == "user" {
@@ -766,4 +782,49 @@ func (s *stress) finish(safetyDir string) {
 	if err != nil {
 		s.record("cleanup", "*", "compare with the safety backup", false, "%v", err)
 	}
+}
+
+// writableLibraries lists the libraries a key may write to: the personal
+// library and each group of its user with write access.
+func writableLibraries(c *Client) ([]library, error) {
+	k, err := c.keyInfo()
+	if err != nil {
+		return nil, err
+	}
+	var out []library
+	if k.Access.User.Write {
+		out = append(out, library{fmt.Sprintf("/users/%d", k.UserID), fmt.Sprintf("user-%d", k.UserID), k.Username})
+	}
+	groups, err := c.groups(k.UserID)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range groups {
+		if k.GroupAccess(g.ID).Write {
+			out = append(out, library{fmt.Sprintf("/groups/%d", g.ID), fmt.Sprintf("group-%d", g.ID), g.Data.Name})
+		}
+	}
+	return out, nil
+}
+
+// checkKeyScope refuses a key that may write to any library not in named, so
+// that even a fault in the test cannot change anything else on the server.
+func checkKeyScope(c *Client, named map[string]bool) error {
+	libs, err := writableLibraries(c)
+	if err != nil {
+		return err
+	}
+	var extra []string
+	for _, l := range libs {
+		if !named[l.ID] {
+			extra = append(extra, l.Label())
+		}
+	}
+	if len(extra) == 0 {
+		return nil
+	}
+	return fmt.Errorf("the write key may also write to %s, which this run does not test. "+
+		"Use a key with write access only to the test libraries (zotero.org/settings/keys: per-group permissions, "+
+		"personal library read-only unless it is tested); best, a separate Zotero account just for testing (docs/stresstest.md)",
+		strings.Join(extra, ", "))
 }

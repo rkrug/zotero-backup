@@ -8,6 +8,9 @@ The unit tests (`go test ./...`, run in CI on Linux, macOS and Windows) use a fa
 
 ## Safety
 
+**Recommended: a separate Zotero account just for testing.** Create a second Zotero account, sign in to it in a separate Zotero profile with the Debug Bridge plugin, and create its API key there. Its personal library and any group it owns are then truly throw-away, and no key involved can reach your real libraries at all. With your normal account, a key that may write to the personal library can write to the whole of it, because an account has only one.
+
+- **The write key must not reach anything else.** Before asking, the test checks what the write key may do and refuses if it can write to any library not named with `--library` (the personal library or any group), listing them. Create the key at zotero.org/settings/keys with write access only to the test libraries; even a fault in the test then cannot change anything else on the server.
 - **Only the libraries you name**, with `--library group:<id>` or `--library user` (the key's personal library). There is no default, and `all` is refused.
 - **A question per library, before anything changes.** After checking all libraries, it asks for each:
 
@@ -31,7 +34,7 @@ The unit tests (`go test ./...`, run in CI on Linux, macOS and Windows) use a fa
 | --- | --- | --- |
 | Zotero desktop | running, signed in as the key's user | automatic sync off; the libraries under test completely synced |
 | Zotero Debug Bridge | plugin in that Zotero profile, with a token set | the test runs JavaScript inside Zotero through it (`POST 127.0.0.1:23119/debug-bridge/execute`) |
-| Write key | the profile's `write_key`, else its `key` | write access to every library under test |
+| Write key | the profile's `write_key`, else its `key` | write access to every library under test, **and to nothing else** (checked) |
 | Read-only key | the profile's `key`, if it cannot write | only for the check that a read-only key is refused (skipped otherwise) |
 | Zotero profile | `--zotero-profile NAME\|FOLDER` | default: the default profile in Zotero's `profiles.ini`; `ZOTERO_DEBUG_BRIDGE_TOKEN` overrides the token |
 

@@ -73,6 +73,16 @@ func (l library) Spec() string {
 	return "user"
 }
 
+// Label is the library's ID with its name, for messages: group-6719916 "Safe Edit Test".
+func (l library) Label() string { return libraryLabel(l.ID, l.Name) }
+
+func libraryLabel(id, name string) string {
+	if name == "" {
+		return id
+	}
+	return fmt.Sprintf("%s %q", id, name)
+}
+
 // Dir is the library's folder name, e.g. "group-6719916-Safe_Edit_Test":
 // the name made safe, without spaces.
 func (l library) Dir() string {

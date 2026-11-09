@@ -28,6 +28,6 @@ So changes made since the backup to anything that was in the backup are lost. Th
 
 With `--items`, only the chosen items change (with their children, parents and the collections they need); library settings are left alone.
 
-**Before a restore, sync every Zotero app that works on the library.** A Zotero app with unsynced changes shows a conflict dialog on its next sync, and whatever is chosen there wins over the restore. If that happened, run `restore` again; or, on that computer, use Zotero → Settings → Sync → Reset → **Restore from Online Library** (not "Replace Online Library", which goes the other way).
+**Before a restore, sync every Zotero app that works on the library.** If the restore changed an object that a Zotero app has unsynced changes to, that app shows the conflict window on its next sync (even when the two changes are in different fields), and whatever is chosen there wins over the restore. Unsynced changes to objects the restore did not change are uploaded as usual and stay. If that happened, run `restore` again; or, on that computer, use Zotero → Settings → Sync → Reset → **Restore from Online Library** (not "Replace Online Library", which goes the other way).
 
 Restoring files counts against the library owner's Zotero storage.

@@ -208,3 +208,16 @@ func TestParentTrashed(t *testing.T) {
 		}
 	}
 }
+
+func TestStressCleanupNeedsARun(t *testing.T) {
+	// a wrong run would erase nothing or, empty, every run's objects: refused before anything else
+	err := runStresstest(defaultProfile(), stressOptions{cleanup: "yesterday"}, os.Stdin, io.Discard, quietProgress())
+	if err == nil || !strings.Contains(err.Error(), "--cleanup") {
+		t.Fatalf("got %v", err)
+	}
+	for it, want := range map[string]string{"book": "extra", "note": "note", "attachment": "title"} {
+		if got := touchedField(map[string]any{"itemType": it}); got != want {
+			t.Errorf("touchedField(%s) = %s, want %s", it, got, want)
+		}
+	}
+}

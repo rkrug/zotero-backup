@@ -76,6 +76,7 @@ No configuration file is needed: backups go to `~/zotero-backups`, the test's ow
 | `--ops A,B` | all 15 | which operations run |
 | `--report DIR` | the run's backup folder | where `report.html` and `report.json` go |
 | `--keep` | off | keep the test objects at the end, to look at them in Zotero (the cleanup check is skipped) |
+| `--cleanup RUN` | | only erase the test objects run `RUN` left behind and sync, e.g. after Zotero was closed during a run (`RUN` is the name of the run's report folder, e.g. `20261109T140228`). Asks per library like a run |
 | `--zotero-profile P` | the default profile | the Zotero profile whose Debug Bridge token is used |
 
 The run's backups go to `<to>/stresstest/<run>/`; the safety backups to `<to>` like normal backups. The command fails (exit status 1) if any check failed.
@@ -126,7 +127,7 @@ Each scenario runs one cycle for all operations:
 | --- | --- | --- | --- |
 | `desktop-synced` | change in Zotero desktop, synced | (none expected) | server and desktop back to B0, no conflict |
 | `api` | change on the server by another client | (none expected) | server and desktop back to B0, no conflict |
-| `unsynced-remote` | change in desktop, synced; then a second change in desktop, **not synced** | server | server and desktop back to B0 |
+| `unsynced-remote` | change in desktop, synced; then a second change in desktop, **not synced** (a line in Extra, a note paragraph or a title suffix on the first item of the family still there) | server | server and desktop back to B0. The conflict window comes only where the restore changed the object with the second change; where it did not (e.g. the restore brought back an erased note, but the second change is on the parent item), the second change is simply uploaded and stays: checked as "second change … uploaded" |
 | `unsynced-local` | as `unsynced-remote` | local | the local version wins for the whole object and undoes the restore (recorded); a second restore and sync bring B0 back |
 | `unsynced-only` | change in desktop, **not synced at all** | (none expected) | restore finds nothing to do; after the sync the server has the change; a second restore brings B0 back |
 

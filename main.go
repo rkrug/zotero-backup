@@ -88,6 +88,7 @@ func run(args []string, out io.Writer) error {
 	stressReportDir := fs.String("report", "", "stresstest: report folder")
 	stressKeep := fs.Bool("keep", false, "stresstest: keep the test objects")
 	zoteroProfile := fs.String("zotero-profile", "", "stresstest: Zotero profile")
+	stressCleanupRun := fs.String("cleanup", "", "stresstest: only erase the test objects of this run")
 	fs.Usage = func() { fmt.Fprintf(fs.Output(), usage, defaultConfigPath()) }
 
 	if len(args) == 0 {
@@ -184,7 +185,7 @@ func run(args []string, out io.Writer) error {
 			newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "stresstest":
 		return runStresstest(profile, stressOptions{libraries: stressLibs, scenarios: splitList(*stressScen),
-			ops: splitList(*stressOpsFlag), report: *stressReportDir, keep: *stressKeep, zoteroProfile: *zoteroProfile},
+			ops: splitList(*stressOpsFlag), report: *stressReportDir, keep: *stressKeep, zoteroProfile: *zoteroProfile, cleanup: *stressCleanupRun},
 			os.Stdin, out, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "prune":
 		return prune(expandHome(profile.To), profile, *dryRun, out)

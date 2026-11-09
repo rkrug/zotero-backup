@@ -168,3 +168,29 @@ func TestStressKeyScope(t *testing.T) {
 		t.Errorf("key writing to all groups: %v", err)
 	}
 }
+
+func TestBridgeRequest(t *testing.T) {
+	var got struct{ ct, auth, query, body string }
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		got.ct, got.auth, got.query, got.body = r.Header.Get("Content-Type"), r.Header.Get("Authorization"), r.URL.RawQuery, string(b)
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`"10.0.8"`))
+	}))
+	defer srv.Close()
+	t.Setenv("ZOTERO_DEBUG_BRIDGE_TOKEN", "tok")
+	t.Setenv("ZOTERO_DEBUG_BRIDGE_URL", srv.URL)
+	b, err := newBridge(t.TempDir(), "group", 6719916, "Safe Edit Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var v string
+	if err := b.run("return Zotero.version", nil, &v); err != nil || v != "10.0.8" {
+		t.Fatalf("%q %v", v, err)
+	}
+	if got.ct != "text/plain" || got.auth != "Bearer tok" || !strings.Contains(got.query, "id=6719916") ||
+		!strings.Contains(got.query, "name=Safe+Edit+Test") || !strings.HasSuffix(got.body, "return Zotero.version") ||
+		!strings.Contains(got.body, "const TAG = 'zb-e2e'") {
+		t.Errorf("request %+v", got)
+	}
+}

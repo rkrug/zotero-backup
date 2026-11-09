@@ -60,7 +60,9 @@ func (b *bridge) run(js string, query map[string]string, out any) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/javascript")
+	// text/plain: Zotero 10.0.8 answers "application/javascript" (which the
+	// Debug Bridge declares too) with an empty HTTP 500
+	req.Header.Set("Content-Type", "text/plain")
 	req.Header.Set("Authorization", "Bearer "+b.token)
 	resp, err := b.http.Do(req)
 	if err != nil {

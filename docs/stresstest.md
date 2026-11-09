@@ -116,7 +116,7 @@ Each scenario runs one cycle for all operations:
 
 1. Create the fixture families in Zotero desktop and sync them.
 2. Back up the library (backup B0).
-3. Make the changes as the scenario says.
+3. Make the changes as the scenario says; where desktop changes are synced, check that the server has them (and equals the desktop).
 4. Restore B0.
 5. Sync Zotero desktop, answering the conflict window as the scenario says.
 6. Check (next section); where the scenario expects the restore to be undone, restore again, sync, check again.
@@ -146,6 +146,7 @@ After each restore and sync, every fixture family is checked on its own:
 | Check | Compares | Passes when |
 | --- | --- | --- |
 | Backup has the fixture | B0 | all items, both collections and both files are in it |
+| Server has the change | server vs B0, after the desktop's changes are synced and before the restore | something differs: the change reached the server, so the restore has something to undo |
 | Server = backup | server vs B0, with the comparison `diff` uses, plus the tag colour | nothing differs (or, where the scenario expects it, something does) |
 | Desktop = server | Zotero desktop vs server: fields, trash state, collections, file md5, tag colour | nothing differs |
 | New items kept | the item made after the backup | still on the server, not in the trash |

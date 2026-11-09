@@ -554,6 +554,8 @@ func (s *stress) scenario(sc stressScenario) error {
 	}
 	if sc.name == "desktop-synced" || strings.HasPrefix(sc.name, "unsynced-") && sc.name != "unsynced-only" {
 		s.sync(sc.name, "sync the changes", "fail")
+		// the desktop's changes reached the server: otherwise a restore finds nothing to do and every later check passes
+		s.checkAll(sc.name, "before restore", b0, fams, "changed")
 	}
 	touched := map[string]string{}
 	if sc.name == "unsynced-remote" || sc.name == "unsynced-local" {

@@ -76,6 +76,7 @@ No configuration file is needed: backups go to `~/zotero-backups`, the test's ow
 | `--ops A,B` | all 15 | which operations run |
 | `--report DIR` | the run's backup folder | where `report.html` and `report.json` go |
 | `--keep` | off | keep the test objects at the end, to look at them in Zotero (the cleanup check is skipped) |
+| `--cleanup RUN` | | only erase the test objects run `RUN` left behind and sync, e.g. after Zotero was closed during a run (`RUN` is the name of the run's report folder, e.g. `20261109T140228`). Asks per library like a run |
 | `--zotero-profile P` | the default profile | the Zotero profile whose Debug Bridge token is used |
 
 The run's backups go to `<to>/stresstest/<run>/`; the safety backups to `<to>` like normal backups. The command fails (exit status 1) if any check failed.
@@ -126,17 +127,21 @@ Each scenario runs one cycle for all operations:
 | --- | --- | --- | --- |
 | `desktop-synced` | change in Zotero desktop, synced | (none expected) | server and desktop back to B0, no conflict |
 | `api` | change on the server by another client | (none expected) | server and desktop back to B0, no conflict |
-| `unsynced-remote` | change in desktop, synced; then a second change in desktop, **not synced** | server | server and desktop back to B0 |
+| `unsynced-remote` | change in desktop, synced; then a second change in desktop, **not synced** (a line in Extra, a note paragraph or a title suffix on the first item of the family still there) | server | server and desktop back to B0. The conflict window comes only where the restore changed the object with the second change; where it did not (e.g. the restore brought back an erased note, but the second change is on the parent item), the second change is simply uploaded and stays: checked as "second change … uploaded" |
 | `unsynced-local` | as `unsynced-remote` | local | the local version wins for the whole object and undoes the restore (recorded); a second restore and sync bring B0 back |
 | `unsynced-only` | change in desktop, **not synced at all** | (none expected) | restore finds nothing to do; after the sync the server has the change; a second restore brings B0 back |
 
-**Extras** (`--scenarios extras`), once per library on two families of their own:
+**Extras** (`--scenarios extras`), once per library on two families of their own, plus one web page item for the zipped attachments:
 
 - `restore --dry-run` writes nothing: the library version stays the same.
 - `restore --items` restores only the selected item's family; the other stays changed.
 - A read-only key is refused before anything is written.
 - A second full restore right after the first finds nothing to do.
 - An interrupted backup (dropped connections simulated after 2 file downloads) fails, leaves a `.partial` folder, and the next run finishes and reuses the files already downloaded.
+- **Zipped attachments** (operation `zip` in the report): an HTML attachment with a second file (a stylesheet) in its folder, made in Zotero desktop, which uploads both as one ZIP.
+    - The backup keeps that ZIP as `<name>.zip`, with `"zip": true`, the page's md5 and both files inside.
+    - A copy of the backup with a changed page (under `zip/upload` in the run's folder) is restored: restore really **uploads** the ZIP (anything in a real backup came from the server, which then only answers "exists"); the next backup gets exactly that ZIP back; after a sync Zotero desktop has both files with the right md5 in its storage folder.
+    - The same in the form backups made before v0.2.0 kept ZIPs in (under the file's own name, with the ZIP's own md5, no `"zip"`): recognised as a ZIP, no file difference to the library; with a changed page, restore uploads it as a ZIP and the server has the page's md5.
 - `prune --dry-run` with one daily backup kept lists all but the newest backup.
 
 ## Checks

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"archive/zip"
 	"bufio"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -194,5 +196,79 @@ func TestBridgeRequest(t *testing.T) {
 		!strings.Contains(got.query, "name=Safe+Edit+Test") || !strings.HasSuffix(got.body, "return Zotero.version") ||
 		!strings.Contains(got.body, "const TAG = 'zb-e2e'") {
 		t.Errorf("request %+v", got)
+	}
+}
+
+func TestParentTrashed(t *testing.T) {
+	cols := map[string]map[string]any{
+		"TOP": {"deleted": true}, "MID": {"parentCollection": "TOP"}, "LOW": {"parentCollection": "MID"},
+		"OTHER": {"parentCollection": false},
+	}
+	for k, want := range map[string]bool{"TOP": false, "MID": true, "LOW": true, "OTHER": false, "NONE": false} {
+		if got := parentTrashed(cols, k); got != want {
+			t.Errorf("%s: %v, want %v", k, got, want)
+		}
+	}
+}
+
+func TestStressCleanupNeedsARun(t *testing.T) {
+	// a wrong run would erase nothing or, empty, every run's objects: refused before anything else
+	err := runStresstest(defaultProfile(), stressOptions{cleanup: "yesterday"}, os.Stdin, io.Discard, quietProgress())
+	if err == nil || !strings.Contains(err.Error(), "--cleanup") {
+		t.Fatalf("got %v", err)
+	}
+	for it, want := range map[string]string{"book": "extra", "note": "note", "attachment": "title"} {
+		if got := touchedField(map[string]any{"itemType": it}); got != want {
+			t.Errorf("touchedField(%s) = %s, want %s", it, got, want)
+		}
+	}
+}
+
+func TestZipVariant(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "user-1-u", "2026-01-01T000000Z")
+	os.MkdirAll(filepath.Join(dir, "files", "K"), 0o755)
+	zpath := filepath.Join(dir, "files", "K", "p.html.zip")
+	zf, _ := os.Create(zpath)
+	w := zip.NewWriter(zf)
+	for name, body := range map[string]string{"p.html": "<p>old</p>", "extra.css": "p{}"} {
+		x, _ := w.Create(name)
+		x.Write([]byte(body))
+	}
+	w.Close()
+	zf.Close()
+	oldZip, _, _ := md5File(zpath)
+	pm := fmt.Sprintf("%x", md5.Sum([]byte("<p>old</p>")))
+	writeJSON(filepath.Join(dir, "meta.json"), map[string]any{"library": "user-1", "name": "u"})
+	writeJSON(filepath.Join(dir, "items.json"), []map[string]any{{"key": "K", "itemType": "attachment", "filename": "p.html", "md5": pm}})
+	writeJSON(filepath.Join(dir, "collections.json"), []any{})
+	writeJSON(filepath.Join(dir, "searches.json"), []any{})
+	writeJSON(filepath.Join(dir, "files.json"), map[string]FileEntry{"K": {Filename: "p.html", Path: "files/K/p.html.zip", MD5: pm, Zip: true}})
+	b, err := loadBackup(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, old := range []bool{false, true} {
+		to := filepath.Join(t.TempDir(), "v")
+		page, zipSum, err := zipVariant(b, to, "K", []byte("<p>new</p>"), old)
+		if err != nil {
+			t.Fatal(err)
+		}
+		v, err := loadBackup(to) // the old form is recognised as a ZIP again
+		if err != nil {
+			t.Fatal(err)
+		}
+		e := v.files["K"]
+		got, _ := zipContents(filepath.Join(to, filepath.FromSlash(e.Path)))
+		sum, _, _ := md5File(filepath.Join(to, filepath.FromSlash(e.Path)))
+		if !e.Zip || e.MD5 != page || v.items["K"]["md5"] != page || sum != zipSum || got["p.html"] != page || got["extra.css"] == "" ||
+			strings.HasSuffix(e.Path, ".zip") == old {
+			t.Errorf("old=%v: %+v, item md5 %v, inside %v", old, e, v.items["K"]["md5"], got)
+		}
+	}
+	if s, _, _ := md5File(zpath); s != oldZip || b.items["K"]["md5"] != pm { // the source backup is untouched
+		t.Error("zipVariant changed the source backup")
+	}
+	if again, _ := loadBackup(dir); again.files["K"].MD5 != pm {
+		t.Error("zipVariant changed the source files.json")
 	}
 }

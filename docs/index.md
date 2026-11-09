@@ -7,6 +7,9 @@ Backup and restore of Zotero libraries (personal library and groups) through the
 - **Restore into the same library**, everything or selected items, with a preview first.
 - One executable for Windows, macOS and Linux; nothing else to install.
 
+!!! note "Platform status: tested on macOS"
+    zotero-backup is used and checked by hand on macOS, including the end-to-end [stress test](stresstest.md) against Zotero desktop. The Windows and Linux versions are built for every release and pass all unit tests in CI on those systems, including the keychains, but have **not yet been tried on a real Windows or Linux system**: see [#15](https://github.com/rkrug/zotero-backup/issues/15) (Windows) and [#16](https://github.com/rkrug/zotero-backup/issues/16) (Linux). Reports are welcome.
+
 The plan and the tests behind the design are in [Issue #1](https://github.com/rkrug/zotero-backup/issues/1).
 
 !!! warning "No warranty: you are responsible for your data"
@@ -14,15 +17,44 @@ The plan and the tests behind the design are in [Issue #1](https://github.com/rk
 
 ## Quick start
 
-```bash
-zotero-backup backup                # all libraries the key can read, into ~/zotero-backups
-zotero-backup list
-zotero-backup diff ~/zotero-backups/group-2333076-IPBES_LDR
-zotero-backup restore ~/zotero-backups/group-2333076-IPBES_LDR --dry-run
-zotero-backup prune --dry-run
-```
+1. **Create an API key** at <https://www.zotero.org/settings/keys>. For backups, a **read-only** key is enough: allow library access and notes for the personal library, and read access to the groups. **Store it** in the system keychain:
 
-Next: [install](install.md) it, store an [API key](keys.md), and read about [backups](backups.md) and [restore](restore.md).
+    ```bash
+    # asks for the key (not shown), checks it with Zotero, stores it
+    zotero-backup key set
+    # the key's user, its libraries and what it may do in each
+    zotero-backup key check
+    ```
+
+    On a server without a keychain, set `ZOTERO_API_KEY` instead ([Keys](keys.md)).
+
+2. **Back up** and look at what is there:
+
+    ```bash
+    # all libraries the key can read, into ~/zotero-backups
+    zotero-backup backup
+    zotero-backup list
+    ```
+
+3. **Restore** needs a second key with **write** access, used only for restores:
+
+    ```bash
+    zotero-backup key set zotero-write
+    # what differs from the library today
+    zotero-backup diff ~/zotero-backups/group-<id>-<name>
+    # what restore would do (without --dry-run: shows the plan, asks, restores)
+    zotero-backup restore ~/zotero-backups/group-<id>-<name> --key zotero-write --dry-run
+    ```
+
+    With `"write_key": "zotero-write"` in the [configuration](configuration.md), `restore` uses it without `--key`.
+
+4. **Clean up** old backups (keeps the newest of each of the last 7 days, 5 weeks and 12 months):
+
+    ```bash
+    zotero-backup prune --dry-run
+    ```
+
+First [install](install.md) it; more about [keys](keys.md), [backups](backups.md) and [restore](restore.md).
 
 ## Not covered
 

@@ -77,6 +77,7 @@ func (f *fakeLibrary) serveWrite(w http.ResponseWriter, r *http.Request) {
 		}
 		b, _ := json.Marshal(res)
 		f.tokens[r.Header.Get("Zotero-Write-Token")] = b
+		w.Header().Set("Last-Modified-Version", strconv.Itoa(f.version))
 		w.Write(b)
 	case r.Method == "POST" && p == "/groups/1/settings":
 		if r.Header.Get("If-Unmodified-Since-Version") != strconv.Itoa(f.version) {

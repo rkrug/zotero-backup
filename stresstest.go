@@ -68,6 +68,8 @@ Options:
                          move-membership, tags, tag-colour, new-item (default: all)
   --report DIR           where report.html and report.json go (default: <to>/stresstest/<run>)
   --keep                 keep the test objects at the end
+  --cleanup RUN          only erase what run RUN left behind (its report folder's name, e.g.
+                         20261109T140228), when it stopped before its own cleanup; then sync
   --zotero-profile P     Zotero profile (name or folder) whose Debug Bridge token to use
                          (default: the default profile in Zotero's profiles.ini)
   --profile NAME         zotero-backup profile with the keys (write_key, else key) and the folder (to)
@@ -89,7 +91,7 @@ var stressScenarios = []stressScenario{
 		"server and desktop back to the backup, no conflict"},
 	{"unsynced-remote",
 		"change in desktop, synced; a second change in desktop NOT synced; restore; desktop syncs choosing the server's version in the conflict window",
-		"server and desktop back to the backup"},
+		"server and desktop back to the backup; the conflict window only for objects the restore changed, a second change to any other object is uploaded and stays"},
 	{"unsynced-local",
 		"as unsynced-remote, but the conflict window chooses the local version",
 		"the local version wins (whole object, both changes) and undoes the restore; a second restore after syncing brings everything back"},
@@ -156,6 +158,7 @@ type stressOptions struct {
 	report        string
 	keep          bool
 	zoteroProfile string
+	cleanup       string // only erase the fixtures of this earlier run
 }
 
 // stressTarget is one library, checked and confirmed before anything changes.
@@ -179,6 +182,11 @@ func runStresstest(p Profile, o stressOptions, in *os.File, out io.Writer, pr *p
 	for _, op := range o.ops {
 		if !slices.ContainsFunc(stressOps, func(x stressOp) bool { return x.name == op }) {
 			return fmt.Errorf("unknown operation %q", op)
+		}
+	}
+	if o.cleanup != "" {
+		if _, err := time.Parse("20060102T150405", o.cleanup); err != nil {
+			return fmt.Errorf("--cleanup: %q is not a run (e.g. 20261109T140228, the report's folder name)", o.cleanup)
 		}
 	}
 	if len(o.libraries) == 0 {
@@ -241,6 +249,10 @@ func runStresstest(p Profile, o stressOptions, in *os.File, out io.Writer, pr *p
 		if !ok {
 			return errors.New("not run")
 		}
+	}
+
+	if o.cleanup != "" {
+		return stressCleanup(targets, o.cleanup, out)
 	}
 
 	run := time.Now().UTC().Format("20060102T150405")
@@ -476,6 +488,9 @@ func (s *stress) restore(sc string, b *backupSet, step string) {
 func (s *stress) sync(sc, step, policy string) syncResult {
 	r, err := s.z.sync(policy)
 	s.record(sc, "*", step, err == nil, "%v", err)
+	if err != nil {
+		return r
+	}
 	s.record(sc, "*", step+": nothing left unsynced", r.UnsyncedItems+r.UnsyncedCollections == 0,
 		"%d items, %d collections unsynced", r.UnsyncedItems, r.UnsyncedCollections)
 	return r
@@ -555,7 +570,7 @@ func (s *stress) scenario(sc stressScenario) error {
 	if sc.name == "desktop-synced" || strings.HasPrefix(sc.name, "unsynced-") && sc.name != "unsynced-only" {
 		s.sync(sc.name, "sync the changes", "fail")
 		// the desktop's changes reached the server: otherwise a restore finds nothing to do and every later check passes
-		s.checkAll(sc.name, "before restore", b0, fams, "changed")
+		s.checkAll(sc.name, "before restore", b0, fams, "changed", nil)
 	}
 	touched := map[string]string{}
 	if sc.name == "unsynced-remote" || sc.name == "unsynced-local" {
@@ -576,10 +591,10 @@ func (s *stress) scenario(sc stressScenario) error {
 	case "unsynced-only":
 		r := s.sync(sc.name, "sync after restore", "fail")
 		s.note(sc.name, "*", "conflicts", "%d", len(r.Conflicts))
-		s.checkAll(sc.name, "after the first restore", b0, fams, "changed")
+		s.checkAll(sc.name, "after the first restore", b0, fams, "changed", nil)
 		s.restore(sc.name, b0, "second restore")
 		s.sync(sc.name, "sync after second restore", "remote")
-		s.checkAll(sc.name, "after the second restore", b0, fams, "backup")
+		s.checkAll(sc.name, "after the second restore", b0, fams, "backup", nil)
 	case "unsynced-local":
 		r := s.sync(sc.name, "sync after restore (choose local)", "local")
 		s.note(sc.name, "*", "conflicts", "%d: %v", len(r.Conflicts), r.Conflicts)
@@ -592,15 +607,27 @@ func (s *stress) scenario(sc stressScenario) error {
 		}
 		s.restore(sc.name, b0, "second restore")
 		s.sync(sc.name, "sync after second restore", "remote")
-		s.checkAll(sc.name, "after the second restore", b0, fams, "backup")
+		s.checkAll(sc.name, "after the second restore", b0, fams, "backup", nil)
 	case "unsynced-remote":
 		r := s.sync(sc.name, "sync after restore (choose server)", "remote")
 		s.note(sc.name, "*", "conflicts", "%d: %v", len(r.Conflicts), r.Conflicts)
-		s.checkAll(sc.name, "after restore", b0, fams, "backup")
+		// the conflict window comes only for objects the restore changed; an
+		// unsynced change to any other object is simply uploaded and stays
+		conflicted := map[string]bool{}
+		for _, c := range r.Conflicts {
+			conflicted[c.Key] = true
+		}
+		kept := map[string]string{}
+		for op, k := range touched {
+			if !conflicted[k] {
+				kept[op] = k
+			}
+		}
+		s.checkAll(sc.name, "after restore", b0, fams, "backup", kept)
 	default:
 		r := s.sync(sc.name, "sync after restore", "fail")
 		s.record(sc.name, "*", "no conflict", len(r.Conflicts) == 0, "%v", r.Conflicts)
-		s.checkAll(sc.name, "after restore", b0, fams, "backup")
+		s.checkAll(sc.name, "after restore", b0, fams, "backup", nil)
 	}
 
 	// a backup after the restore: the same as the first, unchanged files hard-linked
@@ -659,7 +686,9 @@ func (s *stress) checkBackupHasFixtures(sc string, b *backupSet, fams []family) 
 
 // checkAll compares, per family: the server with the backup ("backup": must
 // match; "changed": must differ), the desktop with the server, and the tag colour.
-func (s *stress) checkAll(sc, when string, b *backupSet, fams []family, want string) {
+// kept names, per operation, an object whose unsynced second change (jsTouch)
+// must have reached the server; that field is not compared with the backup.
+func (s *stress) checkAll(sc, when string, b *backupSet, fams []family, want string, kept map[string]string) {
 	now, err := readLibrary(s.c, s.lib.Path)
 	if err != nil {
 		s.record(sc, "*", when+": read library", false, "%v", err)
@@ -668,8 +697,20 @@ func (s *stress) checkAll(sc, when string, b *backupSet, fams []family, want str
 	for _, f := range fams {
 		p := makePlan(b, now, nil, presentKeys(b, f))
 		var diffs []string
+		k, uploaded := kept[f.Op], false
 		for _, ch := range p.objects {
+			if k != "" && ch.Key == k && ch.What == "changed" {
+				tf := touchedField(b.items[k])
+				uploaded = slices.Contains(ch.Fields, tf)
+				ch.Fields = slices.DeleteFunc(slices.Clone(ch.Fields), func(x string) bool { return x == tf })
+				if len(ch.Fields) == 0 {
+					continue
+				}
+			}
 			diffs = append(diffs, fmt.Sprintf("%s %s %s %v", ch.Kind, ch.Key, ch.What, ch.Fields))
+		}
+		if k != "" {
+			s.record(sc, f.Op, when+": second change to "+k+" (not changed by the restore) uploaded", uploaded, "")
 		}
 		for _, k := range p.files {
 			diffs = append(diffs, "file "+k)
@@ -681,7 +722,11 @@ func (s *stress) checkAll(sc, when string, b *backupSet, fams []family, want str
 		if want == "backup" {
 			s.record(sc, f.Op, when+": server = backup", len(diffs) == 0, "%v", diffs)
 		} else if f.Op != "new-item" {
-			s.record(sc, f.Op, when+": server has the change", len(diffs) > 0, "no difference to the backup")
+			detail := "no difference to the backup"
+			if len(diffs) > 0 {
+				detail = fmt.Sprint(diffs)
+			}
+			s.record(sc, f.Op, when+": server has the change", len(diffs) > 0, "%s", detail)
 		}
 		if f.New != "" {
 			n := now.items[f.New]
@@ -703,7 +748,7 @@ func (s *stress) checkDesktop(sc, when string, f family, now *libraryNow) {
 	for _, k := range f.itemKeys() {
 		l, sv := st[k], now.items[k]
 		switch {
-		case !l.Exists && s == nil:
+		case !l.Exists && sv == nil:
 		case l.Exists != (sv != nil):
 			diffs = append(diffs, fmt.Sprintf("item %s: desktop has it %v, server %v", k, l.Exists, sv != nil))
 		default:
@@ -720,7 +765,11 @@ func (s *stress) checkDesktop(sc, when string, f family, now *libraryNow) {
 		if l.Exists != (sv != nil) {
 			diffs = append(diffs, fmt.Sprintf("collection %s: desktop has it %v, server %v", k, l.Exists, sv != nil))
 		} else if sv != nil {
-			if d := differingFields(l.JSON, sv); len(d) > 0 {
+			d := differingFields(l.JSON, sv)
+			if trashed(l.JSON) && parentTrashed(now.collections, k) { // Zotero syncs only the trashed parent
+				d = slices.DeleteFunc(d, func(f string) bool { return f == "deleted" })
+			}
+			if len(d) > 0 {
 				diffs = append(diffs, fmt.Sprintf("collection %s fields %v", k, d))
 			}
 		}
@@ -732,8 +781,35 @@ func (s *stress) checkDesktop(sc, when string, f family, now *libraryNow) {
 	s.record(sc, f.Op, when+": desktop = server", len(diffs) == 0, "%v", diffs)
 }
 
+// touchedField is the field jsTouch changes on an item.
+func touchedField(it map[string]any) string {
+	switch it["itemType"] {
+	case "note":
+		return "note"
+	case "attachment", "annotation":
+		return "title"
+	}
+	return "extra"
+}
+
+// parentTrashed: a parent (or further up) of collection k is in the trash.
+// Zotero desktop trashes subcollections with their parent, but syncs only the
+// parent as deleted.
+func parentTrashed(cols map[string]map[string]any, k string) bool {
+	for n, pk := 0, k; n < 100; n++ {
+		pk, _ = cols[pk]["parentCollection"].(string)
+		if pk == "" || cols[pk] == nil {
+			return false
+		}
+		if trashed(cols[pk]) {
+			return true
+		}
+	}
+	return false
+}
+
 // extras: dry run, idempotence, item selection, read-only key, interrupted
-// backup, prune.
+// backup, zipped attachments (zipChecks), prune.
 func (s *stress) extras() error {
 	const sc = "extras"
 	list := []stressOp{stressOps[0]} // edit-title
@@ -799,6 +875,8 @@ func (s *stress) extras() error {
 	}
 	s.record(sc, "interrupted backup", "next run completes and reuses downloaded files", err == nil && findPartial(libI) == "" && resumed > 0, "%v, %d resumed", err, resumed)
 
+	s.zipChecks()
+
 	// prune on the test backups
 	pr := s.profile
 	pr.KeepDaily, pr.KeepWeekly, pr.KeepMonthly = 1, 0, 0
@@ -820,6 +898,9 @@ func (s *stress) finish(safetyDir string) {
 	var r map[string]int
 	err := s.z.run(jsCleanup, map[string]string{"run": s.run}, &r)
 	s.record("cleanup", "*", "erase fixtures in the desktop", err == nil, "%v %v", err, r)
+	if err != nil {
+		s.pr.Warnf("fixtures left in %s: once Zotero runs again, zotero-backup stresstest --key … --cleanup %s", s.lib.Label(), s.run)
+	}
 	s.sync("cleanup", "sync", "remote")
 	safety, err := loadBackup(safetyDir)
 	if err == nil {
@@ -833,6 +914,30 @@ func (s *stress) finish(safetyDir string) {
 	if err != nil {
 		s.record("cleanup", "*", "compare with the safety backup", false, "%v", err)
 	}
+}
+
+// stressCleanup erases what an earlier run left behind (after it stopped
+// before its own cleanup) and syncs.
+func stressCleanup(targets []stressTarget, run string, out io.Writer) error {
+	failed := false
+	for _, t := range targets {
+		var r map[string]int
+		err := t.z.run(jsCleanup, map[string]string{"run": run}, &r)
+		if err == nil {
+			_, err = t.z.sync("remote")
+		}
+		if err != nil {
+			failed = true
+			fmt.Fprintf(out, "%s: %v\n", t.lib.Label(), err)
+			continue
+		}
+		fmt.Fprintf(out, "%s: erased %d items, %d collections, %d tag colours of run %s, synced\n",
+			t.lib.Label(), r["items"], r["colls"], r["colours"], run)
+	}
+	if failed {
+		return errors.New("cleanup incomplete")
+	}
+	return nil
 }
 
 // writableLibraries lists the libraries a key may write to: the personal

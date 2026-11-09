@@ -559,6 +559,7 @@ func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string,
 		pr.Set(i, 0, "")
 	}
 	pr.Done()
+	failures += touchSubcollections(c, b, now, p, log)
 
 	uploaded := map[string]bool{}
 	if len(p.files) > 0 {
@@ -630,6 +631,59 @@ func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string,
 		}
 	}
 	return failures, nil
+}
+
+// touchSubcollections works around Zotero desktop: trashing a collection puts
+// its subcollections into the trash only locally (only the parent is synced
+// as deleted), and a synced un-trash of the parent leaves them there. So each
+// subcollection of a collection this restore took out of the trash is written
+// twice ("deleted" true, then false): the server ends as in the backup, and
+// Zotero desktop downloads the subcollection and takes it out of its trash.
+func touchSubcollections(c *Client, b *backupSet, now *libraryNow, p plan, log io.Writer) int {
+	untrashed, written := map[string]bool{}, map[string]bool{}
+	for _, ch := range p.objects {
+		if ch.Kind == "collections" {
+			written[ch.Key] = true
+			if ch.server != nil && trashed(ch.server) && !trashed(ch.backup) {
+				untrashed[ch.Key] = true
+			}
+		}
+	}
+	var batch []map[string]any
+	for _, k := range sortedKeys(b.collections) {
+		s := now.collections[k]
+		if s == nil || written[k] || trashed(b.collections[k]) {
+			continue // missing or written above: Zotero desktop gets it anyway
+		}
+		for pk, _ := b.collections[k]["parentCollection"].(string); pk != ""; pk, _ = b.collections[pk]["parentCollection"].(string) {
+			if untrashed[pk] {
+				batch = append(batch, map[string]any{"key": k, "version": s["version"], "deleted": true})
+				break
+			}
+			if b.collections[pk] == nil {
+				break
+			}
+		}
+	}
+	if len(batch) == 0 {
+		return 0
+	}
+	res, err := c.writeObjects(b.libPath, "collections", batch)
+	if err == nil && len(res.Failed) == 0 && res.Version == 0 {
+		err = errors.New("no Last-Modified-Version in the answer; run restore again to take them out of the trash")
+	}
+	if err == nil && len(res.Failed) == 0 {
+		for _, d := range batch {
+			d["deleted"], d["version"] = false, res.Version
+		}
+		res, err = c.writeObjects(b.libPath, "collections", batch)
+	}
+	if err != nil || len(res.Failed) > 0 {
+		fmt.Fprintf(log, "FAILED subcollections of collections taken out of the trash: %v %v\n", err, res.Failed)
+		return 1
+	}
+	fmt.Fprintf(log, "subcollections touched so Zotero desktop takes them out of its trash: %d\n", len(batch))
+	return 0
 }
 
 func sameDepth(b *backupSet, x, y change) bool {

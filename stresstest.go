@@ -681,7 +681,11 @@ func (s *stress) checkAll(sc, when string, b *backupSet, fams []family, want str
 		if want == "backup" {
 			s.record(sc, f.Op, when+": server = backup", len(diffs) == 0, "%v", diffs)
 		} else if f.Op != "new-item" {
-			s.record(sc, f.Op, when+": server has the change", len(diffs) > 0, "no difference to the backup")
+			detail := "no difference to the backup"
+			if len(diffs) > 0 {
+				detail = fmt.Sprint(diffs)
+			}
+			s.record(sc, f.Op, when+": server has the change", len(diffs) > 0, "%s", detail)
 		}
 		if f.New != "" {
 			n := now.items[f.New]

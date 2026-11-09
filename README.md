@@ -206,6 +206,10 @@ A key can also be piped in (`… | zotero-backup key set`), e.g. from a password
 - What exists only in the Zotero app: feeds, plugins, styles, preferences. Copy the Zotero data folder for that.
 - Restoring into a *different* library: keys could be kept, but citation links contain the library ID.
 
+## Stress test
+
+`zotero-backup stresstest` runs backup and restore against the real Zotero server and a running Zotero desktop, with local changes, syncs and conflicts, and writes an HTML and a JSON report. **It changes the libraries it runs on: use it only on test groups or libraries.** See [docs/stresstest.md](docs/stresstest.md).
+
 ## Development
 
 ```bash

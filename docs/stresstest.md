@@ -131,13 +131,17 @@ Each scenario runs one cycle for all operations:
 | `unsynced-local` | as `unsynced-remote` | local | the local version wins for the whole object and undoes the restore (recorded); a second restore and sync bring B0 back |
 | `unsynced-only` | change in desktop, **not synced at all** | (none expected) | restore finds nothing to do; after the sync the server has the change; a second restore brings B0 back |
 
-**Extras** (`--scenarios extras`), once per library on two families of their own:
+**Extras** (`--scenarios extras`), once per library on two families of their own, plus one web page item for the zipped attachments:
 
 - `restore --dry-run` writes nothing: the library version stays the same.
 - `restore --items` restores only the selected item's family; the other stays changed.
 - A read-only key is refused before anything is written.
 - A second full restore right after the first finds nothing to do.
 - An interrupted backup (dropped connections simulated after 2 file downloads) fails, leaves a `.partial` folder, and the next run finishes and reuses the files already downloaded.
+- **Zipped attachments** (operation `zip` in the report): an HTML attachment with a second file (a stylesheet) in its folder, made in Zotero desktop, which uploads both as one ZIP.
+    - The backup keeps that ZIP as `<name>.zip`, with `"zip": true`, the page's md5 and both files inside.
+    - A copy of the backup with a changed page (under `zip/upload` in the run's folder) is restored: restore really **uploads** the ZIP (anything in a real backup came from the server, which then only answers "exists"); the next backup gets exactly that ZIP back; after a sync Zotero desktop has both files with the right md5 in its storage folder.
+    - The same in the form backups made before v0.2.0 kept ZIPs in (under the file's own name, with the ZIP's own md5, no `"zip"`): recognised as a ZIP, no file difference to the library; with a changed page, restore uploads it as a ZIP and the server has the page's md5.
 - `prune --dry-run` with one daily backup kept lists all but the newest backup.
 
 ## Checks

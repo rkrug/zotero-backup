@@ -809,7 +809,7 @@ func parentTrashed(cols map[string]map[string]any, k string) bool {
 }
 
 // extras: dry run, idempotence, item selection, read-only key, interrupted
-// backup, prune.
+// backup, zipped attachments (zipChecks), prune.
 func (s *stress) extras() error {
 	const sc = "extras"
 	list := []stressOp{stressOps[0]} // edit-title
@@ -874,6 +874,8 @@ func (s *stress) extras() error {
 		}
 	}
 	s.record(sc, "interrupted backup", "next run completes and reuses downloaded files", err == nil && findPartial(libI) == "" && resumed > 0, "%v, %d resumed", err, resumed)
+
+	s.zipChecks()
 
 	// prune on the test backups
 	pr := s.profile

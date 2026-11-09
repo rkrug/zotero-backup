@@ -61,3 +61,12 @@ One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key che
 ## Git
 
 Work on `dev` (larger tasks on feature branches into `dev`). Pre-releases (`v0.2.0-rc.1`) are tagged on `dev`; changes reach `main` only through pull requests (protected); normal releases (`v0.2.0`) are tagged on `main` (`release.yml` refuses a normal tag not on `main`).
+
+Release order (normal release `vX.Y.Z`):
+
+1. On `dev`: changes done, CI and Docs green. Optionally a pre-release `vX.Y.Z-rc.N` tagged on `dev` (GitHub pre-release; the site is not rebuilt). A checks issue (like #10) lists what CI cannot show (stress test, install on real systems); it is closed with the release.
+2. Pull request `dev` → `main`; squash merge once all checks pass.
+3. Merge `main` back into `dev` (`git merge -X ours origin/main`; the content is then identical) and push `dev`.
+4. Tag `vX.Y.Z` (annotated) on the squash commit on `main` and push the tag. `release.yml` builds the 6 archives and `SHA256SUMS` and publishes the release; `docs.yml` publishes the site with the version in the banner.
+5. Check: release not marked as pre-release, 6 archives + `SHA256SUMS`, the archive for this Mac matches its checksum and `zotero-backup version` prints `vX.Y.Z`; the site shows `vX.Y.Z`.
+6. Zenodo (GitHub integration, active since v0.2.0) archives every published release automatically, with the metadata from `.zenodo.json` (no version there: Zenodo takes the tag) and the source ZIP of the tag (not the release archives). Each release gets its own DOI; the README badge and the citation in README / `docs/index.md` use the all-versions DOI `10.5281/zenodo.24090287`, which never changes: no DOI to update per release. Check that the new version appears on Zenodo. Whether Zenodo also archives pre-releases: check with the next `-rc` tag and note it here.

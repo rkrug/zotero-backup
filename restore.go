@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -65,6 +66,15 @@ func loadBackup(path string) (*backupSet, error) {
 	}
 	readJSON(filepath.Join(path, "settings.json"), &b.settings)
 	readJSON(filepath.Join(path, "files.json"), &b.files)
+	for k, e := range b.files { // older backups recorded a ZIP's own md5 and no "zip"
+		want, _ := b.items[k]["md5"].(string)
+		if !e.Zip && want != "" && e.MD5 != want {
+			if sum, err := zippedMD5(filepath.Join(path, filepath.FromSlash(e.Path)), e.Filename); err == nil && sum == want {
+				e.Zip, e.MD5 = true, want
+				b.files[k] = e
+			}
+		}
+	}
 	var ft map[string]json.RawMessage
 	readJSON(filepath.Join(path, "fulltext.json"), &ft)
 	for k, raw := range ft {
@@ -81,6 +91,9 @@ func loadBackup(path string) (*backupSet, error) {
 
 // spec is the backup's library as written in a profile: "user" or "group:<id>".
 func (b *backupSet) spec() string { return library{ID: b.meta.Library}.Spec() }
+
+// label is the backup's library with its name: group-6719916 "Safe Edit Test".
+func (b *backupSet) label() string { return libraryLabel(b.meta.Library, b.meta.Name) }
 
 // libraryNow is the library's current state.
 type libraryNow struct {
@@ -154,13 +167,14 @@ func trashed(d map[string]any) bool {
 // server-managed ones; being in the trash counts as the field "deleted".
 func differingFields(b, s map[string]any) []string {
 	var out []string
-	for k := range b {
-		if k != "deleted" && !slices.Contains(serverManaged, k) && !reflect.DeepEqual(b[k], s[k]) {
-			out = append(out, k)
+	for k := range s {
+		if _, ok := b[k]; !ok {
+			b = maps.Clone(b)
+			b[k] = nil
 		}
 	}
-	for k := range s {
-		if _, ok := b[k]; !ok && k != "deleted" && !slices.Contains(serverManaged, k) && !isEmpty(s[k]) {
+	for k := range b {
+		if k != "deleted" && !slices.Contains(serverManaged, k) && !sameValue(k, b[k], s[k]) {
 			out = append(out, k)
 		}
 	}
@@ -168,6 +182,29 @@ func differingFields(b, s map[string]any) []string {
 		out = append(out, "deleted")
 	}
 	sort.Strings(out)
+	return out
+}
+
+// sameValue: empty and absent are the same; collections and tags have no order
+// (Zotero desktop lists them in its own order, the server alphabetically).
+func sameValue(k string, a, b any) bool {
+	if isEmpty(a) && isEmpty(b) {
+		return true
+	}
+	if k == "collections" || k == "tags" {
+		return slices.Equal(sortedJSON(a), sortedJSON(b))
+	}
+	return reflect.DeepEqual(a, b)
+}
+
+func sortedJSON(v any) []string {
+	l, _ := v.([]any)
+	out := make([]string, len(l))
+	for i, x := range l {
+		j, _ := json.Marshal(x)
+		out[i] = string(j)
+	}
+	slices.Sort(out)
 	return out
 }
 
@@ -404,7 +441,7 @@ func typeOf(c change) string {
 // printPlan describes the plan; limit caps the lines per section (0: all).
 func printPlan(out io.Writer, b *backupSet, now *libraryNow, p plan, limit int) {
 	fmt.Fprintf(out, "backup   %s (library version %d)\n", b.dir, b.meta.Version)
-	fmt.Fprintf(out, "library  %s, now at version %d\n\n", b.meta.Library, now.version)
+	fmt.Fprintf(out, "library  %s, now at version %d\n\n", b.label(), now.version)
 	section := func(title string, cs []change) {
 		if len(cs) == 0 {
 			return
@@ -535,7 +572,7 @@ func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string,
 			serverMD5, _ = s["md5"].(string)
 		}
 		mtime, _ := b.items[k]["mtime"].(float64)
-		existed, err := c.uploadFile(b.libPath, k, filepath.Join(b.dir, filepath.FromSlash(f.Path)), f.Filename, f.MD5, int64(mtime), serverMD5)
+		existed, err := c.uploadFile(b.libPath, k, filepath.Join(b.dir, filepath.FromSlash(f.Path)), f.Filename, f.MD5, int64(mtime), serverMD5, f.Zip)
 		if err != nil {
 			failures++
 			fmt.Fprintf(log, "FAILED file %s (%s): %v\n", k, f.Filename, err)
@@ -641,7 +678,7 @@ func runRestore(clientFor func(string) (*Client, error), path string, p Profile,
 	}
 	if !dryRun {
 		if err := canWrite(c, b.libPath); err != nil {
-			return err
+			return fmt.Errorf("%s: %w", b.label(), err)
 		}
 	}
 	now, err := readLibrary(c, b.libPath)
@@ -654,7 +691,7 @@ func runRestore(clientFor func(string) (*Client, error), path string, p Profile,
 		return nil
 	}
 	if !yes {
-		ok, err := confirm(fmt.Sprintf("Restore %d objects, %d files, %d settings into %s?", len(pl.objects), len(pl.files), len(pl.settings), b.meta.Library))
+		ok, err := confirm(fmt.Sprintf("Restore %d objects, %d files, %d settings into %s?", len(pl.objects), len(pl.files), len(pl.settings), b.label()))
 		if err != nil {
 			return err
 		}
@@ -662,7 +699,7 @@ func runRestore(clientFor func(string) (*Client, error), path string, p Profile,
 			return errors.New("not restored")
 		}
 	}
-	pr.SetPrefix(b.meta.Library)
+	pr.SetPrefix(b.label())
 	failures, err := restore(c, b, now, pl, p.Exclude, out, pr)
 	if err != nil {
 		return err

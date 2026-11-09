@@ -80,6 +80,14 @@ func run(args []string, out io.Writer) error {
 	progressFlag := fs.String("progress", "", "auto, line, log or quiet")
 	quiet := fs.Bool("quiet", false, "only the summary and errors")
 	keyFlag := fs.String("key", "", "keychain entry to use for every library in this run")
+	// stresstest (not in the help text; see docs/stresstest.md)
+	var stressLibs listFlag
+	fs.Var(&stressLibs, "library", "stresstest: a test library (repeat)")
+	stressScen := fs.String("scenarios", "", "stresstest: scenarios")
+	stressOpsFlag := fs.String("ops", "", "stresstest: operations")
+	stressReportDir := fs.String("report", "", "stresstest: report folder")
+	stressKeep := fs.Bool("keep", false, "stresstest: keep the test objects")
+	zoteroProfile := fs.String("zotero-profile", "", "stresstest: Zotero profile")
 	fs.Usage = func() { fmt.Fprintf(fs.Output(), usage, defaultConfigPath()) }
 
 	if len(args) == 0 {
@@ -93,6 +101,13 @@ func run(args []string, out io.Writer) error {
 	}
 	if cmd == "key" && len(rest) > 0 {
 		cmd, rest = "key "+rest[0], rest[1:]
+	}
+	if cmd == "stresstest" {
+		fs.Usage = func() { fmt.Fprint(fs.Output(), stressUsage()) }
+		if len(rest) == 0 { // the steps to run it; any option starts it
+			fmt.Fprint(out, stressUsage())
+			return nil
+		}
 	}
 	var pos []string // positional arguments, flags may come before or after them
 	for {
@@ -167,6 +182,10 @@ func run(args []string, out io.Writer) error {
 		}
 		return runRestore(clientsFor(profile.forRestore(), newClient), expandHome(pos[0]), profile, sel, *dryRun, *yes, out,
 			newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
+	case "stresstest":
+		return runStresstest(profile, stressOptions{libraries: stressLibs, scenarios: splitList(*stressScen),
+			ops: splitList(*stressOpsFlag), report: *stressReportDir, keep: *stressKeep, zoteroProfile: *zoteroProfile},
+			os.Stdin, out, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "prune":
 		return prune(expandHome(profile.To), profile, *dryRun, out)
 	case "help", "-h", "--help":
@@ -292,11 +311,11 @@ func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer
 		if err != nil {
 			failed++
 			pr.Warnf("FAILED: %v", err)
-			fmt.Fprintf(out, "%s: FAILED: %v\n", lib.ID, err)
+			fmt.Fprintf(out, "%s: FAILED: %v\n", lib.Label(), err)
 			continue
 		}
 		fmt.Fprintf(out, "%s: %s  version %d, %d items, %d files (%d downloaded, %.1f MB; %d linked), %d missing, %d problems, %.0f s\n",
-			lib.ID, dir, m.Version, itemCount(m.Counts), m.Counts["files"], m.Downloaded, float64(m.DownBytes)/1e6,
+			lib.Label(), dir, m.Version, itemCount(m.Counts), m.Counts["files"], m.Downloaded, float64(m.DownBytes)/1e6,
 			m.Linked, len(m.Missing), len(m.Problems), m.Seconds)
 	}
 	if failed > 0 {
@@ -408,3 +427,9 @@ func libraryJobs(p Profile, clientFor func(string) (*Client, error)) ([]libraryJ
 	}
 	return jobs, skipped, nil
 }
+
+// listFlag collects a repeated option (--library A --library B).
+type listFlag []string
+
+func (l *listFlag) String() string     { return strings.Join(*l, ",") }
+func (l *listFlag) Set(v string) error { *l = append(*l, v); return nil }

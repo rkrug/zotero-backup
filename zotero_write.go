@@ -175,7 +175,9 @@ var errFileChanged = errors.New("the file on the server changed meanwhile")
 // uploadFile attaches the file at path to attachment key: authorise, upload to
 // the storage service, register. serverMD5 is the md5 the server has now ("" for
 // none). It returns true if the server already had the content (no upload).
-func (c *Client) uploadFile(libPath, key, path, filename, md5 string, mtime int64, serverMD5 string) (bool, error) {
+// uploadFile puts a file on the server: md5 is the file's; with zip, path is
+// a ZIP of the attachment's files (uploaded as Zotero desktop does).
+func (c *Client) uploadFile(libPath, key, path, filename, md5 string, mtime int64, serverMD5 string, zip bool) (bool, error) {
 	st, err := os.Stat(path)
 	if err != nil {
 		return false, err
@@ -185,6 +187,14 @@ func (c *Client) uploadFile(libPath, key, path, filename, md5 string, mtime int6
 		cond = map[string]string{"Content-Type": "application/x-www-form-urlencoded", "If-Match": serverMD5}
 	}
 	form := url.Values{"md5": {md5}, "filename": {filename}, "filesize": {strconv.FormatInt(st.Size(), 10)}, "mtime": {strconv.FormatInt(mtime, 10)}}
+	if zip {
+		zipMD5, _, err := md5File(path)
+		if err != nil {
+			return false, err
+		}
+		form.Set("zipMD5", zipMD5)
+		form.Set("zipFilename", key+".zip")
+	}
 	p := libPath + "/items/" + key + "/file"
 	code, _, b, err := c.write("POST", p, []byte(form.Encode()), cond, true) // authorising twice is harmless
 	if err != nil {

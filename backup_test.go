@@ -1,6 +1,8 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
@@ -9,6 +11,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -35,9 +38,10 @@ type fakeLibrary struct {
 	bumpOnce    bool            // raise the version once, after the first collections read
 	readOnly    bool            // the key may not write
 	tokens      map[string][]byte
-	pending     map[string]string // upload key -> uploaded content
-	uploads     int               // files sent to the storage service
-	ftGets      int               // full-text contents fetched
+	pending     map[string]string     // upload key -> uploaded content
+	authorised  map[string]url.Values // item key -> the upload's md5, zipMD5, …
+	uploads     int                   // files sent to the storage service
+	ftGets      int                   // full-text contents fetched
 }
 
 func newFakeLibrary() *fakeLibrary {
@@ -45,6 +49,7 @@ func newFakeLibrary() *fakeLibrary {
 		version: 10, items: map[string]map[string]any{}, collections: map[string]map[string]any{},
 		settings: "{}", fulltext: map[string]string{}, files: map[string]string{},
 		downloads: map[string]int{}, failFile: map[string]bool{}, tokens: map[string][]byte{}, pending: map[string]string{},
+		authorised: map[string]url.Values{},
 	}
 }
 
@@ -55,6 +60,23 @@ func (f *fakeLibrary) addFile(key, parent, filename, content string, withMD5 boo
 		f.files[key] = content
 	}
 	f.items[key] = d
+}
+
+// addZippedFile is a text attachment as Zotero desktop uploads it: the server
+// serves a ZIP, the item's md5 is that of the file inside.
+func (f *fakeLibrary) addZippedFile(key, parent, filename, content string) {
+	f.addFile(key, parent, filename, content, true)
+	f.items[key]["contentType"] = "text/plain"
+	f.files[key] = zipOf(filename, content)
+}
+
+func zipOf(name, content string) string {
+	var b bytes.Buffer
+	z := zip.NewWriter(&b)
+	w, _ := z.Create(name)
+	io.WriteString(w, content)
+	z.Close()
+	return b.String()
 }
 
 func (f *fakeLibrary) list(w http.ResponseWriter, r *http.Request, objs map[string]map[string]any) {

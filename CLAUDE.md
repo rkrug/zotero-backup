@@ -14,6 +14,7 @@ go vet ./...                    # lint (CI also checks gofmt -l .)
 go test -race ./...             # all tests (CI: Linux, macOS, Windows)
 go test -run TestKeyCheck ./... # one test
 .github/build.sh v0.0.0-test    # release archives for all systems into dist/ (CI runs it; tags v* release it)
+./zotero-backup stresstest --key zb-test-write   # end-to-end against the real API + running Zotero desktop; CHANGES every library the key may write to, after a [N/y] per library (docs/stresstest.md)
 ```
 
 Run locally without a config file, using a keychain entry (macOS) or the environment:
@@ -31,7 +32,7 @@ ZOTERO_API_KEY=... ./zotero-backup key check
 
 ## Structure
 
-One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key check`, `list`), `config.go` (JSON profiles), `zotero.go` (API client), `backup.go` (backup), `prune.go` (three-generation retention), `restore.go` (diff, restore), `zotero_write.go` (API writes, file upload), `progress.go` (progress on stderr). Writes are tested against `fakeLibrary` (`backup_test.go` + `fake_write_test.go`), which applies preconditions, write tokens and the three-step upload like the API. Tests use `httptest` fake servers (`fakeZotero` in `main_test.go`, `fakeLibrary` in `backup_test.go`); no test talks to the real API.
+One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key check`, `list`), `config.go` (JSON profiles), `zotero.go` (API client), `backup.go` (backup), `prune.go` (three-generation retention), `restore.go` (diff, restore), `zotero_write.go` (API writes, file upload), `progress.go` (progress on stderr). Writes are tested against `fakeLibrary` (`backup_test.go` + `fake_write_test.go`), which applies preconditions, write tokens and the three-step upload like the API. Tests use `httptest` fake servers (`fakeZotero` in `main_test.go`, `fakeLibrary` in `backup_test.go`); no test talks to the real API. The end-to-end test is the hidden command `stresstest` (`stresstest*.go`, docs/stresstest.md): real API plus a running Zotero through the Debug Bridge plugin; only libraries the write key may write to (all, or those named with `--library`, and then the key may write to nothing else: `checkKeyScope`), a [N/y] question per library by name on a terminal, and only its own `zb-e2e` objects. Its unit tests cover the dialog, refusals and reports, never a real run.
 
 - **Backups:** `<to>/<group-ID-Name|user-ID-username>/<YYYY-MM-DDTHHMMSSZ>/` (name made safe, spaces as `_`; the folder is found by ID and renamed when the name changes), each **complete**: `items.json`, `collections.json`, `searches.json`, `settings.json`, `fulltext.json` (API `data` as is), `files.json`, `files/<attachment key>/<safe name>`, `meta.json` (version, counts, missing files, problems). No incremental metadata: every run reads everything. A file whose md5 matches one in the previous backup (or earlier in this run) is a **hard link** (copy where links fail), so unchanged files are neither downloaded nor stored twice. Files are never modified in place. A run writes `<date>.partial` and renames it when complete; a leftover `.partial` is resumed. The metadata is re-read (up to 3 times) if the library version differs between the reads.
 - **Restore:** plan = missing / changed objects (fields compared without server-managed ones), files whose md5 differs, settings; written in the tested order with per-object versions; `deleted` always sent explicitly; fields absent from the backup are cleared; ends by reading the library again and comparing. Output: plan and summary on stdout, progress on stderr.
@@ -49,7 +50,12 @@ One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key che
 - Write preconditions per object (`version` in the body), not the library-wide header. Each object in a batch gets its own version.
 - Long runs need retries on network errors (not only 429/503 and `Backoff`) and must be resumable.
 - Attachments without `md5` usually have no file on the server (404); they are listed in `meta.json` as missing, not skipped silently.
+- Zotero desktop uploads text/* attachments (snapshots too) and attachments with several files as a ZIP (`zipMD5`, `zipFilename` in the upload authorisation); the API then serves that ZIP, while the item's `md5` is the file's inside. Backups keep it as `<name>.zip` with `"zip": true` in `files.json`; restore uploads it the same way; `loadBackup` recognises such ZIPs in older backups (kept under the file's own name with the ZIP's md5).
+
+## Documentation
+
+`docs/` is the documentation site (MkDocs, Material theme, `mkdocs.yml`; `overrides/main.html` puts the version and the no-warranty notice on every page). `.github/workflows/docs.yml` builds it with `--strict` on every push and publishes it to the `gh-pages` branch (GitHub Pages, https://rkrug.github.io/zotero-backup/) from `main` and normal release tags only. The README is short and links there; user-facing details go into `docs/`. Preview: `pip install mkdocs-material==9.6.14 && mkdocs serve`.
 
 ## Git
 
-Work on `dev`; `main` is the base branch for pull requests.
+Work on `dev` (larger tasks on feature branches into `dev`). Pre-releases (`v0.2.0-rc.1`) are tagged on `dev`; changes reach `main` only through pull requests (protected); normal releases (`v0.2.0`) are tagged on `main` (`release.yml` refuses a normal tag not on `main`).

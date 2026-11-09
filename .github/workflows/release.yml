@@ -12,6 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Normal releases only from main
+        run: |
+          # pre-releases (v0.2.0-rc.1) are tagged on dev, normal releases (v0.2.0) on main
+          case "$GITHUB_REF_NAME" in
+            *-*) ;;
+            *) git merge-base --is-ancestor "$GITHUB_SHA" origin/main ||
+                 { echo "$GITHUB_REF_NAME is a normal release but not on main: tag it on main after the PR from dev, or use a pre-release tag (e.g. $GITHUB_REF_NAME-rc.1)"; exit 1; } ;;
+          esac
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod

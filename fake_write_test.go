@@ -108,15 +108,24 @@ func (f *fakeLibrary) serveWrite(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if up := form.Get("upload"); up != "" { // register
-			content := f.pending[up]
+			content, auth := f.pending[up], f.authorised[key]
+			sum := auth.Get("md5")
+			if z := auth.Get("zipMD5"); z != "" {
+				sum = z
+			}
+			if md5hex(content) != sum {
+				http.Error(w, "md5 of the uploaded content does not match", http.StatusBadRequest)
+				return
+			}
 			f.files[key] = content
-			item["md5"] = md5hex(content)
+			item["md5"] = auth.Get("md5")
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
+		f.authorised[key] = form
 		md5 := form.Get("md5")
-		for _, c := range f.files { // the storage service already has this content
-			if md5hex(c) == md5 {
+		for k, c := range f.files { // the storage service already has this content
+			if md5hex(c) == md5 || f.items[k] != nil && f.items[k]["md5"] == md5 {
 				f.files[key] = c
 				item["md5"] = md5
 				fmt.Fprint(w, `{"exists":1}`)

@@ -1,0 +1,40 @@
+name: Docs
+
+# Builds the documentation site (MkDocs, docs/) on every push and pull request;
+# publishes it to the gh-pages branch (served by GitHub Pages) only from main
+# and from normal release tags, never from dev or pre-releases.
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*", "!v*-*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-${{ github.ref }}
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags, for the version
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install mkdocs-material==9.6.14
+      - name: Version (latest release, else latest pre-release)
+        run: |
+          v=$(git describe --tags --abbrev=0 --match 'v*' --exclude '*-*' 2>/dev/null ||
+              git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo dev)
+          echo "DOCS_VERSION=$v" >> "$GITHUB_ENV"
+      - run: mkdocs build --strict
+      - name: Publish to gh-pages
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdocs gh-deploy --force

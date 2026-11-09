@@ -6,6 +6,9 @@ import (
 	"io"
 	"maps"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -182,7 +185,7 @@ func TestRestoreDryRunWritesNothing(t *testing.T) {
 	if f.version != before || f.uploads != 0 {
 		t.Error("dry run wrote")
 	}
-	for _, want := range []string{"missing in the library", "BOOK0001", "different in the library", "OTHER001", "[extra, title]",
+	for _, want := range []string{`library  group-1 "Test group"`, "missing in the library", "BOOK0001", "different in the library", "OTHER001", "[extra, title]",
 		"files to upload: 2", "settings to set back: tagColors", "only in the library", "NEW00001"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("plan lacks %q:\n%s", want, out.String())
@@ -231,5 +234,76 @@ func TestRestoreReportsConflicts(t *testing.T) {
 	failures, err := restore(c, b, now, pl, nil, &out, quietProgress())
 	if err != nil || failures != 1 || !strings.Contains(out.String(), "FAILED items OTHER001") {
 		t.Errorf("failures %d, err %v\n%s", failures, err, out.String())
+	}
+}
+
+// Zotero desktop uploads text files and snapshots as a ZIP, and the server
+// serves that ZIP: the backup keeps it as <name>.zip, restore uploads it as a ZIP.
+func TestZippedFileBackupAndRestore(t *testing.T) {
+	f := sampleLibrary()
+	f.addZippedFile("TEXT0001", "BOOK0001", "notes.txt", "some text")
+	zipped := f.files["TEXT0001"]
+	dir, _ := runFake(t, f, t.TempDir(), nil, day(1))
+	var files map[string]FileEntry
+	readJSON(filepath.Join(dir, "files.json"), &files)
+	var m Meta
+	readJSON(filepath.Join(dir, "meta.json"), &m)
+	e := files["TEXT0001"]
+	if !e.Zip || e.MD5 != md5hex("some text") || e.Path != "files/TEXT0001/notes.txt.zip" || len(m.Problems) > 0 {
+		t.Fatalf("entry %+v, problems %v", e, m.Problems)
+	}
+	dir2, _ := runFake(t, f, filepath.Dir(filepath.Dir(dir)), nil, day(2))
+	var again map[string]FileEntry
+	readJSON(filepath.Join(dir2, "files.json"), &again)
+	if a := again["TEXT0001"]; a.Source != "linked" || !a.Zip || a.Path != e.Path {
+		t.Errorf("second backup: %+v", a)
+	}
+
+	b, err := loadBackup(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.mu.Lock()
+	delete(f.items, "TEXT0001")
+	delete(f.files, "TEXT0001")
+	f.mu.Unlock()
+	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress()); err != nil {
+		t.Fatal(err)
+	}
+	if f.items["TEXT0001"]["md5"] != md5hex("some text") || f.files["TEXT0001"] != zipped {
+		t.Errorf("restored md5 %v, ZIP kept: %v", f.items["TEXT0001"]["md5"], f.files["TEXT0001"] == zipped)
+	}
+}
+
+// Older backups kept the ZIP under the file's own name with the ZIP's md5.
+func TestOldBackupZipRecognised(t *testing.T) {
+	f := sampleLibrary()
+	f.addZippedFile("TEXT0001", "BOOK0001", "notes.txt", "some text")
+	dir, _ := runFake(t, f, t.TempDir(), nil, day(1))
+	var files map[string]FileEntry
+	readJSON(filepath.Join(dir, "files.json"), &files)
+	old := filepath.Join(dir, "files", "TEXT0001", "notes.txt")
+	os.Rename(old+".zip", old)
+	files["TEXT0001"] = FileEntry{Filename: "notes.txt", Path: "files/TEXT0001/notes.txt", MD5: md5hex(f.files["TEXT0001"]), Source: "downloaded"}
+	writeJSON(filepath.Join(dir, "files.json"), files)
+	b, err := loadBackup(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e := b.files["TEXT0001"]; !e.Zip || e.MD5 != md5hex("some text") {
+		t.Errorf("%+v", e)
+	}
+}
+
+func TestDifferingFieldsIgnoresOrderAndEmpty(t *testing.T) {
+	desktop := map[string]any{"annotationAuthorName": "", "collections": []any{"B", "A"},
+		"tags": []any{map[string]any{"tag": "y"}, map[string]any{"tag": "x"}}}
+	server := map[string]any{"collections": []any{"A", "B"}, "tags": []any{map[string]any{"tag": "x"}, map[string]any{"tag": "y"}}}
+	if d := differingFields(desktop, server); len(d) > 0 {
+		t.Errorf("differ in %v", d)
+	}
+	server["collections"] = []any{"A"}
+	if d := differingFields(desktop, server); !slices.Equal(d, []string{"collections"}) {
+		t.Errorf("differ in %v, want [collections]", d)
 	}
 }

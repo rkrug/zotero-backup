@@ -10,14 +10,14 @@ The unit tests (`go test ./...`, run in CI on Linux, macOS and Windows) use a fa
 
 **Recommended: a separate Zotero account just for testing.** Create a second Zotero account, sign in to it in a separate Zotero profile with the Debug Bridge plugin, and create its API key there. Its personal library and any group it owns are then truly throw-away, and no key involved can reach your real libraries at all. With your normal account, a key that may write to the personal library can write to the whole of it, because an account has only one.
 
-- **The write key must not reach anything else.** Before asking, the test checks what the write key may do and refuses if it can write to any library not named with `--library` (the personal library or any group), listing them. Create the key at zotero.org/settings/keys with write access only to the test libraries; even a fault in the test then cannot change anything else on the server.
-- **Only the libraries you name**, with `--library group:<id>` or `--library user` (the key's personal library). There is no default, and `all` is refused.
+- **The write key must not reach anything else.** Before asking, the test checks what the write key may do and refuses if `--library` is given and the key can write to any library not named there (the personal library or any group), listing them. Create the key at zotero.org/settings/keys with write access only to the test libraries; even a fault in the test then cannot change anything else on the server.
+- **Only the libraries the write key may write to:** all of them, or those named with `--library group:<id>` or `--library user` (the key's personal library). `all` is refused.
 - **A question per library, before anything changes.** After checking all libraries, it asks for each:
 
   ```
   This test is altering the content of the group or library.
   DO ONLY RUN IT ON A TEST GROUP OR LIBRARY!
-  Are you sure that "Safe Edit Test" (group 6719916, 788 items on zotero.org; Zotero data folder …) is a test group or library, and you want to run the test there? [N/y]
+  Are you sure that the group "Safe Edit Test" (ID 6719916, 788 items on zotero.org; Zotero data folder …) is a test group or library, and you want to run the test there? [N/y]
   ```
 
   The default is no. The question needs a terminal: a piped answer is refused, and there is no option to skip it.
@@ -34,7 +34,7 @@ The unit tests (`go test ./...`, run in CI on Linux, macOS and Windows) use a fa
 | --- | --- | --- |
 | Zotero desktop | running, signed in as the key's user | automatic sync off; the libraries under test completely synced |
 | Zotero Debug Bridge | plugin in that Zotero profile, with a token set | the test runs JavaScript inside Zotero through it (`POST 127.0.0.1:23119/debug-bridge/execute`) |
-| Write key | the profile's `write_key`, else its `key` | write access to every library under test, **and to nothing else** (checked) |
+| Write key | `--key NAME`, or the profile's `write_key`, else its `key` | write access to every library under test, **and to nothing else** (checked) |
 | Read-only key | the profile's `key`, if it cannot write | only for the check that a read-only key is refused (skipped otherwise) |
 | Zotero profile | `--zotero-profile NAME\|FOLDER` | default: the default profile in Zotero's `profiles.ini`; `ZOTERO_DEBUG_BRIDGE_TOKEN` overrides the token |
 
@@ -44,9 +44,15 @@ Safe Edit and Fix Proposals, if installed, are not used: neither intercepts how 
 
 ## Running it
 
-`zotero-backup stresstest` without `--library` shows these steps as help.
+`zotero-backup stresstest` without options shows these steps as help. Store the write key in the keychain, then run:
 
-A profile for the test in the configuration file (`zotero-backup help` shows its path; or any file with `--config PATH`):
+```bash
+zotero-backup key set zb-test-write
+zotero-backup stresstest --key zb-test-write --scenarios desktop-synced --ops edit-title,erase-item,replace-file
+zotero-backup stresstest --key zb-test-write
+```
+
+No configuration file is needed: backups go to `~/zotero-backups`, the test's own backups and reports into `stresstest/<run>/` below it. A profile can hold the keys and the folder instead (`--profile test`):
 
 ```json
 {
@@ -60,16 +66,12 @@ A profile for the test in the configuration file (`zotero-backup help` shows its
 }
 ```
 
-`key` is the keychain entry of a read-only key (only for the check that it is refused; may be left out), `write_key` that of the write key used for all changes (write access to the test libraries only), `to` the backup folder: safety backups go there, the test's own backups and reports into `stresstest/<run>/` below it.
-
-```bash
-zotero-backup stresstest --profile test --library group:6719916 --library user
-zotero-backup stresstest --profile test --library group:6719916 --scenarios desktop-synced,unsynced-remote --ops edit-title,erase-item,replace-file
-```
+`write_key` is used for all changes; `key`, if it cannot write, only for the check that a read-only key is refused (skipped otherwise); `to` is the backup folder.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--library LIB` | (required) | `group:<id>` or `user`; repeat for several, run in that order |
+| `--key NAME` | the profile's keys | keychain entry of the write key |
+| `--library LIB` | every library the key may write to | only `group:<id>` or `user`; repeat for several, run in that order |
 | `--scenarios A,B` | all, plus `extras` | which scenarios run |
 | `--ops A,B` | all 15 | which operations run |
 | `--report DIR` | the run's backup folder | where `report.html` and `report.json` go |

@@ -4,8 +4,9 @@ package main
 // the real Zotero server AND a running Zotero desktop (through the Zotero Debug
 // Bridge plugin), with local changes, syncs, deletions, the trash and Zotero's
 // conflict window. It deliberately changes the libraries it runs on, so it is
-// left out of the help text, needs every library named explicitly, and asks
-// before it touches each one. See docs/stresstest.md.
+// left out of the help text, runs only on libraries its write key may write to
+// (all of them, or those named with --library), and asks for each one by name
+// before it touches it. See docs/stresstest.md.
 
 import (
 	"bufio"
@@ -23,7 +24,7 @@ import (
 	"time"
 )
 
-const stressUsageText = `usage: zotero-backup stresstest --library LIB [--library LIB …] [options]
+const stressUsageText = `usage: zotero-backup stresstest --key NAME [options]
 
 Tests backup and restore against the real Zotero server and a running Zotero
 desktop: local changes, syncs, deletions, the trash, conflicts. It CHANGES the
@@ -36,49 +37,31 @@ Steps:
      settings), automatic sync off (Settings → Sync), and every library under
      test synced completely.
 
-  2. A write key with write access ONLY to the libraries under test (created at
-     zotero.org/settings/keys); the test refuses a key that could write anywhere
-     else. Store it, and optionally a read-only key, in the keychain:
+  2. A write key with write access ONLY to the test libraries (created at
+     zotero.org/settings/keys), stored in the keychain:
 
        zotero-backup key set zb-test-write
-       zotero-backup key set zb-test-read
 
-  3. A configuration file with a profile "test". Create the file
+  3. A short run first, then everything. The test runs on every library the key
+     may write to, and asks for each one by name before it changes anything;
+     answer y only for a test library (Enter = no):
 
-       %s
+       zotero-backup stresstest --key zb-test-write --scenarios desktop-synced --ops edit-title,erase-item,replace-file
+       zotero-backup stresstest --key zb-test-write
 
-     with this content (if the file exists, add the "test" part to its "profiles"):
+  4. The report: ~/zotero-backups/stresstest/<run>/report.html (to read) and
+     report.json (for further processing). The command fails if any check failed.
 
-       {
-         "profiles": {
-           "test": {
-             "key": "zb-test-read",
-             "write_key": "zb-test-write",
-             "to": "~/zotero-backups"
-           }
-         }
-       }
-
-       key        the keychain entry of the read-only key from step 2 (only used to
-                  check that a read-only key is refused; leave it out if you have none)
-       write_key  the keychain entry of the write key from step 2 (used for all changes)
-       to         the backup folder: safety backups go here, the test's own backups
-                  and its reports into stresstest/<run>/ below it
-
-     A file elsewhere works too: add --config PATH to the commands below.
-
-  4. A short run first, then everything. The test asks before it touches each
-     library; answer y only for a test library (Enter = no):
-
-       zotero-backup stresstest --profile test --library group:<id> --scenarios desktop-synced --ops edit-title,erase-item,replace-file
-       zotero-backup stresstest --profile test --library group:<id> [--library user]
-
-  5. The report: <to>/stresstest/<run>/report.html (to read) and report.json
-     (for further processing). The command fails if any check failed.
+Instead of --key, a profile in the configuration file (%s)
+can hold the keys: --profile NAME uses its write_key for all changes, its "key"
+(if it may not write) to check that a read-only key is refused, and its "to" as
+the backup folder.
 
 Options:
 
-  --library LIB          group:<id> or user (the key's personal library); repeat for several
+  --key NAME             keychain entry of the write key
+  --library LIB          only this library: group:<id> or user (the key's personal library); repeat
+                         for several; the key may not write to any other (default: all it may write to)
   --scenarios A,B        desktop-synced, api, unsynced-remote, unsynced-local, unsynced-only, extras (default: all)
   --ops A,B              edit-title, fill-extra, trash-item, erase-item, erase-note, erase-attachment,
                          erase-annotation, edit-note, replace-file, trash-collection, erase-collection,
@@ -188,10 +171,6 @@ type stressTarget struct {
 // runStresstest checks every library, asks for each, then runs the scenarios
 // library by library and writes the reports. It fails if any check failed.
 func runStresstest(p Profile, o stressOptions, in *os.File, out io.Writer, pr *progress) error {
-	if len(o.libraries) == 0 {
-		fmt.Fprint(out, stressUsage())
-		return errors.New("stresstest needs at least one --library (a test group or library)")
-	}
 	for _, sc := range o.scenarios {
 		if sc != "extras" && !slices.ContainsFunc(stressScenarios, func(x stressScenario) bool { return x.name == sc }) {
 			return fmt.Errorf("unknown scenario %q", sc)
@@ -200,6 +179,23 @@ func runStresstest(p Profile, o stressOptions, in *os.File, out io.Writer, pr *p
 	for _, op := range o.ops {
 		if !slices.ContainsFunc(stressOps, func(x stressOp) bool { return x.name == op }) {
 			return fmt.Errorf("unknown operation %q", op)
+		}
+	}
+	if len(o.libraries) == 0 {
+		// no --library: every library the write key may write to (each is asked for)
+		c, err := clientsFor(p.forRestore(), newClient)("default")
+		if err != nil {
+			return err
+		}
+		libs, err := writableLibraries(c)
+		if err != nil {
+			return err
+		}
+		if len(libs) == 0 {
+			return errors.New("the write key may not write to any library")
+		}
+		for _, l := range libs {
+			o.libraries = append(o.libraries, l.Spec())
 		}
 	}
 	profileDir, err := findZoteroProfile(o.zoteroProfile)
@@ -237,8 +233,8 @@ func runStresstest(p Profile, o stressOptions, in *os.File, out io.Writer, pr *p
 		if t.lib.Spec() == "user" {
 			kind = "personal library"
 		}
-		ok, err := confirmStress(in, out, fmt.Sprintf("%q (%s %s, %d items on zotero.org; Zotero data folder %s)",
-			t.lib.Name, kind, strings.TrimPrefix(strings.TrimPrefix(t.lib.ID, "group-"), "user-"), t.items, t.dataDir))
+		ok, err := confirmStress(in, out, fmt.Sprintf("the %s %q (ID %s, %d items on zotero.org; Zotero data folder %s)",
+			kind, t.lib.Name, strings.TrimPrefix(strings.TrimPrefix(t.lib.ID, "group-"), "user-"), t.items, t.dataDir))
 		if err != nil {
 			return err
 		}

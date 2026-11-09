@@ -104,6 +104,10 @@ func run(args []string, out io.Writer) error {
 	}
 	if cmd == "stresstest" {
 		fs.Usage = func() { fmt.Fprint(fs.Output(), stressUsage()) }
+		if len(rest) == 0 { // the steps to run it; any option starts it
+			fmt.Fprint(out, stressUsage())
+			return nil
+		}
 	}
 	var pos []string // positional arguments, flags may come before or after them
 	for {

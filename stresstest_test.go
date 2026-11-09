@@ -17,11 +17,11 @@ import (
 func TestStressDialog(t *testing.T) {
 	for in, want := range map[string]bool{"y\n": true, "Yes\n": true, "\n": false, "n\n": false, "yes please\n": false, "": false} {
 		var out strings.Builder
-		if got := askStress(bufio.NewReader(strings.NewReader(in)), &out, `"Safe Edit Test" (group 6719916)`); got != want {
+		if got := askStress(bufio.NewReader(strings.NewReader(in)), &out, `the group "Safe Edit Test" (ID 6719916)`); got != want {
 			t.Errorf("answer %q: %v, want %v", in, got, want)
 		}
 		for _, w := range []string{"This test is altering the content of the group or library.", "DO ONLY RUN IT ON A TEST GROUP OR LIBRARY!",
-			`Are you sure that "Safe Edit Test" (group 6719916) is a test group or library`, "[N/y]"} {
+			`Are you sure that the group "Safe Edit Test" (ID 6719916) is a test group or library`, "[N/y]"} {
 			if !strings.Contains(out.String(), w) {
 				t.Errorf("dialog lacks %q:\n%s", w, out.String())
 			}
@@ -41,10 +41,12 @@ func TestStressDialogNeedsTerminal(t *testing.T) {
 
 func TestStressHelp(t *testing.T) {
 	var out strings.Builder
-	runStresstest(defaultProfile(), stressOptions{}, os.Stdin, &out, quietProgress())
-	for _, w := range []string{"Steps:", "Zotero Debug Bridge", "zotero-backup key set zb-test-write", `"write_key": "zb-test-write"`,
-		"--scenarios desktop-synced", "report.json", "ONLY on test groups or libraries",
-		defaultConfigPath(), `"profiles": {`, "write_key  the keychain entry"} {
+	if err := run([]string{"stresstest"}, &out); err != nil { // no options: the help, nothing runs
+		t.Fatal(err)
+	}
+	for _, w := range []string{"Steps:", "Zotero Debug Bridge", "zotero-backup key set zb-test-write",
+		"zotero-backup stresstest --key zb-test-write\n", "--scenarios desktop-synced", "report.json",
+		"ONLY on test groups or libraries", "asks for each one by name", defaultConfigPath()} {
 		if !strings.Contains(out.String(), w) {
 			t.Errorf("help lacks %q", w)
 		}
@@ -67,7 +69,7 @@ func TestStressRefusals(t *testing.T) {
 		o    stressOptions
 		want string
 	}{
-		{stressOptions{}, "at least one --library"},
+		{stressOptions{scenarios: []string{"nope"}}, `unknown scenario "nope"`}, // before any key is needed
 		{stressOptions{libraries: []string{"group:1"}, scenarios: []string{"nope"}}, `unknown scenario "nope"`},
 		{stressOptions{libraries: []string{"group:1"}, ops: []string{"nope"}}, `unknown operation "nope"`},
 	} {

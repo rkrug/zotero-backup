@@ -1,5 +1,7 @@
 # zotero-backup
 
+[![DOI](https://zenodo.org/badge/1447169768.svg)](https://doi.org/10.5281/zenodo.24090287)
+
 Backup and restore of Zotero libraries (personal library and groups) through the Zotero web API, **keeping the item keys**, so restored items are the same items: citations in Word, LibreOffice and Google Docs keep working.
 
 - **Complete backups.** Every backup is a folder with the whole library: items (with notes, annotations and the trash), collections, saved searches, library settings such as tag colours, the full-text index, and the attachment files.
@@ -79,6 +81,10 @@ The documentation site is built with [MkDocs](https://www.mkdocs.org/) (Material
 pip install mkdocs-material==9.6.14
 mkdocs serve          # preview at http://127.0.0.1:8000
 ```
+
+## Citing
+
+zotero-backup is archived on Zenodo: [10.5281/zenodo.24090287](https://doi.org/10.5281/zenodo.24090287) cites all versions; each release has its own DOI there.
 
 ## Licence
 

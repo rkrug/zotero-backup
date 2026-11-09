@@ -12,6 +12,8 @@ Backup and restore of Zotero libraries (personal library and groups) through the
 
 The plan and the tests behind the design are in [Issue #1](https://github.com/rkrug/zotero-backup/issues/1).
 
+**Citing:** zotero-backup is archived on Zenodo, [doi:10.5281/zenodo.24090287](https://doi.org/10.5281/zenodo.24090287) (all versions; each release has its own DOI there).
+
 !!! warning "No warranty: you are responsible for your data"
     zotero-backup comes **as it is, without any warranty**. Nobody guarantees that a backup is complete or that a restore brings a library back as it was. `restore` writes into your Zotero library and `prune` deletes backups: look at what they will do first (`diff`, `--dry-run`), and keep other, independent copies of libraries that matter. Read the [disclaimer](disclaimer.md).
 

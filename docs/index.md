@@ -7,6 +7,9 @@ Backup and restore of Zotero libraries (personal library and groups) through the
 - **Restore into the same library**, everything or selected items, with a preview first.
 - One executable for Windows, macOS and Linux; nothing else to install.
 
+!!! note "Platform status: tested on macOS"
+    zotero-backup is used and checked by hand on macOS, including the end-to-end [stress test](stresstest.md) against Zotero desktop. The Windows and Linux versions are built for every release and pass all unit tests in CI on those systems, including the keychains, but have **not yet been tried on a real Windows or Linux system**: see [#15](https://github.com/rkrug/zotero-backup/issues/15) (Windows) and [#16](https://github.com/rkrug/zotero-backup/issues/16) (Linux). Reports are welcome.
+
 The plan and the tests behind the design are in [Issue #1](https://github.com/rkrug/zotero-backup/issues/1).
 
 !!! warning "No warranty: you are responsible for your data"

@@ -6,6 +6,9 @@ Or build it with Go: `go install github.com/rkrug/zotero-backup@latest`.
 
 Check the version with `zotero-backup version`.
 
+!!! note "Windows and Linux: not yet tried on a real system"
+    Only the macOS version has been checked by hand so far; the Windows and Linux versions pass the unit tests in CI but are untested in real use ([#15](https://github.com/rkrug/zotero-backup/issues/15), [#16](https://github.com/rkrug/zotero-backup/issues/16)). See [Platform status](index.md).
+
 ## API key
 
 Create a key at <https://www.zotero.org/settings/keys>. For backups a **read-only** key is enough (personal library with notes and files, groups read). Restore needs a key with **write** access; keep that one for restores only.

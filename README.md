@@ -20,7 +20,7 @@ The plan and the tests behind the design are in [Issue #1](https://github.com/rk
 
 ## Install
 
-Download the archive for your system from the [releases](https://github.com/rkrug/zotero-backup/releases), unpack it and put `zotero-backup` (`zotero-backup.exe` on Windows) somewhere on your `PATH`. On macOS, the first start of a downloaded binary may need `xattr -d com.apple.quarantine zotero-backup`.
+Download the archive for your system from the [releases](https://github.com/rkrug/zotero-backup/releases), unpack it and put `zotero-backup` (`zotero-backup.exe` on Windows) somewhere on your `PATH`. On macOS, the first start is blocked ("Not Opened": the binary is not notarised by Apple): click **Done**, then allow it in System Settings → Privacy & Security → **Open Anyway**, or run `xattr -d com.apple.quarantine zotero-backup` ([Install](https://rkrug.github.io/zotero-backup/install/)).
 
 Or build it with Go: `go install github.com/rkrug/zotero-backup@latest`.
 

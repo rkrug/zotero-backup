@@ -1,4 +1,4 @@
-# zotero-backup stress test
+# Stress test
 
 `zotero-backup stresstest` checks that a restore holds up against what people actually do in Zotero: changes on another computer, unsynced work, deletions, the trash, and Zotero's conflict window. It runs 15 operations through 5 scenarios plus a set of extras, against the real Zotero server **and a running Zotero desktop**, and writes an HTML report to read and a JSON report for further processing.
 

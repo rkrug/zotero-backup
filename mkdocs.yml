@@ -1,0 +1,40 @@
+site_name: zotero-backup
+site_description: Backup and restore of Zotero libraries through the Zotero web API, keeping the item keys
+site_url: https://rkrug.github.io/zotero-backup/
+repo_url: https://github.com/rkrug/zotero-backup
+repo_name: rkrug/zotero-backup
+copyright: MIT licence · no warranty · not affiliated with Zotero
+
+theme:
+  name: material
+  custom_dir: overrides
+  features:
+    - content.code.copy
+    - navigation.footer
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle: { icon: material/brightness-4, name: Dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle: { icon: material/brightness-7, name: Light mode }
+
+extra:
+  version: !ENV [DOCS_VERSION, dev] # the latest release tag, set by .github/workflows/docs.yml
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Install: install.md
+  - Keys: keys.md
+  - Configuration: configuration.md
+  - Backups: backups.md
+  - Restore: restore.md
+  - Scheduled backups: scheduled.md
+  - Stress test: stresstest.md
+  - Disclaimer: disclaimer.md

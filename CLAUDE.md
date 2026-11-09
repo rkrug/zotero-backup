@@ -52,6 +52,10 @@ One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key che
 - Attachments without `md5` usually have no file on the server (404); they are listed in `meta.json` as missing, not skipped silently.
 - Zotero desktop uploads text/* attachments (snapshots too) and attachments with several files as a ZIP (`zipMD5`, `zipFilename` in the upload authorisation); the API then serves that ZIP, while the item's `md5` is the file's inside. Backups keep it as `<name>.zip` with `"zip": true` in `files.json`; restore uploads it the same way; `loadBackup` recognises such ZIPs in older backups (kept under the file's own name with the ZIP's md5).
 
+## Documentation
+
+`docs/` is the documentation site (MkDocs, Material theme, `mkdocs.yml`; `overrides/main.html` puts the version and the no-warranty notice on every page). `.github/workflows/docs.yml` builds it with `--strict` on every push and publishes it to the `gh-pages` branch (GitHub Pages, https://rkrug.github.io/zotero-backup/) from `main` and normal release tags only. The README is short and links there; user-facing details go into `docs/`. Preview: `pip install mkdocs-material==9.6.14 && mkdocs serve`.
+
 ## Git
 
-Work on `dev`; `main` is the base branch for pull requests.
+Work on `dev` (larger tasks on feature branches into `dev`). Pre-releases (`v0.2.0-rc.1`) are tagged on `dev`; changes reach `main` only through pull requests (protected); normal releases (`v0.2.0`) are tagged on `main` (`release.yml` refuses a normal tag not on `main`).

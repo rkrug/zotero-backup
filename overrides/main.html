@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+
+{% block announce %}
+zotero-backup {{ config.extra.version }} · No warranty: you are responsible for your data.
+Read the <a href="{{ 'disclaimer/' | url }}">disclaimer</a> before you restore or prune.
+{% endblock %}

@@ -40,5 +40,7 @@ Profiles are chosen with `--profile NAME` (default: `default`). Options a profil
 | `keep_daily`, `keep_weekly`, `keep_monthly` | `prune` keeps the newest backup of each of the last N days, ISO weeks and months (three generations); the newest backup is always kept |
 | `progress` | `auto` (an updating line on a terminal, plain lines otherwise), `line`, `log` or `quiet`; `--progress` / `--quiet` override it |
 | `progress_interval` | seconds between progress lines in log mode |
+| `notify_command` | a program with its arguments, run after a backup that **failed or reported problems**, e.g. `["/usr/bin/mail", "-s", "zotero-backup", "me@example.org"]`; no shell. It gets the backup's summary on stdin and `ZB_STATUS` (`failed` or `problems`) and `ZB_LIBRARIES_FAILED` in its environment, never an API key. See [Scheduled backups](scheduled.md#notifications) |
+| `notify_macos` | `true`: also a macOS notification then |
 
 Unknown options and invalid values are errors, so a typo does not go unnoticed.

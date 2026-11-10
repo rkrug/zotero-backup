@@ -39,6 +39,8 @@ commands:
               which backups each is, and whether it is gone from the newest
   show BACKUP KEY  print an item from a backup with its notes, attachments and
               annotations (offline); --save DIR copies its files out
+  notify-test  send a test notification with the profile's notify_command /
+              notify_macos (sent after a backup that failed or had problems)
   prune       delete backups not kept by keep_daily / keep_weekly / keep_monthly
               (newest per day, ISO week and month); --dry-run only shows them
   key set [NAME]     store an API key in the system keychain under NAME (default:
@@ -189,6 +191,7 @@ func run(args []string, out io.Writer) error {
 	case "config":
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
+		enc.SetEscapeHTML(false)
 		return enc.Encode(cfg)
 	case "key check", "key set", "key remove":
 		if len(pos) > 1 {
@@ -205,7 +208,9 @@ func run(args []string, out io.Writer) error {
 		}
 		return keyCheckAll(profile, newClient, out)
 	case "backup":
-		return runBackup(clientsFor(profile, newClient), profile, out, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
+		return backupAndNotify(clientsFor(profile, newClient), profile, out, os.Stderr, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
+	case "notify-test":
+		return notifyTest(profile, out)
 	case "list":
 		return listBackups(expandHome(profile.To), out)
 	case "diff", "restore":
@@ -361,22 +366,26 @@ func expandHome(p string) string {
 
 // runBackup backs up every library of the profile; a failing library does not
 // stop the others, but makes the command fail at the end.
-func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer, pr *progress) error {
+// runBackup backs up the profile's libraries; it returns the number of
+// problems reported and the libraries that failed.
+func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer, pr *progress) (int, []string, error) {
 	jobs, skipped, err := libraryJobs(p, clientFor)
 	if err != nil {
-		return err
+		return 0, nil, err
 	}
 	for _, s := range skipped {
 		pr.Warnf("skipped %s", s)
 	}
 	root := expandHome(p.To)
-	failed := 0
+	failed, problems := 0, 0
+	var failedLibs []string
 	for i, j := range jobs {
 		lib := j.lib
 		pr.SetPrefix(fmt.Sprintf("%d/%d %s", i+1, len(jobs), lib.Dir()))
 		dir, m, err := backupLibrary(j.c, lib, root, p.Exclude, time.Now(), pr)
 		if err != nil {
 			failed++
+			failedLibs = append(failedLibs, lib.Label())
 			pr.Warnf("FAILED: %v", err)
 			fmt.Fprintf(out, "%s: FAILED: %v\n", lib.Label(), err)
 			continue
@@ -384,11 +393,12 @@ func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer
 		fmt.Fprintf(out, "%s: %s  version %d, %d items, %d files (%d downloaded, %.1f MB; %d linked), %d missing, %d problems, %.0f s\n",
 			lib.Label(), dir, m.Version, itemCount(m.Counts), m.Counts["files"], m.Downloaded, float64(m.DownBytes)/1e6,
 			m.Linked, len(m.Missing), len(m.Problems), m.Seconds)
+		problems += len(m.Problems)
 	}
 	if failed > 0 {
-		return fmt.Errorf("%d of %d libraries failed", failed, len(jobs))
+		return problems, failedLibs, fmt.Errorf("%d of %d libraries failed", failed, len(jobs))
 	}
-	return nil
+	return problems, nil, nil
 }
 
 // itemCount sums the item counts (the counts that are item types).

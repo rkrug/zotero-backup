@@ -136,6 +136,31 @@ func (f *fakeLibrary) serveWrite(w http.ResponseWriter, r *http.Request) {
 		u := "http://" + r.Host + "/storage/" + key
 		json.NewEncoder(w).Encode(map[string]string{"url": u, "contentType": "application/octet-stream",
 			"prefix": "PREFIX", "suffix": "SUFFIX", "uploadKey": key})
+	case r.Method == "DELETE" && (p == "/groups/1/items" || p == "/groups/1/collections"):
+		if r.Header.Get("If-Unmodified-Since-Version") != strconv.Itoa(f.version) {
+			http.Error(w, "Library has been modified", http.StatusPreconditionFailed)
+			return
+		}
+		objs, param, field := f.items, "itemKey", "parentItem"
+		if strings.HasSuffix(p, "/collections") {
+			objs, param, field = f.collections, "collectionKey", "parentCollection"
+		}
+		var erase func(string)
+		erase = func(k string) { // with its children, like the API
+			delete(objs, k)
+			delete(f.files, k)
+			for ck, d := range objs {
+				if d[field] == k {
+					erase(ck)
+				}
+			}
+		}
+		for _, k := range strings.Split(r.URL.Query().Get(param), ",") {
+			erase(k)
+		}
+		f.version++
+		f.erased++
+		w.WriteHeader(http.StatusNoContent)
 	default:
 		http.Error(w, "unexpected write "+r.Method+" "+p, http.StatusTeapot)
 	}

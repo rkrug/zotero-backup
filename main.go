@@ -29,7 +29,9 @@ commands:
   restore BACKUP  make the library match the backup again, keeping all keys;
                   shows the plan and asks first (--dry-run: only show it;
                   --yes: do not ask; --items K1,K2: only these items, their
-                  children and what they need)
+                  children and what they need). Objects not in the backup are
+                  kept, unless --trash-new (moved to the trash) or --erase-new
+                  (erased for good, the trash too)
   prune       delete backups not kept by keep_daily / keep_weekly / keep_monthly
               (newest per day, ISO week and month); --dry-run only shows them
   key set [NAME]     store an API key in the system keychain under NAME (default:
@@ -48,6 +50,10 @@ options:
   --profile NAME      profile to use (default: default)
   --dry-run           prune, restore: show what would be done, do nothing
   --yes               restore, upgrade: do not ask for confirmation
+  --trash-new         restore: also move objects not in the backup to the trash
+  --erase-new         restore: also erase objects not in the backup for good,
+                      also those in the trash (command line only, never from
+                      the configuration; not with --items)
   --check             upgrade: only show what is available (exit status 1 if
                       an update is available)
   --downgrade         upgrade stable: go back from a pre-release
@@ -85,6 +91,8 @@ func run(args []string, out io.Writer) error {
 	excludeFlag := fs.String("exclude", "", "parts to leave out")
 	dryRun := fs.Bool("dry-run", false, "prune / restore: only show what would be done")
 	yes := fs.Bool("yes", false, "restore, upgrade: do not ask")
+	trashNew := fs.Bool("trash-new", false, "restore: move objects not in the backup to the trash")
+	eraseNew := fs.Bool("erase-new", false, "restore: erase objects not in the backup")
 	check := fs.Bool("check", false, "upgrade: only show what is available")
 	downgrade := fs.Bool("downgrade", false, "upgrade stable: back from a pre-release")
 	itemsFlag := fs.String("items", "", "diff / restore: only these item keys")
@@ -199,10 +207,21 @@ func run(args []string, out io.Writer) error {
 		if *itemsFlag != "" {
 			sel = splitList(*itemsFlag)
 		}
+		remove := ""
+		switch {
+		case *trashNew && *eraseNew:
+			return errors.New("--trash-new or --erase-new, not both")
+		case (*trashNew || *eraseNew) && cmd != "restore":
+			return errors.New("--trash-new / --erase-new are for restore")
+		case *trashNew:
+			remove = "trash"
+		case *eraseNew:
+			remove = "erase"
+		}
 		if cmd == "diff" {
 			return runDiff(clientsFor(profile, newClient), expandHome(pos[0]), profile, sel, out)
 		}
-		return runRestore(clientsFor(profile.forRestore(), newClient), expandHome(pos[0]), profile, sel, *dryRun, *yes, out,
+		return runRestore(clientsFor(profile.forRestore(), newClient), expandHome(pos[0]), profile, sel, remove, *dryRun, *yes, out,
 			newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "stresstest":
 		return runStresstest(profile, stressOptions{libraries: stressLibs, scenarios: splitList(*stressScen),

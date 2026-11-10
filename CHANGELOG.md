@@ -4,6 +4,9 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+- **`restore --trash-new` / `--erase-new`:** also move everything not in the backup to the Zotero trash, or erase it for good (the trash too), so the library ends up exactly as in the backup. Command line only, not with `--items`; shown in the plan and the question with a count.
+- **Fix:** parts a backup left out (`--exclude notes`, `attachments`, `annotations`, `trash`) no longer show as "only in the library, not in the backup".
+
 - **`zotero-backup upgrade [stable|beta]`** updates zotero-backup from the GitHub releases: shows the newest stable and beta release and asks; `--check` only shows; `--yes` without asking; `stable --downgrade` back from a pre-release. Every update is checked (Ed25519 signature over `SHA256SUMS`, then the archive's checksum, then the new version) before anything is replaced. Releases now include `SHA256SUMS.sig`.
 
 - **Documentation per version:** the [site](https://rkrug.github.io/zotero-backup/) keeps the documentation of each release (version menu in the header); `dev` shows the unreleased state.

@@ -124,7 +124,7 @@ func TestRestoreRoundTrip(t *testing.T) {
 
 	c := fakeClient(t, f)
 	var out strings.Builder
-	if err := runRestore(fixed(c), b.dir, defaultProfile(), nil, false, true, &out, quietProgress()); err != nil {
+	if err := runRestore(fixed(c), b.dir, defaultProfile(), nil, "", false, true, &out, quietProgress()); err != nil {
 		t.Fatalf("%v\n%s", err, out.String())
 	}
 	if !strings.Contains(out.String(), "checked: the library matches the backup") {
@@ -166,7 +166,7 @@ func TestRestoreUsesFileStillOnServer(t *testing.T) {
 	delete(f.items, "PDF00002") // the attachment is gone, but the storage service still has its content
 	f.files["KEEPCONT"] = "pdf-two"
 	f.mu.Unlock()
-	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress()); err != nil {
+	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, "", false, true, io.Discard, quietProgress()); err != nil {
 		t.Fatal(err)
 	}
 	if f.uploads != 0 || f.files["PDF00002"] != "pdf-two" {
@@ -179,7 +179,7 @@ func TestRestoreDryRunWritesNothing(t *testing.T) {
 	damage(f)
 	before := f.version
 	var out strings.Builder
-	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, true, false, &out, quietProgress()); err != nil {
+	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, "", true, false, &out, quietProgress()); err != nil {
 		t.Fatal(err)
 	}
 	if f.version != before || f.uploads != 0 {
@@ -196,7 +196,7 @@ func TestRestoreDryRunWritesNothing(t *testing.T) {
 func TestRestoreSelectedItems(t *testing.T) {
 	f, b := restoreSample(t)
 	damage(f)
-	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), []string{"PDF00001"}, false, true, io.Discard, quietProgress()); err != nil {
+	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), []string{"PDF00001"}, "", false, true, io.Discard, quietProgress()); err != nil {
 		t.Fatal(err)
 	}
 	for _, k := range []string{"PDF00001", "ANNO0001", "BOOK0001"} { // the item, its annotation, its parent
@@ -215,7 +215,7 @@ func TestRestoreSelectedItems(t *testing.T) {
 func TestRestoreRefusesReadOnlyKey(t *testing.T) {
 	f, b := restoreSample(t)
 	f.readOnly = true
-	err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress())
+	err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, "", false, true, io.Discard, quietProgress())
 	if err == nil || !strings.Contains(err.Error(), "may not write") {
 		t.Errorf("err = %v", err)
 	}
@@ -267,7 +267,7 @@ func TestZippedFileBackupAndRestore(t *testing.T) {
 	delete(f.items, "TEXT0001")
 	delete(f.files, "TEXT0001")
 	f.mu.Unlock()
-	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, false, true, io.Discard, quietProgress()); err != nil {
+	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, "", false, true, io.Discard, quietProgress()); err != nil {
 		t.Fatal(err)
 	}
 	if f.items["TEXT0001"]["md5"] != md5hex("some text") || f.files["TEXT0001"] != zipped {
@@ -326,7 +326,7 @@ func TestRestoreTouchesSubcollectionsOfUntrashedCollection(t *testing.T) {
 	f.collections["PARENT01"]["version"] = float64(f.version)
 	f.mu.Unlock()
 	var out strings.Builder
-	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, false, true, &out, quietProgress()); err != nil {
+	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, "", false, true, &out, quietProgress()); err != nil {
 		t.Fatalf("%v\n%s", err, out.String())
 	}
 	if trashed(f.collections["PARENT01"]) || trashed(f.collections["SUBCOL01"]) {
@@ -337,5 +337,133 @@ func TestRestoreTouchesSubcollectionsOfUntrashedCollection(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "subcollections touched") || !strings.Contains(out.String(), "checked: the library matches the backup") {
 		t.Errorf("output:\n%s", out.String())
+	}
+}
+
+// newSinceBackup adds, after the backup: a note under a kept item, a child
+// under the new item NEW00001, a collection with a subcollection, and a new
+// item that is already in the trash.
+func newSinceBackup(f *fakeLibrary) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.items["NEWNOTE1"] = map[string]any{"key": "NEWNOTE1", "itemType": "note", "parentItem": "OTHER001", "note": "new"}
+	f.items["NEWCHLD1"] = map[string]any{"key": "NEWCHLD1", "itemType": "note", "parentItem": "NEW00001", "note": "child"}
+	f.items["NEWTRSH1"] = map[string]any{"key": "NEWTRSH1", "itemType": "book", "title": "new, trashed", "deleted": 1.0}
+	f.collections["NEWCOLL1"] = map[string]any{"key": "NEWCOLL1", "name": "new"}
+	f.collections["NEWSUB01"] = map[string]any{"key": "NEWSUB01", "name": "new sub", "parentCollection": "NEWCOLL1"}
+	f.version++
+}
+
+func TestRestoreTrashNew(t *testing.T) {
+	f, b := restoreSample(t)
+	items, _, files, _ := snapshotOf(f)
+	damage(f)
+	newSinceBackup(f)
+	c := fakeClient(t, f)
+	var plan strings.Builder
+	if err := runRestore(fixed(c), b.dir, defaultProfile(), nil, "trash", true, false, &plan, quietProgress()); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"not in the backup: moved to the trash (--trash-new): 5", "NEWNOTE1", "NEWCHLD1", "NEWSUB01",
+		"only in the library, already in the trash (kept): 1", "NEWTRSH1"} {
+		if !strings.Contains(plan.String(), want) {
+			t.Errorf("plan lacks %q:\n%s", want, plan.String())
+		}
+	}
+	var out strings.Builder
+	if err := runRestore(fixed(c), b.dir, defaultProfile(), nil, "trash", false, true, &out, quietProgress()); err != nil {
+		t.Fatalf("%v\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "checked: the library matches the backup") {
+		t.Errorf("output:\n%s", out.String())
+	}
+	for _, k := range []string{"NEW00001", "NEWNOTE1"} {
+		if !trashed(f.items[k]) {
+			t.Errorf("item %s not in the trash: %v", k, f.items[k])
+		}
+	}
+	if f.items["NEWCHLD1"] == nil || trashed(f.items["NEWCHLD1"]) { // follows its item, as in Zotero desktop
+		t.Errorf("child of a trashed new item: %v", f.items["NEWCHLD1"])
+	}
+	for _, k := range []string{"NEWCOLL1", "NEWSUB01"} {
+		if !trashed(f.collections[k]) {
+			t.Errorf("collection %s not in the trash", k)
+		}
+	}
+	if f.erased != 0 || !trashed(f.items["NEWTRSH1"]) {
+		t.Errorf("trash mode erased: %d, NEWTRSH1 %v", f.erased, f.items["NEWTRSH1"])
+	}
+	for k := range items { // everything in the backup is back
+		if f.items[k] == nil {
+			t.Errorf("backup item %s missing", k)
+		}
+	}
+	for k, want := range files {
+		if f.files[k] != want {
+			t.Errorf("file %s = %q", k, f.files[k])
+		}
+	}
+}
+
+func TestRestoreEraseNew(t *testing.T) {
+	f, b := restoreSample(t)
+	items, cols, files, _ := snapshotOf(f)
+	damage(f)
+	newSinceBackup(f)
+	f.items["PDF00002"]["parentItem"] = "NEW00001" // a backup attachment moved under a new item: restore moves it back first
+	var out strings.Builder
+	if err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), nil, "erase", false, true, &out, quietProgress()); err != nil {
+		t.Fatalf("%v\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "checked: the library matches the backup") {
+		t.Errorf("output:\n%s", out.String())
+	}
+	sameState(t, f, items, cols, files) // exactly the backup: nothing else left
+	if f.items["PDF00002"]["parentItem"] != "OTHER001" {
+		t.Errorf("PDF00002 under %v", f.items["PDF00002"]["parentItem"])
+	}
+}
+
+func TestEraseNeverTakesBackupChildren(t *testing.T) {
+	backup := map[string]map[string]any{"CHILD001": {"parentItem": "OLDPAR01"}, "OLDPAR01": {}}
+	server := map[string]map[string]any{"CHILD001": {"parentItem": "NEWPAR01"}, "NEWPAR01": {}, "OLDPAR01": {}}
+	if k := backupBelow("NEWPAR01", "parentItem", backup, server, nil); k != "" {
+		t.Errorf("moved back by the restore, still found below: %s", k)
+	}
+	if k := backupBelow("NEWPAR01", "parentItem", backup, server, map[string]bool{"CHILD001": true}); k != "CHILD001" {
+		t.Errorf("write failed, the child is still below the new item: got %q", k)
+	}
+}
+
+func TestRemoveNewRefusals(t *testing.T) {
+	f, b := restoreSample(t)
+	err := runRestore(fixed(fakeClient(t, f)), b.dir, defaultProfile(), []string{"OTHER001"}, "trash", false, true, io.Discard, quietProgress())
+	if err == nil || !strings.Contains(err.Error(), "not with --items") {
+		t.Errorf("with --items: %v", err)
+	}
+	for _, args := range [][]string{{"restore", b.dir, "--trash-new", "--erase-new"}, {"diff", b.dir, "--trash-new"}} {
+		if err := run(append(args, "--config", filepath.Join(t.TempDir(), "none.json")), io.Discard); err == nil || !strings.Contains(err.Error(), "--trash-new") {
+			t.Errorf("%v: %v", args, err)
+		}
+	}
+}
+
+// A backup made without notes has no notes: the library's notes are not "not
+// in the backup", neither listed nor removed.
+func TestPlanLeavesOutWhatTheBackupExcluded(t *testing.T) {
+	f := sampleLibrary()
+	dir, _ := runFake(t, f, t.TempDir(), []string{"notes", "trash"}, day(1))
+	b, err := loadBackup(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := fakeClient(t, f)
+	now, _ := readLibrary(c, b.libPath)
+	p := withRemovals(makePlan(b, now, nil, nil), now, "erase")
+	for _, ch := range p.extra {
+		t.Errorf("listed as not in the backup: %s %s", ch.Kind, ch.Key)
+	}
+	if len(p.remove) != 0 || !p.empty() {
+		t.Errorf("would remove %v", p.remove)
 	}
 }

@@ -51,6 +51,9 @@ Errors print `zotero-backup: <message>` on stderr; the exit status is 1. Show th
 | `upload to storage: HTTP 413` | the owner's Zotero storage is full | free storage or upgrade it at zotero.org; or restore everything but the files with `--exclude files` (new `--dry-run` and yes) |
 | `upload to storage: …` (other) | the file upload failed | run `--dry-run` and restore again after a yes |
 | `no Last-Modified-Version in the answer; run restore again to take them out of the trash` | subcollections could not be touched | `--dry-run`, restore again after a yes |
+| `--trash-new / --erase-new act on the whole library: not with --items` / `--trash-new or --erase-new, not both` | wrong combination | one of them, without `--items` |
+| `FAILED items K: not erased, K2 below it is in the backup` | `--erase-new` would have erased an object of the backup with its parent (a write before failed) | sync, `--dry-run`, restore again after a yes |
+| `FAILED trash … ` / `FAILED erasing …` | removing failed (e.g. the object changed meanwhile) | sync, `--dry-run`, restore again after a yes |
 | `restored, but checking the result failed` | the restore ran; reading the library afterwards failed | `zotero-backup diff BACKUP` shows the state |
 
 ## Upgrade

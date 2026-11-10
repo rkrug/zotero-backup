@@ -247,17 +247,21 @@ type change struct {
 // plan is everything restore would do.
 type plan struct {
 	objects  []change // missing or changed, in write order
-	extra    []change // on the server, not in the backup: reported, kept
+	extra    []change // on the server, not in the backup: reported, kept unless removed
+	remove   []change // with --trash-new / --erase-new: the extra objects that go
+	mode     string   // "", "trash" or "erase"
 	files    []string // attachment keys whose file must be uploaded
 	settings []string // setting names that differ
 	missing  []string // files the backup does not have (missing on the server back then)
 }
 
-func (p plan) empty() bool { return len(p.objects)+len(p.files)+len(p.settings) == 0 }
+func (p plan) empty() bool { return len(p.objects)+len(p.files)+len(p.settings)+len(p.remove) == 0 }
 
 // makePlan compares backup and library. Only the selected item keys (and what
 // they need) are considered when sel is not nil.
 func makePlan(b *backupSet, now *libraryNow, exclude []string, sel []string) plan {
+	// what the backup left out is not "not in the backup": never list or remove it
+	exclude = append(slices.Clone(exclude), b.meta.Exclude...)
 	ex := func(s string) bool { return slices.Contains(exclude, s) }
 	skip := func(d map[string]any) bool {
 		t, _ := d["itemType"].(string)
@@ -279,6 +283,10 @@ func makePlan(b *backupSet, now *libraryNow, exclude []string, sel []string) pla
 
 	var p plan
 	compare := func(kind string, objs, server map[string]map[string]any, depth func(string) int) {
+		field := "parentItem"
+		if kind == "collections" {
+			field = "parentCollection"
+		}
 		var keys []string
 		for k, d := range objs {
 			if !skip(d) {
@@ -305,7 +313,7 @@ func makePlan(b *backupSet, now *libraryNow, exclude []string, sel []string) pla
 		if sel == nil {
 			var extra []string
 			for k := range server {
-				if objs[k] == nil {
+				if objs[k] == nil && !skip(server[k]) && !(ex("trash") && trashedWithParents(server, k, field)) {
 					extra = append(extra, k)
 				}
 			}
@@ -352,6 +360,128 @@ func makePlan(b *backupSet, now *libraryNow, exclude []string, sel []string) pla
 		sort.Strings(p.settings)
 	}
 	return p
+}
+
+// trashedWithParents tells whether object k is in the trash: itself, or through a parent
+// (the children of a trashed item have no "deleted" of their own).
+func trashedWithParents(objs map[string]map[string]any, k, field string) bool {
+	for n := 0; objs[k] != nil && n < 100; n++ {
+		if trashed(objs[k]) {
+			return true
+		}
+		k, _ = objs[k][field].(string)
+	}
+	return false
+}
+
+// withRemovals adds what --trash-new ("trash") or --erase-new ("erase") removes:
+// objects in the library but not in the backup (p.extra). Trash leaves what is
+// already in the trash; erase takes it too, so the library ends as in the backup.
+func withRemovals(p plan, now *libraryNow, mode string) plan {
+	p.mode = mode
+	if mode == "" {
+		return p
+	}
+	objs := map[string]map[string]map[string]any{"items": now.items, "collections": now.collections, "searches": now.searches}
+	for _, c := range p.extra {
+		field := "parentItem"
+		if c.Kind == "collections" {
+			field = "parentCollection"
+		}
+		if mode == "erase" || !trashedWithParents(objs[c.Kind], c.Key, field) {
+			p.remove = append(p.remove, c)
+		}
+	}
+	return p
+}
+
+// removeNew trashes or erases p.remove. It runs after the backup's objects were
+// written, so an object moved back out of a new parent is no longer under it.
+// Trash writes "deleted": true, for items only on the topmost ones (children go
+// to the trash with their item, as in Zotero desktop). Erase never erases an
+// object that has a backup object below it (the server erases children with
+// their parent), as the library is after the writes: backup objects have their
+// backup parent, unless their write failed.
+func removeNew(c *Client, b *backupSet, now *libraryNow, p plan, failed map[string]bool, log io.Writer) int {
+	failures := 0
+	going := map[string]bool{}
+	for _, ch := range p.remove {
+		going[ch.Key] = true
+	}
+	for _, kind := range []string{"items", "collections", "searches"} {
+		server := map[string]map[string]map[string]any{"items": now.items, "collections": now.collections, "searches": now.searches}[kind]
+		backup := map[string]map[string]map[string]any{"items": b.items, "collections": b.collections, "searches": b.searches}[kind]
+		field := "parentItem"
+		if kind == "collections" {
+			field = "parentCollection"
+		}
+		var batch []map[string]any
+		var keys []string
+		for _, ch := range p.remove {
+			if ch.Kind != kind {
+				continue
+			}
+			d := server[ch.Key]
+			if parent, _ := d[field].(string); p.mode == "trash" && kind == "items" && going[parent] {
+				continue
+			}
+			if p.mode == "erase" {
+				if k := backupBelow(ch.Key, field, backup, server, failed); k != "" {
+					failures++
+					fmt.Fprintf(log, "FAILED %s %s: not erased, %s below it is in the backup\n", kind, ch.Key, k)
+					continue
+				}
+			}
+			keys = append(keys, ch.Key)
+			batch = append(batch, map[string]any{"key": ch.Key, "version": d["version"], "deleted": true})
+		}
+		if len(keys) == 0 {
+			continue
+		}
+		if p.mode == "trash" {
+			res, err := c.writeObjects(b.libPath, kind, batch)
+			if err != nil {
+				fmt.Fprintf(log, "FAILED moving %s not in the backup to the trash: %v\n", kind, err)
+				failures++
+				continue
+			}
+			for k, msg := range res.Failed {
+				failures++
+				fmt.Fprintf(log, "FAILED trash %s %s: %s\n", kind, k, msg)
+			}
+			fmt.Fprintf(log, "%s not in the backup, moved to the trash: %d\n", kind, len(res.Written)+len(res.Unchanged))
+			continue
+		}
+		if err := c.deleteObjects(b.libPath, kind, keys); err != nil {
+			failures++
+			fmt.Fprintf(log, "FAILED erasing %s not in the backup: %v\n", kind, err)
+			continue
+		}
+		fmt.Fprintf(log, "%s not in the backup, erased: %d\n", kind, len(keys))
+	}
+	return failures
+}
+
+// backupBelow returns a backup object that lies below k (k is its parent,
+// grandparent, …) after the restore's writes, or "": each object has its
+// backup parent, unless it is not in the backup or its write failed.
+func backupBelow(k, field string, backup, server map[string]map[string]any, failed map[string]bool) string {
+	parent := func(o string) string {
+		d := backup[o]
+		if d == nil || failed[o] {
+			d = server[o]
+		}
+		p, _ := d[field].(string)
+		return p
+	}
+	for bk := range backup {
+		for p, n := parent(bk), 0; p != "" && n < 100; p, n = parent(p), n+1 {
+			if p == k {
+				return bk
+			}
+		}
+	}
+	return ""
 }
 
 // selection returns the selected items, their descendants and their ancestors.
@@ -499,7 +629,23 @@ func printPlan(out io.Writer, b *backupSet, now *libraryNow, p plan, limit int) 
 	if len(p.missing) > 0 {
 		fmt.Fprintf(out, "files not in the backup (not on the server when it was made): %d\n\n", len(p.missing))
 	}
-	section("only in the library, not in the backup (restore keeps them)", p.extra)
+	switch p.mode {
+	case "":
+		section("only in the library, not in the backup (restore keeps them)", p.extra)
+	default:
+		title := "not in the backup: moved to the trash (--trash-new)"
+		if p.mode == "erase" {
+			title = "not in the backup: ERASED FOR GOOD (--erase-new)"
+		}
+		section(title, p.remove)
+		var kept []change
+		for _, c := range p.extra {
+			if !slices.ContainsFunc(p.remove, func(r change) bool { return r.Kind == c.Kind && r.Key == c.Key }) {
+				kept = append(kept, c)
+			}
+		}
+		section("only in the library, already in the trash (kept)", kept)
+	}
 	if p.empty() {
 		fmt.Fprintln(out, "The library matches the backup.")
 	}
@@ -510,6 +656,7 @@ func printPlan(out io.Writer, b *backupSet, now *libraryNow, p plan, limit int) 
 func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string, log io.Writer, pr *progress) (int, error) {
 	failures := 0
 	created := map[string]bool{}
+	failed := map[string]bool{} // keys whose write failed: still as in the library
 	payload := func(ch change) map[string]any {
 		d := map[string]any{}
 		for k, v := range ch.backup {
@@ -552,6 +699,7 @@ func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string,
 		}
 		for k, msg := range res.Failed {
 			failures++
+			failed[k] = true
 			fmt.Fprintf(log, "FAILED %s %s: %s\n", p.objects[i].Kind, k, msg)
 		}
 		fmt.Fprintf(log, "%s: %d written, %d unchanged, %d failed\n", p.objects[i].Kind, len(res.Written), len(res.Unchanged), len(res.Failed))
@@ -589,6 +737,10 @@ func restore(c *Client, b *backupSet, now *libraryNow, p plan, exclude []string,
 	if len(p.files) > 0 {
 		pr.Set(len(p.files), 0, "")
 		pr.Done()
+	}
+
+	if len(p.remove) > 0 {
+		failures += removeNew(c, b, now, p, failed, log)
 	}
 
 	if len(p.settings) > 0 {
@@ -721,7 +873,10 @@ func canWrite(c *Client, libPath string) error {
 }
 
 // runRestore is the restore command: plan, show, confirm, apply, check.
-func runRestore(clientFor func(string) (*Client, error), path string, p Profile, sel []string, dryRun, yes bool, out io.Writer, pr *progress) error {
+func runRestore(clientFor func(string) (*Client, error), path string, p Profile, sel []string, remove string, dryRun, yes bool, out io.Writer, pr *progress) error {
+	if remove != "" && sel != nil {
+		return errors.New("--trash-new / --erase-new act on the whole library: not with --items")
+	}
 	b, err := loadBackup(path)
 	if err != nil {
 		return err
@@ -739,13 +894,20 @@ func runRestore(clientFor func(string) (*Client, error), path string, p Profile,
 	if err != nil {
 		return err
 	}
-	pl := makePlan(b, now, p.Exclude, sel)
+	pl := withRemovals(makePlan(b, now, p.Exclude, sel), now, remove)
 	printPlan(out, b, now, pl, 25)
 	if dryRun || pl.empty() {
 		return nil
 	}
 	if !yes {
-		ok, err := confirm(fmt.Sprintf("Restore %d objects, %d files, %d settings into %s?", len(pl.objects), len(pl.files), len(pl.settings), b.label()))
+		q := fmt.Sprintf("Restore %d objects, %d files, %d settings into %s?", len(pl.objects), len(pl.files), len(pl.settings), b.label())
+		switch {
+		case pl.mode == "trash" && len(pl.remove) > 0:
+			q = fmt.Sprintf("Restore %d objects, %d files, %d settings and move %d objects not in the backup to the trash in %s?", len(pl.objects), len(pl.files), len(pl.settings), len(pl.remove), b.label())
+		case pl.mode == "erase" && len(pl.remove) > 0:
+			q = fmt.Sprintf("Restore %d objects, %d files, %d settings and ERASE %d objects not in the backup for good in %s?", len(pl.objects), len(pl.files), len(pl.settings), len(pl.remove), b.label())
+		}
+		ok, err := confirm(q)
 		if err != nil {
 			return err
 		}
@@ -762,7 +924,7 @@ func runRestore(clientFor func(string) (*Client, error), path string, p Profile,
 	if err != nil {
 		return fmt.Errorf("restored, but checking the result failed: %w", err)
 	}
-	left := makePlan(b, after, p.Exclude, sel)
+	left := withRemovals(makePlan(b, after, p.Exclude, sel), after, remove)
 	if left.empty() && failures == 0 {
 		fmt.Fprintln(out, "\nchecked: the library matches the backup")
 		return nil

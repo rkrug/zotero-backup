@@ -42,6 +42,7 @@ type fakeLibrary struct {
 	authorised  map[string]url.Values // item key -> the upload's md5, zipMD5, …
 	uploads     int                   // files sent to the storage service
 	ftGets      int                   // full-text contents fetched
+	erased      int                   // DELETE requests
 }
 
 func newFakeLibrary() *fakeLibrary {

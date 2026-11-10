@@ -142,6 +142,7 @@ Each scenario runs one cycle for all operations:
     - The backup keeps that ZIP as `<name>.zip`, with `"zip": true`, the page's md5 and both files inside.
     - A copy of the backup with a changed page (under `zip/upload` in the run's folder) is restored: restore really **uploads** the ZIP (anything in a real backup came from the server, which then only answers "exists"); the next backup gets exactly that ZIP back; after a sync Zotero desktop has both files with the right md5 in its storage folder.
     - The same in the form backups made before v0.2.0 kept ZIPs in (under the file's own name, with the ZIP's own md5, no `"zip"`): recognised as a ZIP, no file difference to the library; with a changed page, restore uploads it as a ZIP and the server has the page's md5.
+- **Removing what is not in the backup** (operation `remove-new`): after a backup, a new item with a child note, a note under a fixture item and a collection with a subcollection are made through the API; `restore --trash-new` puts them in the trash (the child note with its item) on the server and, after a sync, in Zotero desktop; `restore --erase-new` then erases them there too. Before each restore the plan is checked to remove only this test's own objects (tag `zb-e2e`, collections `[zb-e2e]…`); otherwise the step is refused.
 - `prune --dry-run` with one daily backup kept lists all but the newest backup.
 
 ## Checks

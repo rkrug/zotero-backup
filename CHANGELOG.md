@@ -4,6 +4,7 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+- **Notifications** after a backup that failed or reported problems: `notify_command` (any program, summary on stdin, never an API key) and `notify_macos`; `zotero-backup notify-test`.
 - **`diff BACKUP1 BACKUP2`** compares two backups of a library on disk (offline): added, removed, changed, files, settings.
 - **`find TEXT`** searches the backups (offline, no key) for items by title, creators, DOI, key, note text or file name, and shows in which backups each is and whether it is gone from the newest. **`show BACKUP KEY`** prints an item from a backup with its notes, attachments and annotations; `--save DIR` copies its files out.
 

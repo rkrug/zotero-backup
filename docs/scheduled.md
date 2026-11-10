@@ -56,6 +56,21 @@ then `systemctl --user enable --now zotero-backup.timer` (and `loginctl enable-l
 schtasks /Create /SC DAILY /ST 06:00 /TN "zotero-backup" /TR "cmd /c \"C:\Tools\zotero-backup.exe backup && C:\Tools\zotero-backup.exe prune\""
 ```
 
+## Notifications
+
+A scheduled backup that fails says so only in its log. To hear about it, set in the profile ([Configuration](configuration.md)):
+
+```json
+"notify_macos": true,
+"notify_command": ["/usr/bin/mail", "-s", "zotero-backup failed", "me@example.org"]
+```
+
+- Sent after a backup that **failed** (a library could not be backed up, no key, …) or reported **problems** in `meta.json`; not for attachments whose file never reached the server (`missing_files`), which are common.
+- `notify_command` is a program and its arguments, run without a shell, with the summary on stdin and `ZB_STATUS` (`failed`, `problems`) and `ZB_LIBRARIES_FAILED` in the environment; `ZOTERO_API_KEY` is removed from its environment. Any tool works: `mail`, `curl` to [ntfy](https://ntfy.sh) (`["curl", "-T", "-", "https://ntfy.sh/my-topic"]`), a script of your own.
+- `notify_macos` shows a macOS notification (Notification Center). Under a LaunchDaemon (nobody logged in) there is no one to show it to: use `notify_command` there.
+- A notification that fails is reported in the log and does not change the backup's result.
+- Try it: `zotero-backup notify-test`.
+
 ## When nobody is logged in
 
 | System | Schedule | API key |

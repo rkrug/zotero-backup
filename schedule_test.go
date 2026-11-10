@@ -167,7 +167,7 @@ func TestQuotedCommandsRoundTrip(t *testing.T) {
 }
 
 func TestStateSummary(t *testing.T) {
-	got := stateSummary("darwin", "x = {\n\tpath = /p\n\tstate = not running\n\truns = 0\n\tlast exit code = (never exited)\n}\n")
+	got := stateSummary("darwin", "x = {\n\tpath = /p\n\tstate = not running\n\truns = 0\n\tlast exit code = (never exited)\n\tsub = {\n\t\tstate = active\n\t}\n}\n")
 	if got != "state = not running; runs = 0; last exit code = (never exited)" {
 		t.Errorf("%q", got)
 	}

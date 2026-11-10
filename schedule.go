@@ -347,6 +347,9 @@ func stateSummary(goos, out string) string {
 		t := strings.TrimSpace(line)
 		switch goos {
 		case "darwin":
+			if !strings.HasPrefix(line, "\t") || strings.HasPrefix(line, "\t\t") {
+				continue // only the job's own lines, not those of its sub-entries
+			}
 			for _, k := range []string{"state = ", "runs = ", "last exit code = "} {
 				if strings.HasPrefix(t, k) && !slices.Contains(keep, t) {
 					keep = append(keep, t)

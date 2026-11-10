@@ -8,7 +8,8 @@ The computer has to be on and online at that time; Zotero desktop does not need 
 
 ```bash
 zotero-backup schedule install --at 02:30    # daily backup, then prune
-zotero-backup schedule show                  # what is installed, its state and next run
+zotero-backup schedule show                  # when, what it runs, log, state
+zotero-backup schedule show raw              # the files themselves and the scheduler's own output
 zotero-backup schedule remove
 ```
 
@@ -16,7 +17,7 @@ It sets up what the sections below describe, with your system's own scheduler, r
 
 - Store the key first (`zotero-backup key set`): the job reads it from your keychain.
 - It never overwrites or removes a setup it did not write itself (e.g. one copied from below by hand): it says so and stops.
-- Install zotero-backup in its final place first: the job keeps the path it was set up from (`upgrade` replaces the file in place, so the job stays valid).
+- Install zotero-backup in its final place first: the job keeps the path of the program it was set up **with** (`upgrade` replaces the file in place, so the job stays valid). `install` and `show` say so when that is not the `zotero-backup` on your `PATH`; running `schedule install` again with the right one replaces the job.
 - For runs **while nobody is logged in**, use the manual setups [below](#when-nobody-is-logged-in).
 
 ## By hand

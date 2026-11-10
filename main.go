@@ -39,7 +39,7 @@ commands:
               which backups each is, and whether it is gone from the newest
   show BACKUP KEY  print an item from a backup with its notes, attachments and
               annotations (offline); --save DIR copies its files out
-  schedule install [--at HH:MM] | show | remove  a daily backup, then prune,
+  schedule install [--at HH:MM] | show [raw] | remove  a daily backup, then prune,
               with the system's scheduler (macOS LaunchAgent, systemd user
               timer, Windows task) while you are logged in; --profile and
               --config are passed on
@@ -215,8 +215,9 @@ func run(args []string, out io.Writer) error {
 	case "backup":
 		return backupAndNotify(clientsFor(profile, newClient), profile, out, os.Stderr, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "schedule":
-		if len(pos) != 1 {
-			return errors.New("usage: zotero-backup schedule install [--at HH:MM] | show | remove")
+		raw := len(pos) == 2 && pos[0] == "show" && pos[1] == "raw"
+		if len(pos) != 1 && !raw {
+			return errors.New("usage: zotero-backup schedule install [--at HH:MM] | show [raw] | remove")
 		}
 		cfgArg := ""
 		fs.Visit(func(f *flag.Flag) {
@@ -224,7 +225,7 @@ func run(args []string, out io.Writer) error {
 				cfgArg, _ = filepath.Abs(expandHome(*cfgPath))
 			}
 		})
-		return runSchedule(pos[0], *scheduleAt, *profileName, cfgArg, out)
+		return runSchedule(pos[0], *scheduleAt, *profileName, cfgArg, raw, out)
 	case "notify-test":
 		return notifyTest(profile, out)
 	case "list":

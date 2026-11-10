@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -85,8 +87,8 @@ func (s *scheduler) files(hour, minute int) map[string]string {
 	case "windows":
 		dir := filepath.Join(s.home, "AppData", "Local", "zotero-backup")
 		log := filepath.Join(dir, "zotero-backup.log")
-		return map[string]string{filepath.Join(dir, s.name+".cmd"): fmt.Sprintf("@echo off\r\nrem %s; remove with: zotero-backup schedule remove\r\n%s >> \"%s\" 2>&1\r\nif errorlevel 1 exit /b 1\r\n%s >> \"%s\" 2>&1\r\n",
-			scheduleMark, cmdJoin(backup), log, cmdJoin(prune), log)}
+		return map[string]string{filepath.Join(dir, s.name+".cmd"): fmt.Sprintf("@echo off\r\nrem %s; remove with: zotero-backup schedule remove\r\nrem daily at %02d:%02d\r\n%s >> \"%s\" 2>&1\r\nif errorlevel 1 exit /b 1\r\n%s >> \"%s\" 2>&1\r\n",
+			scheduleMark, hour, minute, cmdJoin(backup), log, cmdJoin(prune), log)}
 	}
 	dir := filepath.Join(s.home, ".config", "systemd", "user")
 	return map[string]string{
@@ -121,6 +123,11 @@ func (s *scheduler) install(at string) error {
 	minute, _ := strconv.Atoi(m[2])
 	if strings.Contains(s.exe, "go-build") || strings.HasPrefix(s.exe, os.TempDir()) {
 		return fmt.Errorf("this program runs from a temporary folder (%s): install it first and run schedule from there", s.exe)
+	}
+	if onPath, _ := exec.LookPath("zotero-backup"); onPath != "" {
+		if p, _ := filepath.EvalSymlinks(onPath); p != "" && p != s.exe {
+			fmt.Fprintf(s.out, "note     the job runs %s, not the zotero-backup on your PATH (%s); to use that one, run schedule install with it\n", s.exe, p)
+		}
 	}
 	files := s.files(hour, minute)
 	var paths []string
@@ -175,32 +182,192 @@ func (s *scheduler) installed() []string {
 	return out
 }
 
-func (s *scheduler) show() error {
+// show prints what is installed in short: when, what, log, state; raw
+// prints the files and the scheduler's own output instead.
+func (s *scheduler) show(raw bool) error {
 	paths := s.installed()
 	if len(paths) == 0 {
 		fmt.Fprintf(s.out, "No schedule %s installed by zotero-backup schedule.\n", s.name)
 		return nil
 	}
-	for _, p := range paths {
-		b, _ := os.ReadFile(p)
-		fmt.Fprintf(s.out, "== %s\n%s\n", p, b)
-	}
-	var out string
+	sort.Strings(paths)
+	var state string
 	var err error
 	switch s.goos {
 	case "darwin":
-		out, err = s.run("launchctl", "print", "gui/"+s.uid+"/"+s.name)
+		state, err = s.run("launchctl", "print", "gui/"+s.uid+"/"+s.name)
 	case "windows":
-		out, err = s.run("schtasks", "/Query", "/TN", s.name, "/V", "/FO", "LIST")
+		state, err = s.run("schtasks", "/Query", "/TN", s.name, "/V", "/FO", "LIST")
 	default:
-		out, err = s.run("systemctl", "--user", "list-timers", s.name+".timer", "--all")
+		state, err = s.run("systemctl", "--user", "list-timers", s.name+".timer", "--all")
 	}
-	if err != nil {
-		fmt.Fprintf(s.out, "not loaded: %v\n", err)
+	if raw {
+		for _, p := range paths {
+			b, _ := os.ReadFile(p)
+			fmt.Fprintf(s.out, "== %s\n%s\n", p, b)
+		}
+		if err != nil {
+			fmt.Fprintf(s.out, "not loaded: %v\n", err)
+		} else {
+			fmt.Fprint(s.out, state)
+		}
 		return nil
 	}
-	fmt.Fprint(s.out, out)
+	var all strings.Builder
+	for _, p := range paths {
+		b, _ := os.ReadFile(p)
+		all.Write(b)
+	}
+	at, cmds, log := parseSchedule(s.goos, all.String())
+	kind := map[string]string{"darwin": "LaunchAgent", "windows": "scheduled task", "linux": "systemd user timer"}[s.goos]
+	fmt.Fprintf(s.out, "schedule  %s (%s, runs while you are logged in)\n", s.name, kind)
+	fmt.Fprintf(s.out, "when      daily at %s\n", at)
+	for i, c := range cmds {
+		label := "runs"
+		if i > 0 {
+			label = "then"
+		}
+		fmt.Fprintf(s.out, "%-9s %s\n", label, strings.Join(c, " "))
+	}
+	if len(cmds) > 0 {
+		if onPath, _ := exec.LookPath("zotero-backup"); onPath != "" {
+			if p, _ := filepath.EvalSymlinks(onPath); p != "" && p != cmds[0][0] {
+				fmt.Fprintf(s.out, "          (not the zotero-backup on your PATH, %s: run schedule install from that one to use it)\n", p)
+			}
+		}
+	}
+	if log != "" {
+		fmt.Fprintf(s.out, "log       %s\n", log)
+	} else if s.goos == "linux" {
+		fmt.Fprintf(s.out, "log       journalctl --user -u %s\n", s.name)
+	}
+	for _, p := range paths {
+		fmt.Fprintf(s.out, "file      %s\n", p)
+	}
+	if err != nil {
+		fmt.Fprintln(s.out, "state     not loaded (zotero-backup schedule show raw for details)")
+		return nil
+	}
+	fmt.Fprintf(s.out, "state     %s\n", stateSummary(s.goos, state))
 	return nil
+}
+
+// parseSchedule reads back the time, the commands and the log from the files
+// schedule wrote.
+func parseSchedule(goos, content string) (at string, cmds [][]string, log string) {
+	find := func(re string) string {
+		if m := regexp.MustCompile(re).FindStringSubmatch(content); m != nil {
+			return m[1]
+		}
+		return ""
+	}
+	switch goos {
+	case "darwin":
+		h, _ := strconv.Atoi(find(`<key>Hour</key><integer>(\d+)</integer>`))
+		m, _ := strconv.Atoi(find(`<key>Minute</key><integer>(\d+)</integer>`))
+		at = fmt.Sprintf("%02d:%02d", h, m)
+		sh := strings.NewReplacer("&lt;", "<", "&gt;", ">", "&amp;", "&").Replace(find(`<string>-c</string><string>(.*?)</string>`))
+		cmds = quotedCommands(sh, '\'')
+		log = strings.NewReplacer("&lt;", "<", "&gt;", ">", "&amp;", "&").Replace(find(`<key>StandardOutPath</key><string>(.*?)</string>`))
+	case "windows":
+		at = find(`rem daily at (\d\d:\d\d)`)
+		for _, line := range strings.Split(content, "\n") {
+			if strings.HasPrefix(line, `"`) {
+				cmd, rest, _ := strings.Cut(line, " >> ")
+				cmds = append(cmds, quotedCommands(strings.ReplaceAll(cmd, "%%", "%"), '"')...)
+				log = strings.Trim(strings.Fields(rest + " x")[0], `"`)
+			}
+		}
+	default:
+		at = find(`OnCalendar=\*-\*-\* (\d\d:\d\d)`)
+		for _, k := range []string{"ExecStart", "ExecStartPost"} {
+			line := find(`(?m)^` + k + `=(.*)$`)
+			line = strings.NewReplacer(`\\`, `\`, `\"`, "\x00", "%%", "%", "$$", "$").Replace(line)
+			for _, c := range quotedCommands(line, '"') {
+				for i := range c {
+					c[i] = strings.ReplaceAll(c[i], "\x00", `"`)
+				}
+				cmds = append(cmds, c)
+			}
+		}
+	}
+	if at == "" {
+		at = "?"
+	}
+	return at, cmds, log
+}
+
+// quotedCommands splits text made of quoted words (as shJoin / systemdJoin /
+// cmdJoin write them) into commands, separated by "&&". For sh, '\” is a
+// quote inside a word.
+func quotedCommands(text string, q rune) [][]string {
+	var cmds [][]string
+	var cur []string
+	var word strings.Builder
+	in, started := false, false
+	rs := []rune(text)
+	for i := 0; i < len(rs); i++ {
+		r := rs[i]
+		switch {
+		case r == q && q == '\'' && in && i+3 < len(rs) && string(rs[i:i+4]) == `'\''`:
+			word.WriteRune('\'')
+			i += 3
+		case r == q:
+			in = !in
+			started = true
+		case in:
+			word.WriteRune(r)
+		case r == ' ':
+			if started {
+				cur = append(cur, word.String())
+				word.Reset()
+				started = false
+			}
+		case r == '&' && i+1 < len(rs) && rs[i+1] == '&':
+			if len(cur) > 0 {
+				cmds = append(cmds, cur)
+			}
+			cur = nil
+			i++
+		}
+	}
+	if started {
+		cur = append(cur, word.String())
+	}
+	if len(cur) > 0 {
+		cmds = append(cmds, cur)
+	}
+	return cmds
+}
+
+// stateSummary picks the useful lines from the scheduler's output.
+func stateSummary(goos, out string) string {
+	var keep []string
+	for _, line := range strings.Split(out, "\n") {
+		t := strings.TrimSpace(line)
+		switch goos {
+		case "darwin":
+			for _, k := range []string{"state = ", "runs = ", "last exit code = "} {
+				if strings.HasPrefix(t, k) && !slices.Contains(keep, t) {
+					keep = append(keep, t)
+				}
+			}
+		case "windows":
+			for _, k := range []string{"Status:", "Next Run Time:", "Last Run Time:", "Last Result:"} {
+				if strings.HasPrefix(t, k) {
+					keep = append(keep, strings.Join(strings.Fields(t), " "))
+				}
+			}
+		default:
+			if strings.Contains(t, ".timer") {
+				keep = append(keep, strings.Join(strings.Fields(t), " "))
+			}
+		}
+	}
+	if len(keep) == 0 {
+		return "loaded (zotero-backup schedule show raw for details)"
+	}
+	return strings.Join(keep, "; ")
 }
 
 func (s *scheduler) remove() error {
@@ -232,7 +399,7 @@ func (s *scheduler) remove() error {
 }
 
 // runSchedule is the schedule command: install, show or remove.
-func runSchedule(action, at, profile, configPath string, out io.Writer) error {
+func runSchedule(action, at, profile, configPath string, raw bool, out io.Writer) error {
 	exe, err := os.Executable()
 	if err == nil {
 		exe, err = filepath.EvalSymlinks(exe)
@@ -253,11 +420,11 @@ func runSchedule(action, at, profile, configPath string, out io.Writer) error {
 	case "install":
 		return s.install(at)
 	case "show":
-		return s.show()
+		return s.show(raw)
 	case "remove":
 		return s.remove()
 	}
-	return errors.New("usage: zotero-backup schedule install [--at HH:MM] | show | remove")
+	return errors.New("usage: zotero-backup schedule install [--at HH:MM] | show [raw] | remove")
 }
 
 // shJoin quotes arguments for /bin/sh.

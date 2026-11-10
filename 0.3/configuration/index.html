@@ -87,7 +87,7 @@
           <div class="md-banner__inner md-grid md-typeset">
             
             
-zotero-backup v0.3.0-rc.2 · No warranty: you are responsible for your data.
+zotero-backup v0.3.0-rc.3 · No warranty: you are responsible for your data.
 Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
           </div>
@@ -327,6 +327,28 @@ This is not the documentation of the latest release.
   
   
     <li class="md-nav__item">
+      <a href="../ssh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Over SSH
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../keys/" class="md-nav__link">
         
   
@@ -431,6 +453,28 @@ This is not the documentation of the latest release.
   
   <span class="md-ellipsis">
     Scheduled backups
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../offsite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Off-site copies
     
   </span>
   
@@ -590,6 +634,14 @@ This is not the documentation of the latest release.
 <tr>
 <td><code>progress_interval</code></td>
 <td>seconds between progress lines in log mode</td>
+</tr>
+<tr>
+<td><code>notify_command</code></td>
+<td>a program with its arguments, run after a backup that <strong>failed or reported problems</strong>, e.g. <code>["/usr/bin/mail", "-s", "zotero-backup", "me@example.org"]</code>; no shell. It gets the backup's summary on stdin and <code>ZB_STATUS</code> (<code>failed</code> or <code>problems</code>) and <code>ZB_LIBRARIES_FAILED</code> in its environment, never an API key. See <a href="../scheduled/#notifications">Scheduled backups</a></td>
+</tr>
+<tr>
+<td><code>notify_macos</code></td>
+<td><code>true</code>: also a macOS notification then</td>
 </tr>
 </tbody>
 </table>

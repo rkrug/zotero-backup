@@ -86,7 +86,7 @@ gh secret set ZB_UPDATE_SIGNING_KEY < zb-update-key
 
 Keep `zb-update-key` somewhere safe (not in the repository).
 
-The documentation site is built with [MkDocs](https://www.mkdocs.org/) (Material theme) from `docs/` and published to the `gh-pages` branch by `.github/workflows/docs.yml` with [mike](https://github.com/jimporter/mike), one version per minor release (`0.2`, with `latest` as the default) plus `dev` (unreleased):
+The documentation site is built with [MkDocs](https://www.mkdocs.org/) (Material theme) from `docs/` and published to the `gh-pages` branch by `.github/workflows/docs.yml` with [mike](https://github.com/jimporter/mike), one version per minor release (`0.2`, with `latest` as the default; a pre-release as `0.3 (pre-release)` until its release) plus `dev` (unreleased):
 
 ```bash
 pip install mkdocs-material==9.6.14

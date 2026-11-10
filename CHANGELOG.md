@@ -4,6 +4,8 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+- `schedule show` names the profile the job uses (also `default`) and its configuration file.
+
 ## v0.3.0 (2026-11-10)
 
 It includes the pre-releases v0.3.0-rc.1 to rc.3.

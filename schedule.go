@@ -222,6 +222,18 @@ func (s *scheduler) show(raw bool) error {
 	kind := map[string]string{"darwin": "LaunchAgent", "windows": "scheduled task", "linux": "systemd user timer"}[s.goos]
 	fmt.Fprintf(s.out, "schedule  %s (%s, runs while you are logged in)\n", s.name, kind)
 	fmt.Fprintf(s.out, "when      daily at %s\n", at)
+	if len(cmds) > 0 {
+		profile, config := "default", "the default configuration file"
+		for i, a := range cmds[0] {
+			if i+1 < len(cmds[0]) && a == "--profile" {
+				profile = cmds[0][i+1]
+			}
+			if i+1 < len(cmds[0]) && a == "--config" {
+				config = cmds[0][i+1]
+			}
+		}
+		fmt.Fprintf(s.out, "profile   %s (in %s; zotero-backup config shows it)\n", profile, config)
+	}
 	for i, c := range cmds {
 		label := "runs"
 		if i > 0 {

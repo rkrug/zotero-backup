@@ -84,7 +84,7 @@ func TestScheduleInstallShowRemove(t *testing.T) {
 			if err := s.show(false); err != nil || strings.Contains(out.String(), scheduleMark) {
 				t.Errorf("show: %v\n%s", err, out.String())
 			}
-			for _, want := range []string{"schedule  " + s.name, "when      daily at 02:30",
+			for _, want := range []string{"schedule  " + s.name, "when      daily at 02:30", "profile   test (in /cfg dir/c.json;",
 				"runs      /opt/my tools/zotero-backup backup --profile test --config /cfg dir/c.json --progress log",
 				"then      /opt/my tools/zotero-backup prune --profile test --config /cfg dir/c.json --progress log", "file      ", "state     "} {
 				if !strings.Contains(out.String(), want) {

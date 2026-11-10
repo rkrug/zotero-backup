@@ -4,7 +4,7 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
-- **Documentation:** Over SSH (install, key, schedule on another computer, e.g. a Mac server with an account that is always logged in); Off-site copies (rsync / tar keep the hard links, cloud folders do not; encryption; checking a copy).
+- **Documentation:** Keys: create two keys, a read-only one for backups and a read/write one for restores, and store both; Over SSH (install, a read-only key only, schedule on another computer, e.g. a Mac server with an account that is always logged in; restoring from a copy); Off-site copies (rsync / tar keep the hard links, cloud folders do not; encryption; checking a copy).
 - **`schedule install [--at HH:MM] | show [raw] | remove`** sets up the daily backup (then prune) with the system's scheduler: a LaunchAgent on macOS, a systemd user timer on Linux, a scheduled task on Windows; never touches a setup made by hand.
 - **Notifications** after a backup that failed or reported problems: `notify_command` (any program, summary on stdin, never an API key) and `notify_macos`; `zotero-backup notify-test`.
 - **`diff BACKUP1 BACKUP2`** compares two backups of a library on disk (offline): added, removed, changed, files, settings.

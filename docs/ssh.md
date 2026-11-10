@@ -48,7 +48,12 @@ mkdir -Force $HOME\bin; move "zotero-backup-$V-$S\zotero-backup.exe" $HOME\bin\
 
 ## 2. Store the key
 
-Use a **read-only** key for a computer that only makes backups ([Keys](keys.md)). `key set` asks for it without showing it; over SSH the typed key travels encrypted and never lands in a command line or the shell history.
+!!! warning "Only a read-only key here"
+    A computer you set up over SSH runs unattended, can be reached from elsewhere, and keeps its keychain unlocked for a long time. Store **only a read-only key** there: if the computer or its account is ever misused, the key can read your libraries but never change or delete anything in them. No `write_key` in its profile.
+
+    Create the read-only key at <https://www.zotero.org/settings/keys>: *Allow library access* and *Allow notes access*, **not** *Allow write access*, Default Group Permissions **Read Only** ([Keys → Two keys](keys.md#two-keys-one-to-back-up-one-to-restore)). Keep the read/write key for restores on the computer you work on.
+
+`key set` asks for the key without showing it; over SSH the typed key travels encrypted and never lands in a command line or the shell history. `key check` shows what the key may do: it must say read-only for every library.
 
 **macOS.** The login keychain is unlocked while the account is logged in, but an SSH session often cannot use it until it is unlocked there too. Unlock it (it asks for the account's password), then store and check the key:
 
@@ -99,6 +104,10 @@ tail -50 ~/Library/Logs/zotero-backup.log        # macOS; Linux: journalctl --us
 ```
 
 To hear about failures without logging in: `notify_command` in the profile, e.g. mail or [ntfy](https://ntfy.sh) ([Scheduled backups → Notifications](scheduled.md#notifications)).
+
+## Restoring
+
+Restore on the computer you work on, with the read/write key stored there, from a copy of the server's backups ([Off-site copies](offsite.md), e.g. `rsync -aH server@macmini.local:zotero-backups/ ~/zotero-backups-server/`): `restore` reads only the backup folder you give it. If a restore must run on the server itself, store the write key there only for that (`zotero-backup key set zotero-write`, then `restore … --key zotero-write`), remove it afterwards (`zotero-backup key remove zotero-write`), and delete that key at zotero.org.
 
 ## A computer that is always logged in
 

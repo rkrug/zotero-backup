@@ -19,6 +19,7 @@ It sets up what the sections below describe, with your system's own scheduler, r
 - It never overwrites or removes a setup it did not write itself (e.g. one copied from below by hand): it says so and stops.
 - Install zotero-backup in its final place first: the job keeps the path of the program it was set up **with** (`upgrade` replaces the file in place, so the job stays valid). `install` and `show` say so when that is not the `zotero-backup` on your `PATH`; running `schedule install` again with the right one replaces the job.
 - For runs **while nobody is logged in**, use the manual setups [below](#when-nobody-is-logged-in).
+- A backup started by hand that still runs when the schedule comes up is safe: the scheduled run skips the libraries it is working on ([Backups → One run per library](backups.md)). `zotero-backup status` shows what runs, `zotero-backup stop` stops it.
 
 ## By hand
 

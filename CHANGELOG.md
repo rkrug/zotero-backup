@@ -4,6 +4,7 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+- **One run per library at a time** (#43): a backup or prune holds a lock in the library's folder; a second run (e.g. the schedule while a backup started by hand still runs) skips that library instead of writing into the same unfinished backup. Stale locks are taken over, locks from another computer never. **`zotero-backup status`** shows the runs in progress, **`zotero-backup stop [LIBRARY]`** stops them cleanly (the unfinished backup is continued by the next run). `restore` warns when its library is being backed up.
 - Documentation (Install, README, Over SSH): install v0.3.0, then `upgrade stable` to the newest: the same commands for every release, the update signed; `~/bin` on the `PATH` as a step of its own. Over SSH now tried on macOS.
 - `schedule show` names the profile the job uses (also `default`) and its configuration file.
 

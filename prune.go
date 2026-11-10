@@ -56,6 +56,17 @@ func prune(root string, p Profile, dryRun bool, out io.Writer) error {
 	for _, l := range libs {
 		libRoot := filepath.Join(root, l.Name())
 		names := backups(libRoot)
+		if len(names) == 0 {
+			continue
+		}
+		if !dryRun { // never delete while a backup of this library runs (it may link to these files)
+			release, err := acquireLock(libRoot, func(f string, a ...any) { fmt.Fprintf(out, f+"\n", a...) })
+			if err != nil {
+				fmt.Fprintf(out, "skipped %s: %v\n", l.Name(), err)
+				continue
+			}
+			defer release()
+		}
 		kept := keep(names, p.KeepDaily, p.KeepWeekly, p.KeepMonthly)
 		for _, n := range names {
 			if kept[n] {

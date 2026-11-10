@@ -396,6 +396,11 @@ func backupLibrary(c *Client, lib library, root string, exclude []string, now ti
 	if err != nil {
 		return "", Meta{}, err
 	}
+	release, err := acquireLock(libRoot, pr.Warnf)
+	if err != nil {
+		return "", Meta{}, err
+	}
+	defer release()
 	prev := latestBackup(libRoot)
 	work := findPartial(libRoot)
 	if work == "" {

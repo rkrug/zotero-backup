@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -296,4 +297,58 @@ func saveFile(src, dir, name string, isZip bool) ([]string, error) {
 		names = append(names, filepath.Base(filepath.FromSlash(zf.Name)))
 	}
 	return names, nil
+}
+
+// runDiffBackups compares two backups of the same library on disk (#34): what
+// was added, removed or changed between them, offline. It is the restore
+// comparison with the newer backup in place of the library.
+func runDiffBackups(pathA, pathB string, p Profile, sel []string, out io.Writer) error {
+	a, err := loadBackup(pathA)
+	if err != nil {
+		return err
+	}
+	b, err := loadBackup(pathB)
+	if err != nil {
+		return err
+	}
+	if a.meta.Library != b.meta.Library {
+		return fmt.Errorf("%s and %s are backups of different libraries (%s, %s)", a.dir, b.dir, a.label(), b.label())
+	}
+	if filepath.Base(b.dir) < filepath.Base(a.dir) {
+		a, b = b, a
+	}
+	newer := &libraryNow{version: b.meta.Version, items: b.items, collections: b.collections, searches: b.searches, settings: b.settings}
+	pl := makePlan(a, newer, append(slices.Clone(p.Exclude), b.meta.Exclude...), sel)
+	fmt.Fprintf(out, "older    %s (library version %d)\nnewer    %s (library version %d)\nlibrary  %s\n\n", a.dir, a.meta.Version, b.dir, b.meta.Version, b.label())
+	var removed, changed []change
+	for _, c := range pl.objects {
+		if c.What == "missing" {
+			removed = append(removed, c)
+		} else {
+			changed = append(changed, c)
+		}
+	}
+	printSection(out, "added (only in the newer backup)", pl.extra, 0)
+	printSection(out, "removed (only in the older backup)", removed, 0)
+	printSection(out, "changed", changed, 0)
+	var files []string
+	for _, k := range pl.files {
+		if b.items[k] != nil { // a removed attachment is listed above
+			files = append(files, k)
+		}
+	}
+	if len(files) > 0 {
+		fmt.Fprintf(out, "files changed: %d\n", len(files))
+		for _, k := range files {
+			fmt.Fprintf(out, "  %s  %s\n", k, a.files[k].Filename)
+		}
+		fmt.Fprintln(out)
+	}
+	if len(pl.settings) > 0 {
+		fmt.Fprintf(out, "settings changed: %s\n\n", strings.Join(pl.settings, ", "))
+	}
+	if len(pl.extra)+len(removed)+len(changed)+len(files)+len(pl.settings) == 0 {
+		fmt.Fprintln(out, "No differences.")
+	}
+	return nil
 }

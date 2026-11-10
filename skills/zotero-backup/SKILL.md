@@ -41,6 +41,7 @@ description: Back up, list, compare, restore and prune Zotero libraries (persona
 | List backups (per library: date, version, items, files, missing, problems) | `zotero-backup list` |
 | Find an item in the backups (offline): which backups have it, is it gone from the newest | `zotero-backup find TEXT [LIBRARY_FOLDER]` |
 | Show an item from a backup; copy its files out | `zotero-backup show BACKUP KEY [--save DIR]` (DIR outside the backups) |
+| What changed between two backups (offline) | `zotero-backup diff BACKUP1 BACKUP2` |
 | What differs between a backup and the library today | `zotero-backup diff BACKUP [--items K1,K2]` |
 | What a restore would do | `zotero-backup restore BACKUP --dry-run [--items K1,K2]` |
 | Restore (after the user's yes) | `zotero-backup restore BACKUP --yes [--items K1,K2] [--key WRITEKEY]` |

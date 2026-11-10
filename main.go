@@ -26,6 +26,8 @@ commands:
   list        list the backups in the profile's backup folder
   diff BACKUP     compare a backup (a backup folder, or a library folder for its
                   newest backup) with the library today
+  diff BACKUP1 BACKUP2  compare two backups of a library on disk (offline):
+                  what was added, removed or changed between them
   restore BACKUP  make the library match the backup again, keeping all keys;
                   shows the plan and asks first (--dry-run: only show it;
                   --yes: do not ask; --items K1,K2: only these items, their
@@ -207,8 +209,8 @@ func run(args []string, out io.Writer) error {
 	case "list":
 		return listBackups(expandHome(profile.To), out)
 	case "diff", "restore":
-		if len(pos) != 1 {
-			return fmt.Errorf("%s needs one backup folder", cmd)
+		if len(pos) != 1 && !(cmd == "diff" && len(pos) == 2) {
+			return fmt.Errorf("%s needs one backup folder (diff: or two, to compare them)", cmd)
 		}
 		var sel []string
 		if *itemsFlag != "" {
@@ -224,6 +226,9 @@ func run(args []string, out io.Writer) error {
 			remove = "trash"
 		case *eraseNew:
 			remove = "erase"
+		}
+		if cmd == "diff" && len(pos) == 2 {
+			return runDiffBackups(expandHome(pos[0]), expandHome(pos[1]), profile, sel, out)
 		}
 		if cmd == "diff" {
 			return runDiff(clientsFor(profile, newClient), expandHome(pos[0]), profile, sel, out)

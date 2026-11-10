@@ -324,3 +324,10 @@ func TestReplaceExeWindowsRollsBack(t *testing.T) {
 		t.Errorf("old binary not put back: %q", b)
 	}
 }
+
+func TestUpdatePublicKey(t *testing.T) {
+	k, err := base64.StdEncoding.DecodeString(updatePublicKey)
+	if err != nil || len(k) != ed25519.PublicKeySize {
+		t.Errorf("updatePublicKey is no Ed25519 public key: %d bytes, %v", len(k), err)
+	}
+}

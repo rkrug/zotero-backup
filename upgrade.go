@@ -41,7 +41,7 @@ const (
 // updatePublicKey checks SHA256SUMS.sig: a raw Ed25519 public key, base64
 // (go run tools/sign.go keygen). Empty: this build cannot verify updates and
 // only points to the release page.
-const updatePublicKey = ""
+const updatePublicKey = "Rj5mQo83PlF7V+hBwqKM9nlC1SrQigvp6gmEF76YRNg="
 
 type ghRelease struct {
 	Tag        string `json:"tag_name"`

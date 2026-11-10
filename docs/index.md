@@ -19,7 +19,7 @@ The plan and the tests behind the design are in [Issue #1](https://github.com/rk
 
 ## Quick start
 
-1. **Create an API key** at <https://www.zotero.org/settings/keys>. For backups, a **read-only** key is enough: allow library access and notes for the personal library, and read access to the groups. **Store it** in the system keychain:
+1. **Create an API key** at <https://www.zotero.org/settings/keys>. For backups, a **read-only** key is enough: allow library access and notes for the personal library, and read access to the groups. For restores, create a second, **read/write** key (step 3): store both ([two keys](keys.md#two-keys-one-to-back-up-one-to-restore)). **Store it** in the system keychain:
 
     ```bash
     # asks for the key (not shown), checks it with Zotero, stores it

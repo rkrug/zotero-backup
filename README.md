@@ -82,6 +82,10 @@ pip install mkdocs-material==9.6.14
 mkdocs serve          # preview at http://127.0.0.1:8000
 ```
 
+## AI assistants
+
+[skills/zotero-backup/SKILL.md](skills/zotero-backup/SKILL.md) is an Agent Skill that tells an assistant (e.g. Claude Code) how to use zotero-backup safely: keys only typed by you, a preview and your yes before every `restore` and `prune`. For Claude Code, copy the folder `skills/zotero-backup` into `~/.claude/skills/`.
+
 ## Contributing
 
 Reports, tests on Windows and Linux, and pull requests (into `dev`) are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md). Security problems: report them privately, see [SECURITY.md](SECURITY.md). What changed per version: [CHANGELOG.md](CHANGELOG.md).

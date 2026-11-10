@@ -5,7 +5,8 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 ## Unreleased
 
 - **Documentation per version:** the [site](https://rkrug.github.io/zotero-backup/) keeps the documentation of each release (version menu in the header); `dev` shows the unreleased state.
-- **AI assistants:** an Agent Skill (`skills/zotero-backup/SKILL.md`) for using zotero-backup safely through an assistant such as Claude Code.
+- **AI assistants:** an Agent Skill (`skills/zotero-backup/`) for using zotero-backup safely through an assistant such as Claude Code, with what each error message means and how to read a stress test report.
+- `--help`: `--exclude` also applies to `diff` and `restore` (it leaves the parts out of the plan); the help said backup only.
 - **For contributors:** [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) (private reports), issue templates for bug reports and Windows / Linux test reports, and `CITATION.cff` ("Cite this repository" on GitHub).
 
 ## v0.2.0 (2026-11-09)

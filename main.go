@@ -53,9 +53,10 @@ options:
                       instead of the profile's "key" / "keys" (e.g. a write key
                       for a restore); without it, restore uses the profile's
                       "write_key" if set
-  --exclude A,B       backup: leave out these parts instead of the profile's
-                      exclude list ("" for none); one of files, attachments,
-                      notes, annotations, fulltext, settings, trash
+  --exclude A,B       leave out these parts instead of the profile's exclude
+                      list ("" for none): backup does not back them up, diff
+                      and restore leave them out of the plan; one of files,
+                      attachments, notes, annotations, fulltext, settings, trash
 
 The API key is read from ZOTERO_API_KEY, or else from the keychain entry named
 by the profile's "key": macOS Keychain, Windows Credential Manager, Linux Secret

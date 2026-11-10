@@ -9,7 +9,7 @@ ssh server@macmini.local
 ```
 
 !!! note "What has been tried"
-    macOS: the whole workflow was set up over SSH on a Mac with an account that is always logged in (v0.3.0: install, key, first backup, `schedule install`). The Linux and Windows parts are written from how those systems work but not yet tried on a real system ([#15](https://github.com/rkrug/zotero-backup/issues/15) Windows, [#16](https://github.com/rkrug/zotero-backup/issues/16) Linux). Reports are welcome.
+    macOS: the whole workflow was set up over SSH on a Mac with an account that is always logged in (v0.3.0: install, `security unlock-keychain` and `key set`, first backup, `schedule install`). The Linux and Windows parts are written from how those systems work but not yet tried on a real system ([#15](https://github.com/rkrug/zotero-backup/issues/15) Windows, [#16](https://github.com/rkrug/zotero-backup/issues/16) Linux). Reports are welcome.
 
 ## 1. Install
 
@@ -26,7 +26,13 @@ shasum -a 256 -c --ignore-missing SHA256SUMS      # Linux: sha256sum -c --ignore
 tar -xzf "zotero-backup-$VERSION-$SYS.tar.gz"
 mkdir -p ~/bin && mv "zotero-backup-$VERSION-$SYS/zotero-backup" ~/bin/
 ~/bin/zotero-backup upgrade stable --yes       # to the newest normal release (signed), if there is a newer one
-~/bin/zotero-backup version
+```
+
+Put `~/bin` on the `PATH`, now and for every later login (on Linux with bash use `~/.profile` instead of `~/.zshrc`):
+
+```bash
+case ":$PATH:" in *":$HOME/bin:"*) ;; *) echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc; export PATH="$HOME/bin:$PATH" ;; esac
+zotero-backup version
 ```
 
 **Windows** (PowerShell over OpenSSH; `curl.exe` and `tar` come with Windows 10 and 11):
@@ -46,7 +52,7 @@ mkdir -Force $HOME\bin; move "zotero-backup-$V-$S\zotero-backup.exe" $HOME\bin\
 (the `Path` change counts from the next login).
 
 - The checksum line must say `OK` for the archive.
-- `~/bin` must be on the `PATH` (`echo $PATH`); if not, add `export PATH="$HOME/bin:$PATH"` to `~/.zshrc` (macOS) or `~/.profile` (Linux) and log in again.
+- `zotero-backup version` must work without the path in front; if it says "command not found", the `PATH` line is missing (`echo $PATH`). The schedule itself does not need it: it runs the program by its full path.
 - A file downloaded with `curl` has no quarantine flag: macOS does not block its first start (unlike a browser download, see [Install](install.md)).
 - `upgrade stable` says "is up to date on the stable channel" when the installed release already is the newest; later it fetches the newest and checks it before replacing anything ([Updating](install.md#updating)). It replaces the file in place, so a schedule keeps working; run it the same way for every later update.
 

@@ -77,8 +77,19 @@ func TestScheduleInstallShowRemove(t *testing.T) {
 				}
 			}
 			out.Reset()
-			if err := s.show(); err != nil || !strings.Contains(out.String(), "status of "+s.name) || !strings.Contains(out.String(), scheduleMark) {
+			if err := s.show(true); err != nil || !strings.Contains(out.String(), "status of "+s.name) || !strings.Contains(out.String(), scheduleMark) {
+				t.Errorf("show raw: %v\n%s", err, out.String())
+			}
+			out.Reset()
+			if err := s.show(false); err != nil || strings.Contains(out.String(), scheduleMark) {
 				t.Errorf("show: %v\n%s", err, out.String())
+			}
+			for _, want := range []string{"schedule  " + s.name, "when      daily at 02:30",
+				"runs      /opt/my tools/zotero-backup backup --profile test --config /cfg dir/c.json --progress log",
+				"then      /opt/my tools/zotero-backup prune --profile test --config /cfg dir/c.json --progress log", "file      ", "state     "} {
+				if !strings.Contains(out.String(), want) {
+					t.Errorf("show lacks %q:\n%s", want, out.String())
+				}
 			}
 			if err := s.install("03:00"); err != nil { // again: replaces its own files
 				t.Errorf("second install: %v", err)
@@ -139,5 +150,25 @@ func TestShJoinQuotes(t *testing.T) {
 	b, err := exec.Command("/bin/sh", "-c", shJoin(args)).Output()
 	if err != nil || string(b) != `it's|a "b" $HOME|x && y|` {
 		t.Errorf("%q %v", b, err)
+	}
+}
+
+func TestQuotedCommandsRoundTrip(t *testing.T) {
+	a := []string{"/x/it's here/zb", "backup", `a "b" %HOME% $x`}
+	b := []string{"/x/zb", "prune"}
+	sh := quotedCommands(shJoin(a)+" && "+shJoin(b), '\'')
+	if len(sh) != 2 || strings.Join(sh[0], "|") != strings.Join(a, "|") || strings.Join(sh[1], "|") != strings.Join(b, "|") {
+		t.Errorf("sh: %q", sh)
+	}
+	_, cmds, _ := parseSchedule("linux", "OnCalendar=*-*-* 01:02:00\nExecStart="+systemdJoin(a)+"\nExecStartPost="+systemdJoin(b)+"\n")
+	if len(cmds) != 2 || strings.Join(cmds[0], "|") != strings.Join(a, "|") {
+		t.Errorf("systemd: %q", cmds)
+	}
+}
+
+func TestStateSummary(t *testing.T) {
+	got := stateSummary("darwin", "x = {\n\tpath = /p\n\tstate = not running\n\truns = 0\n\tlast exit code = (never exited)\n}\n")
+	if got != "state = not running; runs = 0; last exit code = (never exited)" {
+		t.Errorf("%q", got)
 	}
 }

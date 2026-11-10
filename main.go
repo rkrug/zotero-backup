@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -45,6 +46,10 @@ commands:
               --config are passed on
   notify-test  send a test notification with the profile's notify_command /
               notify_macos (sent after a backup that failed or had problems)
+  status      the backups running now (from their locks): library, PID, since
+  stop [LIBRARY]  stop the backups running on this computer (all, or the one of
+              user / group:<id>) cleanly; an unfinished backup is continued by
+              the next run
   prune       delete backups not kept by keep_daily / keep_weekly / keep_monthly
               (newest per day, ISO week and month); --dry-run only shows them
   key set [NAME]     store an API key in the system keychain under NAME (default:
@@ -213,6 +218,7 @@ func run(args []string, out io.Writer) error {
 		}
 		return keyCheckAll(profile, newClient, out)
 	case "backup":
+		stopOnSignal(os.Stderr)
 		return backupAndNotify(clientsFor(profile, newClient), profile, out, os.Stderr, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "schedule":
 		raw := len(pos) == 2 && pos[0] == "show" && pos[1] == "raw"
@@ -275,7 +281,26 @@ func run(args []string, out io.Writer) error {
 			return errors.New("usage: zotero-backup show BACKUP KEY [--save DIR]")
 		}
 		return runShow(expandHome(pos[0]), pos[1], expandHome(*saveDir), out)
+	case "status":
+		return runStatus(expandHome(profile.To), out)
+	case "stop":
+		if len(pos) > 1 {
+			return errors.New("usage: zotero-backup stop [LIBRARY], e.g. group:2333076 or user")
+		}
+		lib := ""
+		if len(pos) == 1 {
+			kind, id, err := parseLibrary(pos[0])
+			if err != nil || kind == "all" {
+				return fmt.Errorf("stop: %q is not user or group:<id>", pos[0])
+			}
+			lib = "user"
+			if kind == "group" {
+				lib = "group-" + strconv.Itoa(id)
+			}
+		}
+		return runStop(expandHome(profile.To), lib, out)
 	case "prune":
+		stopOnSignal(os.Stderr)
 		return prune(expandHome(profile.To), profile, *dryRun, out)
 	case "help", "-h", "--help":
 		fs.Usage()

@@ -885,6 +885,9 @@ func runRestore(clientFor func(string) (*Client, error), path string, p Profile,
 	if err != nil {
 		return err
 	}
+	if l, err := readLock(filepath.Dir(b.dir)); err == nil && lockState(l) == "running" {
+		pr.Warnf("a backup of this library is running (%s); the backup restored from is complete, newer ones may follow", l)
+	}
 	c, err := clientFor(b.spec())
 	if err != nil {
 		return err

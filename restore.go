@@ -572,36 +572,7 @@ func typeOf(c change) string {
 func printPlan(out io.Writer, b *backupSet, now *libraryNow, p plan, limit int) {
 	fmt.Fprintf(out, "backup   %s (library version %d)\n", b.dir, b.meta.Version)
 	fmt.Fprintf(out, "library  %s, now at version %d\n\n", b.label(), now.version)
-	section := func(title string, cs []change) {
-		if len(cs) == 0 {
-			return
-		}
-		count := map[string]int{}
-		for _, c := range cs {
-			count[typeOf(c)]++
-		}
-		var parts []string
-		for _, t := range sortedKeys(count) {
-			parts = append(parts, fmt.Sprintf("%d %s", count[t], t))
-		}
-		fmt.Fprintf(out, "%s: %d (%s)\n", title, len(cs), strings.Join(parts, ", "))
-		for i, c := range cs {
-			if limit > 0 && i == limit {
-				fmt.Fprintf(out, "  … and %d more\n", len(cs)-limit)
-				break
-			}
-			d := c.backup
-			if d == nil {
-				d = c.server
-			}
-			extra := ""
-			if len(c.Fields) > 0 {
-				extra = "  [" + strings.Join(c.Fields, ", ") + "]"
-			}
-			fmt.Fprintf(out, "  %s  %-16s %s%s\n", c.Key, typeOf(c), label(d), extra)
-		}
-		fmt.Fprintln(out)
-	}
+	section := func(title string, cs []change) { printSection(out, title, cs, limit) }
 	var missing, changed []change
 	for _, c := range p.objects {
 		if c.What == "missing" {
@@ -649,6 +620,39 @@ func printPlan(out io.Writer, b *backupSet, now *libraryNow, p plan, limit int) 
 	if p.empty() {
 		fmt.Fprintln(out, "The library matches the backup.")
 	}
+}
+
+// printSection prints a titled list of changes with counts per type; limit caps
+// the lines (0: all).
+func printSection(out io.Writer, title string, cs []change, limit int) {
+	if len(cs) == 0 {
+		return
+	}
+	count := map[string]int{}
+	for _, c := range cs {
+		count[typeOf(c)]++
+	}
+	var parts []string
+	for _, t := range sortedKeys(count) {
+		parts = append(parts, fmt.Sprintf("%d %s", count[t], t))
+	}
+	fmt.Fprintf(out, "%s: %d (%s)\n", title, len(cs), strings.Join(parts, ", "))
+	for i, c := range cs {
+		if limit > 0 && i == limit {
+			fmt.Fprintf(out, "  … and %d more\n", len(cs)-limit)
+			break
+		}
+		d := c.backup
+		if d == nil {
+			d = c.server
+		}
+		extra := ""
+		if len(c.Fields) > 0 {
+			extra = "  [" + strings.Join(c.Fields, ", ") + "]"
+		}
+		fmt.Fprintf(out, "  %s  %-16s %s%s\n", c.Key, typeOf(c), label(d), extra)
+	}
+	fmt.Fprintln(out)
 }
 
 // restore applies the plan. It writes collections, searches and items in plan

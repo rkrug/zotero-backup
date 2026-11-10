@@ -34,4 +34,10 @@ zotero-backup show ~/zotero-backups/group-6719916-Safe_Edit_Test/2026-11-05T2043
 - **`show BACKUP KEY`** prints the item from that backup (`BACKUP` is a backup folder, or a library folder for its newest backup): its fields, creators, tags and collections, then its attachments, notes (as text) and annotations.
 - **`--save DIR`** copies the files of the item and its attachments out of the backup into `DIR/<attachment key>/`, ZIPs unpacked. It never overwrites a file and refuses a folder inside the backups.
 
+- **`diff BACKUP1 BACKUP2`** compares two backups of the same library: what was **added**, **removed** and **changed** (with the fields) between them, files changed and settings changed. The order does not matter; parts either backup left out are not compared.
+
+    ```bash
+    zotero-backup diff ~/zotero-backups/group-6719916-Safe_Edit_Test/2026-11-05T204338Z ~/zotero-backups/group-6719916-Safe_Edit_Test/2026-11-10T102736Z
+    ```
+
 To put an item back into the library: `zotero-backup restore BACKUP --items KEY` ([Restore](restore.md)).

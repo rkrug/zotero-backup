@@ -5,6 +5,7 @@
 
 ```bash
 zotero-backup diff BACKUP                     # what differs from the library today
+zotero-backup diff BACKUP1 BACKUP2            # what changed between two backups (offline)
 zotero-backup restore BACKUP --dry-run        # what restore would do
 zotero-backup restore BACKUP                  # shows the plan, asks, restores, checks
 zotero-backup restore BACKUP --items ABCD1234,EFGH5678

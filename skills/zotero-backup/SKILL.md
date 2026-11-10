@@ -1,6 +1,6 @@
 ---
 name: zotero-backup
-description: Back up, list, compare, restore and prune Zotero libraries (personal library and groups) with the zotero-backup command-line tool, safely. Use whenever the user wants to back up a Zotero library, look at or compare backups, restore items or a whole library from a backup, clean up old backups, set up or check zotero-backup's API keys, or check a scheduled backup run.
+description: Back up, list, compare, restore and prune Zotero libraries (personal library and groups) with the zotero-backup command-line tool, safely. Use whenever the user wants to back up a Zotero library, look at or compare backups, restore items or a whole library from a backup, clean up old backups, set up or check zotero-backup's API keys, check a scheduled backup run, or update zotero-backup itself.
 ---
 
 # zotero-backup

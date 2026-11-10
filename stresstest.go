@@ -467,12 +467,16 @@ func parseProfilesINI(ini, dir, want string) (string, error) {
 	return "", fmt.Errorf("no Zotero profile named %q in profiles.ini", want)
 }
 
+// backup makes a backup of the library and verifies it (zotero-backup verify).
 func (s *stress) backup() (*backupSet, error) {
 	time.Sleep(1100 * time.Millisecond) // backup folders are named by the second
 	dir, _, err := backupLibrary(s.c, s.lib, s.root, nil, time.Now(), quietProgress())
 	if err != nil {
 		return nil, err
 	}
+	r := (&verifier{seen: map[string][]os.FileInfo{}}).check(dir)
+	s.record("backups", "verify", "backup "+filepath.Base(dir)+" passes verify", len(r.problems) == 0 && !r.old,
+		"%d files; %s", r.files, strings.Join(r.problems, "; "))
 	return loadBackup(dir)
 }
 
@@ -826,6 +830,7 @@ func (s *stress) extras() error {
 		s.z.run(stressOps[0].desktop, map[string]string{"family": f.json()}, nil)
 	}
 	s.sync(sc, "sync changes", "fail")
+	s.lookChecks(b0, fams)
 
 	// dry run writes nothing
 	_, h, _ := s.c.get(s.lib.Path + "/items?limit=1")

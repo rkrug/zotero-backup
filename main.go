@@ -32,6 +32,11 @@ commands:
                   children and what they need). Objects not in the backup are
                   kept, unless --trash-new (moved to the trash) or --erase-new
                   (erased for good, the trash too)
+  find TEXT [LIBRARY_FOLDER]  search the backups (offline) for items whose
+              title, creators, DOI, key, note or file name contains TEXT: in
+              which backups each is, and whether it is gone from the newest
+  show BACKUP KEY  print an item from a backup with its notes, attachments and
+              annotations (offline); --save DIR copies its files out
   prune       delete backups not kept by keep_daily / keep_weekly / keep_monthly
               (newest per day, ISO week and month); --dry-run only shows them
   key set [NAME]     store an API key in the system keychain under NAME (default:
@@ -54,6 +59,7 @@ options:
   --erase-new         restore: also erase objects not in the backup for good,
                       also those in the trash (command line only, never from
                       the configuration; not with --items)
+  --save DIR          show: copy the item's files (ZIPs unpacked) into DIR/<key>/
   --check             upgrade: only show what is available (exit status 1 if
                       an update is available)
   --downgrade         upgrade stable: go back from a pre-release
@@ -93,6 +99,7 @@ func run(args []string, out io.Writer) error {
 	yes := fs.Bool("yes", false, "restore, upgrade: do not ask")
 	trashNew := fs.Bool("trash-new", false, "restore: move objects not in the backup to the trash")
 	eraseNew := fs.Bool("erase-new", false, "restore: erase objects not in the backup")
+	saveDir := fs.String("save", "", "show: copy the item's files into this folder")
 	check := fs.Bool("check", false, "upgrade: only show what is available")
 	downgrade := fs.Bool("downgrade", false, "upgrade stable: back from a pre-release")
 	itemsFlag := fs.String("items", "", "diff / restore: only these item keys")
@@ -227,6 +234,20 @@ func run(args []string, out io.Writer) error {
 		return runStresstest(profile, stressOptions{libraries: stressLibs, scenarios: splitList(*stressScen),
 			ops: splitList(*stressOpsFlag), report: *stressReportDir, keep: *stressKeep, zoteroProfile: *zoteroProfile, cleanup: *stressCleanupRun},
 			os.Stdin, out, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
+	case "find":
+		if len(pos) < 1 || len(pos) > 2 {
+			return errors.New("usage: zotero-backup find TEXT [LIBRARY_FOLDER]")
+		}
+		lib := ""
+		if len(pos) == 2 {
+			lib = expandHome(pos[1])
+		}
+		return runFind(expandHome(profile.To), lib, pos[0], out)
+	case "show":
+		if len(pos) != 2 {
+			return errors.New("usage: zotero-backup show BACKUP KEY [--save DIR]")
+		}
+		return runShow(expandHome(pos[0]), pos[1], expandHome(*saveDir), out)
 	case "prune":
 		return prune(expandHome(profile.To), profile, *dryRun, out)
 	case "help", "-h", "--help":

@@ -4,6 +4,8 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+- **`find TEXT`** searches the backups (offline, no key) for items by title, creators, DOI, key, note text or file name, and shows in which backups each is and whether it is gone from the newest. **`show BACKUP KEY`** prints an item from a backup with its notes, attachments and annotations; `--save DIR` copies its files out.
+
 - **`restore --trash-new` / `--erase-new`:** also move everything not in the backup to the Zotero trash, or erase it for good (the trash too), so the library ends up exactly as in the backup. Command line only, not with `--items`; shown in the plan and the question with a count.
 - **Fix:** parts a backup left out (`--exclude notes`, `attachments`, `annotations`, `trash`) no longer show as "only in the library, not in the backup".
 

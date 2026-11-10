@@ -39,6 +39,8 @@ description: Back up, list, compare, restore and prune Zotero libraries (persona
 | What a key may read and write | `zotero-backup key check [NAME]` |
 | Back up (the profile's libraries) | `zotero-backup backup [--profile P] [--exclude files,fulltext]` |
 | List backups (per library: date, version, items, files, missing, problems) | `zotero-backup list` |
+| Find an item in the backups (offline): which backups have it, is it gone from the newest | `zotero-backup find TEXT [LIBRARY_FOLDER]` |
+| Show an item from a backup; copy its files out | `zotero-backup show BACKUP KEY [--save DIR]` (DIR outside the backups) |
 | What differs between a backup and the library today | `zotero-backup diff BACKUP [--items K1,K2]` |
 | What a restore would do | `zotero-backup restore BACKUP --dry-run [--items K1,K2]` |
 | Restore (after the user's yes) | `zotero-backup restore BACKUP --yes [--items K1,K2] [--key WRITEKEY]` |
@@ -49,6 +51,7 @@ description: Back up, list, compare, restore and prune Zotero libraries (persona
 
 - `BACKUP` is a backup folder, or a library folder (then its newest backup). Find the backup of a given date with `list`; names are **UTC** times, so an evening backup may carry the next day's date: when the user's date is ambiguous, show the candidates and ask.
 - Which libraries `backup` reads, where backups go (`to`) and how many prune keeps come from the profile (`zotero-backup config`): `library` is `all`, `user` or `group:<id>`. To back up only some libraries, the user adds a profile to the configuration file (documentation: Configuration) and you use `--profile`; there is no option to pick a library on the command line.
+- To get one item back: `find` it, `show` it from the right backup (or `--save` its files when the user only needs a file), then `restore BACKUP --items KEY` after a dry run and a yes.
 - Restore recreates items missing from the library with their old keys and takes items out of the trash; `diff` lists them under "missing in the library", which also gives their keys for `--items`.
 - `--items` restores only these items (8-character keys), with their attachments, notes, annotations, parents and the collections they need; library settings are left alone.
 - `--exclude` parts: `files`, `attachments`, `notes`, `annotations`, `fulltext`, `settings`, `trash`; `--exclude ""` for none (default: the profile's `exclude`). For `backup` they are left out of the backup; for `diff` / `restore` out of the plan (e.g. `--exclude files` when the storage is full).

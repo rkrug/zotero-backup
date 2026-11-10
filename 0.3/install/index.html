@@ -664,9 +664,26 @@ This is the documentation of an <strong>older release (v0.3.0)</strong>.
 
 
 <h1 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h1>
-<p>Download the archive for your system from the <a href="https://github.com/rkrug/zotero-backup/releases">releases</a>, unpack it and put <code>zotero-backup</code> (<code>zotero-backup.exe</code> on Windows) somewhere on your <code>PATH</code>.</p>
-<p>Or build it with Go: <code>go install github.com/rkrug/zotero-backup@latest</code>.</p>
-<p>Check the version with <code>zotero-backup version</code>. Later versions: see <a href="#updating">Updating</a>. On another computer, from a terminal: <a href="../ssh/">Over SSH</a>.</p>
+<p>Install <strong>v0.3.0</strong> (the first release that can update itself), then let it bring itself to the newest release. The commands stay the same for every future release, and the update is checked with zotero-backup's signature.</p>
+<p><strong>macOS and Linux</strong>, in Terminal. <code>SYS</code> is your system: <code>uname -sm</code> prints e.g. <code>Darwin arm64</code> (→ <code>darwin-arm64</code>), <code>Darwin x86_64</code> (→ <code>darwin-amd64</code>), <code>Linux x86_64</code> (→ <code>linux-amd64</code>), <code>Linux aarch64</code> (→ <code>linux-arm64</code>).</p>
+<div class="highlight"><pre><span></span><code><span class="nv">VERSION</span><span class="o">=</span>v0.3.0<span class="w"> </span><span class="nv">SYS</span><span class="o">=</span>darwin-arm64
+<span class="nb">cd</span><span class="w"> </span>/tmp
+curl<span class="w"> </span>-LO<span class="w"> </span><span class="s2">"https://github.com/rkrug/zotero-backup/releases/download/</span><span class="nv">$VERSION</span><span class="s2">/zotero-backup-</span><span class="nv">$VERSION</span><span class="s2">-</span><span class="nv">$SYS</span><span class="s2">.tar.gz"</span>
+curl<span class="w"> </span>-LO<span class="w"> </span><span class="s2">"https://github.com/rkrug/zotero-backup/releases/download/</span><span class="nv">$VERSION</span><span class="s2">/SHA256SUMS"</span>
+shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>-c<span class="w"> </span>--ignore-missing<span class="w"> </span>SHA256SUMS<span class="w">      </span><span class="c1"># Linux: sha256sum -c --ignore-missing SHA256SUMS; must say OK</span>
+tar<span class="w"> </span>-xzf<span class="w"> </span><span class="s2">"zotero-backup-</span><span class="nv">$VERSION</span><span class="s2">-</span><span class="nv">$SYS</span><span class="s2">.tar.gz"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>~/bin<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mv<span class="w"> </span><span class="s2">"zotero-backup-</span><span class="nv">$VERSION</span><span class="s2">-</span><span class="nv">$SYS</span><span class="s2">/zotero-backup"</span><span class="w"> </span>~/bin/
+~/bin/zotero-backup<span class="w"> </span>upgrade<span class="w"> </span>stable<span class="w"> </span>--yes<span class="w">          </span><span class="c1"># to the newest normal release, if there is a newer one</span>
+</code></pre></div>
+<p>Put <code>~/bin</code> on the <code>PATH</code>, now and for every later login (Linux with bash: <code>~/.profile</code> instead of <code>~/.zshrc</code>), and check:</p>
+<div class="highlight"><pre><span></span><code><span class="k">case</span><span class="w"> </span><span class="s2">":</span><span class="nv">$PATH</span><span class="s2">:"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>*<span class="s2">":</span><span class="nv">$HOME</span><span class="s2">/bin:"</span>*<span class="o">)</span><span class="w"> </span><span class="p">;;</span><span class="w"> </span>*<span class="o">)</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s1">'export PATH="$HOME/bin:$PATH"'</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.zshrc<span class="p">;</span><span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/bin:</span><span class="nv">$PATH</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span><span class="w"> </span><span class="k">esac</span>
+zotero-backup<span class="w"> </span>version
+</code></pre></div>
+<p>A file downloaded with <code>curl</code> has no quarantine flag, so macOS does not block its first start.</p>
+<p><strong>Windows</strong>: the same in PowerShell (<a href="../ssh/#1-install">Over SSH</a> has the commands; they work locally too).</p>
+<p><strong>With a browser instead:</strong> download the archive for your system from the <a href="https://github.com/rkrug/zotero-backup/releases">releases</a>, unpack it and put <code>zotero-backup</code> (<code>zotero-backup.exe</code> on Windows) somewhere on your <code>PATH</code>; on macOS the first start is then blocked once (<a href="#macos-the-first-start-is-blocked">below</a>). Then <code>zotero-backup upgrade stable</code>.</p>
+<p>Or build it with Go: <code>go install github.com/rkrug/zotero-backup@latest</code> (updated the same way, not with <code>upgrade</code>).</p>
+<p>Later versions: <code>zotero-backup upgrade stable</code> (<a href="#updating">Updating</a>). On another computer, from a terminal: <a href="../ssh/">Over SSH</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Windows and Linux: not yet tried on a real system</p>
 <p>Only the macOS version has been checked by hand so far; the Windows and Linux versions pass the unit tests in CI but are untested in real use (<a href="https://github.com/rkrug/zotero-backup/issues/15">#15</a>, <a href="https://github.com/rkrug/zotero-backup/issues/16">#16</a>). See <a href="../">Platform status</a>.</p>

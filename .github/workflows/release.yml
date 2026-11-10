@@ -37,7 +37,10 @@ jobs:
             echo "::warning::ZB_UPDATE_SIGNING_KEY is not set; publishing without an update signature."
             exit 0
           fi
-          go run tools/sign.go sign dist/SHA256SUMS
+          out=$(go run tools/sign.go sign dist/SHA256SUMS)
+          want=$(sed -n 's/^const updatePublicKey = "\(.*\)"$/\1/p' upgrade.go)
+          case "$out" in *"(public key $want)"*) echo "signed with the key of updatePublicKey" ;;
+            *) echo "::error::ZB_UPDATE_SIGNING_KEY does not belong to updatePublicKey in upgrade.go"; exit 1 ;; esac
       - name: Create the release with the archives
         env:
           GH_TOKEN: ${{ github.token }}

@@ -21,7 +21,7 @@ The unit tests (`go test ./...`, run in CI on Linux, macOS and Windows) use a fa
   ```
 
   The default is no. The question needs a terminal: a piped answer is refused, and there is no option to skip it.
-- **Pinned to one library.** Every script it runs inside Zotero first checks the library: a group by its ID **and** name, the personal library by the signed-in user's ID **and** username, which must be the key's. It stops on any mismatch. Syncs are limited to that library.
+- **Pinned to one library.** Every script it runs inside Zotero first checks the library by its ID: a group by its group ID, the personal library by the signed-in user's ID, which must be the key's. It stops on any mismatch. (Names are not compared: a group or an account renamed on zotero.org keeps its old name in Zotero desktop until the next sync or login.) Syncs are limited to that library.
 - **Only its own objects.** Items count as the test's only if their top-level item carries the tag `zb-e2e`; collections only if their name starts with `[zb-e2e]`. Every operation refuses any other object.
 - **Refuses to start** on a library if the key cannot write to it, Zotero has unsynced changes in it, it was never synced, or automatic sync is on.
 - **Safety backup first.** Before anything changes in a library, a normal backup of it goes into the profile's backup folder (`to`).

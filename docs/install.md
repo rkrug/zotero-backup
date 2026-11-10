@@ -4,7 +4,7 @@ Download the archive for your system from the [releases](https://github.com/rkru
 
 Or build it with Go: `go install github.com/rkrug/zotero-backup@latest`.
 
-Check the version with `zotero-backup version`. Later versions: see [Updating](#updating).
+Check the version with `zotero-backup version`. Later versions: see [Updating](#updating). On another computer, from a terminal: [Over SSH](ssh.md).
 
 !!! note "Windows and Linux: not yet tried on a real system"
     Only the macOS version has been checked by hand so far; the Windows and Linux versions pass the unit tests in CI but are untested in real use ([#15](https://github.com/rkrug/zotero-backup/issues/15), [#16](https://github.com/rkrug/zotero-backup/issues/16)). See [Platform status](index.md).

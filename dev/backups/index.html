@@ -488,6 +488,28 @@ This is not the documentation of the latest release.
   
   
     <li class="md-nav__item">
+      <a href="../offsite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Off-site copies
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../stresstest/" class="md-nav__link">
         
   
@@ -594,7 +616,7 @@ This is not the documentation of the latest release.
 <li>Folder names are <code>group-&lt;id&gt;-&lt;name&gt;</code> and <code>user-&lt;id&gt;-&lt;username&gt;</code> (spaces as <code>_</code>). A renamed group keeps its folder: it is found by ID and renamed.</li>
 <li>Backup names are the time in <strong>UTC</strong> (<code>YYYY-MM-DDTHHMMSSZ</code>, no colons so they work on Windows), independent of the computer's time zone and of summer time; they sort by time.</li>
 <li>Text files and web-page snapshots are kept as <code>&lt;file name&gt;.zip</code>: Zotero desktop uploads them zipped (a snapshot with its images and styles) and the server hands out that ZIP. Unzip it to open the file; restore uploads the ZIP the way Zotero does.</li>
-<li>A file that did not change since the previous backup (same md5) is a <strong>hard link</strong>: deleting a backup frees only the files no other backup links to. On drives without hard links (FAT/exFAT, some network shares) files are copied instead. Never edit files inside a backup: a hard-linked file is the same file in every backup. Copy a backup folder tree with a tool that keeps hard links (e.g. <code>rsync -aH</code>), or each backup becomes a full copy.</li>
+<li>A file that did not change since the previous backup (same md5) is a <strong>hard link</strong>: deleting a backup frees only the files no other backup links to. On drives without hard links (FAT/exFAT, some network shares) files are copied instead. Never edit files inside a backup: a hard-linked file is the same file in every backup. Copy a backup folder tree with a tool that keeps hard links (e.g. <code>rsync -aH</code>), or each backup becomes a full copy: see <a href="../offsite/">Off-site copies</a>.</li>
 <li>An interrupted backup leaves <code>&lt;date&gt;.partial</code>; the next run continues it.</li>
 <li>Attachments whose file never reached the Zotero server cannot be backed up; they are listed in <code>meta.json</code> and by <code>backup</code>, so they can be uploaded from the computer that has them.</li>
 </ul>

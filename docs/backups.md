@@ -20,6 +20,25 @@
 - **One run per library at a time.** While a backup or prune works on a library, its folder holds a `.lock` file (process ID, computer, program, start time, command). A second run that finds it skips that library with "a backup of … is already running (PID …)" and counts it as failed (exit status 1, a [notification](scheduled.md#notifications) if set up); the other libraries go on. A lock left by a run that no longer runs on this computer (a crash, a power cut) is taken over by the next run, with a warning; a lock from another computer (a backup folder on a shared disk) never is: the message says which file to remove once no backup runs there.
 - Attachments whose file never reached the Zotero server cannot be backed up; they are listed in `meta.json` and by `backup`, so they can be uploaded from the computer that has them.
 
+## Checking backups
+
+```bash
+zotero-backup verify                 # the newest backup of each library
+zotero-backup verify all             # every backup (files shared by hard links are read once)
+zotero-backup verify ~/zotero-backups/group-6719916-Safe_Edit_Test   # one library's newest, or a backup folder
+zotero-backup verify --quick         # sizes only, no checksums: fast, e.g. daily; the full check e.g. weekly
+```
+
+Offline, without a key. For each backup:
+
+- the JSON files can be read, and (for backups made with v0.3.1 or later) are unchanged since the backup: their md5 is recorded in `meta.json`;
+- the counts (items per type, collections, searches, full text, files) match `meta.json`;
+- every file is there, has its size and its md5 (for a ZIP, the md5 of the file inside, as Zotero records it);
+- every attachment whose file is on the Zotero server is backed up or listed in `missing_files`;
+- a leftover `.partial` folder is mentioned (not a problem).
+
+One line per backup, `OK` or `PROBLEMS` with each problem; the exit status is 0 only if all are fine. A damaged backup is best replaced: the next `backup` makes a complete one again, and `prune` removes the damaged one in time (or delete it by hand).
+
 ## Running and stopping
 
 ```bash

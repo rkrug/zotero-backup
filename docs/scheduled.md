@@ -75,6 +75,10 @@ then `systemctl --user enable --now zotero-backup.timer` (and `loginctl enable-l
 schtasks /Create /SC DAILY /ST 06:00 /TN "zotero-backup" /TR "cmd /c \"C:\Tools\zotero-backup.exe backup && C:\Tools\zotero-backup.exe prune\""
 ```
 
+## Checking the backups
+
+`zotero-backup verify` checks the newest backups offline (files, checksums, JSON; [Backups → Checking backups](backups.md#checking-backups)). To check after every run, add it to the job by hand, or run it e.g. weekly with `verify all`; its exit status is 1 when a backup has problems.
+
 ## Notifications
 
 A scheduled backup that fails says so only in its log. To hear about it, set in the profile ([Configuration](configuration.md)):

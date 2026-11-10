@@ -46,6 +46,10 @@ commands:
               --config are passed on
   notify-test  send a test notification with the profile's notify_command /
               notify_macos (sent after a backup that failed or had problems)
+  verify [BACKUP | LIBRARY_FOLDER | all]  check backups on disk (offline): the
+              JSON files, the counts, every file's size and md5, attachments
+              backed up or listed as missing; without an argument the newest
+              backup of each library; --quick: sizes only
   status      the backups running now (from their locks): library, PID, since
   stop [LIBRARY]  stop the backups running on this computer (all, or the one of
               user / group:<id>) cleanly; an unfinished backup is continued by
@@ -72,6 +76,7 @@ options:
   --erase-new         restore: also erase objects not in the backup for good,
                       also those in the trash (command line only, never from
                       the configuration; not with --items)
+  --quick             verify: check sizes only, not the md5 of every file
   --save DIR          show: copy the item's files (ZIPs unpacked) into DIR/<key>/
   --check             upgrade: only show what is available (exit status 1 if
                       an update is available)
@@ -113,6 +118,7 @@ func run(args []string, out io.Writer) error {
 	trashNew := fs.Bool("trash-new", false, "restore: move objects not in the backup to the trash")
 	eraseNew := fs.Bool("erase-new", false, "restore: erase objects not in the backup")
 	scheduleAt := fs.String("at", "06:00", "schedule install: the daily time, HH:MM")
+	quickVerify := fs.Bool("quick", false, "verify: sizes only, no md5")
 	saveDir := fs.String("save", "", "show: copy the item's files into this folder")
 	check := fs.Bool("check", false, "upgrade: only show what is available")
 	downgrade := fs.Bool("downgrade", false, "upgrade stable: back from a pre-release")
@@ -281,6 +287,18 @@ func run(args []string, out io.Writer) error {
 			return errors.New("usage: zotero-backup show BACKUP KEY [--save DIR]")
 		}
 		return runShow(expandHome(pos[0]), pos[1], expandHome(*saveDir), out)
+	case "verify":
+		if len(pos) > 1 {
+			return errors.New("usage: zotero-backup verify [BACKUP | LIBRARY_FOLDER | all] [--quick]")
+		}
+		target := ""
+		if len(pos) == 1 {
+			target = pos[0]
+			if target != "all" {
+				target = expandHome(target)
+			}
+		}
+		return runVerify(expandHome(profile.To), target, *quickVerify, out)
 	case "status":
 		return runStatus(expandHome(profile.To), out)
 	case "stop":

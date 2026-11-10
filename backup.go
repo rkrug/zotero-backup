@@ -156,22 +156,26 @@ type MissingFile struct {
 
 // Meta is written as meta.json into every backup.
 type Meta struct {
-	Library        string         `json:"library"`
-	Name           string         `json:"name"`
-	Version        int            `json:"version"`
-	Date           string         `json:"date"`
-	Exclude        []string       `json:"exclude"`
-	Previous       string         `json:"previous,omitempty"`
-	Counts         map[string]int `json:"counts"`
-	Downloaded     int            `json:"files_downloaded"`
-	Linked         int            `json:"files_linked"`
-	FulltextReused int            `json:"fulltext_reused"`
-	DownBytes      int64          `json:"bytes_downloaded"`
-	TotalBytes     int64          `json:"bytes_total"`
-	Missing        []MissingFile  `json:"missing_files"`
-	Problems       []string       `json:"problems"`
-	Seconds        float64        `json:"seconds"`
+	Library        string            `json:"library"`
+	Name           string            `json:"name"`
+	Version        int               `json:"version"`
+	Date           string            `json:"date"`
+	Exclude        []string          `json:"exclude"`
+	Previous       string            `json:"previous,omitempty"`
+	Counts         map[string]int    `json:"counts"`
+	Downloaded     int               `json:"files_downloaded"`
+	Linked         int               `json:"files_linked"`
+	FulltextReused int               `json:"fulltext_reused"`
+	DownBytes      int64             `json:"bytes_downloaded"`
+	TotalBytes     int64             `json:"bytes_total"`
+	Missing        []MissingFile     `json:"missing_files"`
+	Problems       []string          `json:"problems"`
+	Seconds        float64           `json:"seconds"`
+	Checksums      map[string]string `json:"checksums,omitempty"` // md5 of each JSON file of the backup (verify)
 }
+
+// backupJSON are the JSON files of a backup besides meta.json.
+var backupJSON = []string{"items.json", "collections.json", "searches.json", "settings.json", "fulltext.json", "files.json"}
 
 // resolveLibraries turns the profile's library spec into libraries the key can read.
 // For "all" it also returns the libraries left out and why.
@@ -461,6 +465,14 @@ func backupLibrary(c *Client, lib library, root string, exclude []string, now ti
 		return "", Meta{}, err
 	}
 	m.Counts["files"] = len(files)
+	m.Checksums = map[string]string{}
+	for _, name := range backupJSON {
+		sum, _, err := md5File(filepath.Join(work, name))
+		if err != nil {
+			return "", Meta{}, err
+		}
+		m.Checksums[name] = sum
+	}
 	m.Seconds = time.Since(start).Round(100 * time.Millisecond).Seconds()
 	if err := writeJSON(filepath.Join(work, "meta.json"), m); err != nil {
 		return "", Meta{}, err

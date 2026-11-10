@@ -7,6 +7,7 @@ Backup and restore of Zotero libraries (personal library and groups) through the
 - **Complete backups.** Every backup is a folder with the whole library: items (with notes, annotations and the trash), collections, saved searches, library settings such as tag colours, the full-text index, and the attachment files.
 - **Small and fast after the first run.** Files that did not change since the previous backup are hard links to it: not downloaded again, not stored twice.
 - **Restore into the same library**, everything or selected items, with a preview first.
+- **Look into backups without restoring** (`find`, `show`, `diff` of two backups), **schedule** the daily backup with one command, and **update** zotero-backup itself (`upgrade`, signed).
 - One executable for Windows, macOS and Linux; nothing else to install.
 
 **Platform status: tested on macOS.** zotero-backup is used and checked by hand on macOS, including the end-to-end [stress test](https://rkrug.github.io/zotero-backup/stresstest/) against Zotero desktop. The Windows and Linux versions are built for every release and pass all unit tests in CI on those systems, including the keychains, but have **not yet been tried on a real Windows or Linux system**: see [#15](https://github.com/rkrug/zotero-backup/issues/15) (Windows) and [#16](https://github.com/rkrug/zotero-backup/issues/16) (Linux). Reports are welcome.

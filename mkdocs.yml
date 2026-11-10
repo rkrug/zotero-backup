@@ -39,5 +39,6 @@ nav:
   - Backups: backups.md
   - Restore: restore.md
   - Scheduled backups: scheduled.md
+  - Off-site copies: offsite.md
   - Stress test: stresstest.md
   - Disclaimer: disclaimer.md

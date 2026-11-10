@@ -11,7 +11,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Normal releases only from main
@@ -22,15 +22,29 @@ jobs:
             *) git merge-base --is-ancestor "$GITHUB_SHA" origin/main ||
                  { echo "$GITHUB_REF_NAME is a normal release but not on main: tag it on main after the PR from dev, or use a pre-release tag (e.g. $GITHUB_REF_NAME-rc.1)"; exit 1; } ;;
           esac
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - run: go test ./...
       - run: .github/build.sh "$GITHUB_REF_NAME"
+      # Ed25519 signature over SHA256SUMS for zotero-backup upgrade (tools/sign.go). Without the
+      # secret the release is still built, but upgrade only points to the release page.
+      - name: Sign SHA256SUMS
+        env:
+          ZB_UPDATE_SIGNING_KEY: ${{ secrets.ZB_UPDATE_SIGNING_KEY }}
+        run: |
+          if [ -z "$ZB_UPDATE_SIGNING_KEY" ]; then
+            echo "::warning::ZB_UPDATE_SIGNING_KEY is not set; publishing without an update signature."
+            exit 0
+          fi
+          out=$(go run tools/sign.go sign dist/SHA256SUMS)
+          want=$(sed -n 's/^const updatePublicKey = "\(.*\)"$/\1/p' upgrade.go)
+          case "$out" in *"(public key $want)"*) echo "signed with the key of updatePublicKey" ;;
+            *) echo "::error::ZB_UPDATE_SIGNING_KEY does not belong to updatePublicKey in upgrade.go"; exit 1 ;; esac
       - name: Create the release with the archives
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           pre=""
           case "$GITHUB_REF_NAME" in *-*) pre="--prerelease";; esac   # v0.1.0-rc.1 etc.
-          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.zip dist/SHA256SUMS --title "$GITHUB_REF_NAME" --generate-notes $pre
+          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.zip dist/SHA256SUMS* --title "$GITHUB_REF_NAME" --generate-notes $pre

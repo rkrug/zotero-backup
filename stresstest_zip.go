@@ -85,7 +85,7 @@ func (s *stress) zipChecks() {
 
 func (s *stress) restoreZip(op, dir, k, filename, check string) {
 	var out strings.Builder
-	err := runRestore(fixedClient(s.c), dir, s.profile, []string{k}, false, true, &out, quietProgress())
+	err := runRestore(fixedClient(s.c), dir, s.profile, []string{k}, "", false, true, &out, quietProgress())
 	ok := err == nil && strings.Contains(out.String(), "file "+k+" "+filename+": uploaded\n")
 	detail := ""
 	if !ok {

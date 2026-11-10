@@ -29,7 +29,7 @@ func TestProgressLineMode(t *testing.T) {
 	p.Phase("items", 0)
 	p.Set(300, 6975, "")
 	p.Logf("a message")
-	if !strings.Contains(b.String(), "\r\033[K") || !strings.Contains(b.String(), "\n: a message\n") {
+	if !strings.Contains(b.String(), "\r\033[K") || !strings.Contains(b.String(), "\na message\n") {
 		t.Errorf("output %q", b.String())
 	}
 }
@@ -42,7 +42,7 @@ func TestProgressQuiet(t *testing.T) {
 	p.Logf("not shown")
 	p.Done()
 	p.Warnf("shown")
-	if b.String() != ": shown\n" {
+	if b.String() != "shown\n" {
 		t.Errorf("output %q", b.String())
 	}
 }

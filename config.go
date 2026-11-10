@@ -28,6 +28,9 @@ type Profile struct {
 
 	Progress         string `json:"progress"`          // auto, line, log or quiet
 	ProgressInterval int    `json:"progress_interval"` // seconds between progress lines in log mode
+
+	NotifyCommand []string `json:"notify_command"` // run after a backup that failed or had problems: program and arguments, no shell
+	NotifyMacOS   bool     `json:"notify_macos"`   // and a macOS notification
 }
 
 type Config struct {
@@ -51,6 +54,8 @@ func defaultProfile() Profile {
 
 		Progress:         "auto",
 		ProgressInterval: 30,
+
+		NotifyCommand: []string{},
 	}
 }
 
@@ -127,6 +132,9 @@ func (p Profile) validate() error {
 	}
 	if p.ProgressInterval < 1 {
 		return errors.New("progress_interval must be at least 1 (seconds)")
+	}
+	if len(p.NotifyCommand) > 0 && strings.TrimSpace(p.NotifyCommand[0]) == "" {
+		return errors.New("notify_command: the first entry must be the program")
 	}
 	if p.KeepDaily < 0 || p.KeepWeekly < 0 || p.KeepMonthly < 0 {
 		return errors.New("keep_daily, keep_weekly and keep_monthly must not be negative")

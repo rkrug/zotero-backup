@@ -8,12 +8,14 @@ name: Docs
 #   - a push to main redeploys the latest release (docs-only fixes), but only
 #     while no Go code changed since that release's tag: a release pull request
 #     waits for its tag;
+#   - a pre-release tag vX.Y.Z-rc.N deploys X.Y titled "X.Y (pre-release)",
+#     without moving "latest"; the release vX.Y.Z then overwrites it;
 #   - a push to dev deploys "dev" (unreleased);
-#   - pre-release tags and other branches are only built.
+#   - other branches are only built.
 on:
   push:
     branches: ["**"]
-    tags: ["v*", "!v*-*"]
+    tags: ["v*"]
   pull_request:
 
 permissions:
@@ -23,8 +25,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install mkdocs-material==9.6.14
@@ -37,10 +39,10 @@ jobs:
     concurrency:
       group: gh-pages # one deploy at a time: each pushes to gh-pages
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # tags and gh-pages
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install mkdocs-material==9.6.14 mike==2.1.3
@@ -57,17 +59,23 @@ jobs:
               fi ;;
             refs/heads/dev)
               echo "DOCS_VERSION=dev (unreleased)" >> "$GITHUB_ENV"
+              echo "MIKE_TITLE=dev" >> "$GITHUB_ENV"
               echo "MIKE_ARGS=dev" >> "$GITHUB_ENV"
               exit 0 ;;
           esac
-          minor=${release#v}; minor=${minor%.*}
+          minor=$(echo "${release#v}" | cut -d. -f1,2)
           echo "DOCS_VERSION=$release" >> "$GITHUB_ENV"
-          echo "MIKE_ARGS=--update-aliases $minor latest" >> "$GITHUB_ENV"
+          case "$release" in
+            *-*) echo "MIKE_TITLE=$minor (pre-release)" >> "$GITHUB_ENV"
+                 echo "MIKE_ARGS=$minor" >> "$GITHUB_ENV" ;;
+            *)   echo "MIKE_TITLE=$minor" >> "$GITHUB_ENV"
+                 echo "MIKE_ARGS=--update-aliases $minor latest" >> "$GITHUB_ENV" ;;
+          esac
       - name: Publish to gh-pages
         if: env.MIKE_ARGS != ''
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin gh-pages:gh-pages || true
-          mike deploy --push --alias-type copy $MIKE_ARGS
+          mike deploy --push --alias-type copy --title "$MIKE_TITLE" $MIKE_ARGS
           case "$MIKE_ARGS" in *latest) mike set-default --push latest ;; esac

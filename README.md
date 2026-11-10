@@ -7,6 +7,7 @@ Backup and restore of Zotero libraries (personal library and groups) through the
 - **Complete backups.** Every backup is a folder with the whole library: items (with notes, annotations and the trash), collections, saved searches, library settings such as tag colours, the full-text index, and the attachment files.
 - **Small and fast after the first run.** Files that did not change since the previous backup are hard links to it: not downloaded again, not stored twice.
 - **Restore into the same library**, everything or selected items, with a preview first.
+- **Look into backups without restoring** (`find`, `show`, `diff` of two backups), **schedule** the daily backup with one command, and **update** zotero-backup itself (`upgrade`, signed).
 - One executable for Windows, macOS and Linux; nothing else to install.
 
 **Platform status: tested on macOS.** zotero-backup is used and checked by hand on macOS, including the end-to-end [stress test](https://rkrug.github.io/zotero-backup/stresstest/) against Zotero desktop. The Windows and Linux versions are built for every release and pass all unit tests in CI on those systems, including the keychains, but have **not yet been tried on a real Windows or Linux system**: see [#15](https://github.com/rkrug/zotero-backup/issues/15) (Windows) and [#16](https://github.com/rkrug/zotero-backup/issues/16) (Linux). Reports are welcome.
@@ -26,9 +27,11 @@ Download the archive for your system from the [releases](https://github.com/rkru
 
 Or build it with Go: `go install github.com/rkrug/zotero-backup@latest`.
 
+From v0.3.0 on, `zotero-backup upgrade` updates it from the releases (signed and checked; [Updating](https://rkrug.github.io/zotero-backup/latest/install/#updating)).
+
 ## Quick start
 
-1. **Create an API key** at <https://www.zotero.org/settings/keys>. For backups, a **read-only** key is enough: allow library access and notes for the personal library, and read access to the groups. **Store it** in the system keychain:
+1. **Create an API key** at <https://www.zotero.org/settings/keys>. For backups, a **read-only** key is enough: allow library access and notes for the personal library, and read access to the groups. For restores, create a second, **read/write** key (step 3): store both ([two keys](https://rkrug.github.io/zotero-backup/latest/keys/#two-keys-one-to-back-up-one-to-restore)). **Store it** in the system keychain:
 
     ```bash
     # asks for the key (not shown), checks it with Zotero, stores it
@@ -75,7 +78,16 @@ go build -o zotero-backup .
 
 Releases are built by GitHub Actions for each tag `v*`. See `CLAUDE.md` for the structure.
 
-The documentation site is built with [MkDocs](https://www.mkdocs.org/) (Material theme) from `docs/` and published to the `gh-pages` branch by `.github/workflows/docs.yml` with [mike](https://github.com/jimporter/mike), one version per minor release (`0.2`, with `latest` as the default) plus `dev` (unreleased):
+**Update signing key** (for `zotero-backup upgrade`): the release workflow signs `SHA256SUMS` with the Ed25519 key in the secret `ZB_UPDATE_SIGNING_KEY` (`SHA256SUMS.sig`); `updatePublicKey` in `upgrade.go` is its public key. To create a key pair (once; a new key needs a release with the new public key, and older binaries then only point to the release page):
+
+```bash
+go run tools/sign.go keygen zb-update-key        # writes the private key (readable only by you), prints the public key
+gh secret set ZB_UPDATE_SIGNING_KEY < zb-update-key
+```
+
+Keep `zb-update-key` somewhere safe (not in the repository).
+
+The documentation site is built with [MkDocs](https://www.mkdocs.org/) (Material theme) from `docs/` and published to the `gh-pages` branch by `.github/workflows/docs.yml` with [mike](https://github.com/jimporter/mike), one version per minor release (`0.2`, with `latest` as the default; a pre-release as `0.3 (pre-release)` until its release) plus `dev` (unreleased):
 
 ```bash
 pip install mkdocs-material==9.6.14

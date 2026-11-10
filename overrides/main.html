@@ -6,6 +6,14 @@ Read the <a href="{{ 'disclaimer/' | url }}">disclaimer</a> before you restore o
 {% endblock %}
 
 {% block outdated %}
-This is not the documentation of the latest release.
+{# shown on every version except "latest"; the text depends on which this is #}
+{% set r = config.extra.release | string %}
+{% if r.startswith("dev") %}
+This is the documentation of the <strong>unreleased</strong> development version, newer than the latest release.
+{% elif "-" in r %}
+This is the documentation of the <strong>pre-release {{ r }}</strong>, newer than the latest release.
+{% else %}
+This is the documentation of an <strong>older release ({{ r }})</strong>.
+{% endif %}
 <a href="{{ '../' ~ base_url }}"><strong>Go to the latest release.</strong></a>
 {% endblock %}

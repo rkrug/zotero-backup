@@ -4,6 +4,24 @@ Run `backup` and then `prune`, e.g. daily. With no terminal, progress is written
 
 The computer has to be on and online at that time; Zotero desktop does not need to run (backups use the web API only). Use a **read-only** key for scheduled backups, so a key that is stored for unattended runs cannot change any library.
 
+## The quick way
+
+```bash
+zotero-backup schedule install --at 02:30    # daily backup, then prune
+zotero-backup schedule show                  # when, what it runs, log, state
+zotero-backup schedule show raw              # the files themselves and the scheduler's own output
+zotero-backup schedule remove
+```
+
+It sets up what the sections below describe, with your system's own scheduler, running while you are logged in: a **LaunchAgent** on macOS (`~/Library/LaunchAgents/org.zotero-backup.plist`, log `~/Library/Logs/zotero-backup.log`), a **systemd user timer** on Linux (`~/.config/systemd/user/zotero-backup.timer`, log in the journal) or a **scheduled task** on Windows (log in `%LOCALAPPDATA%\zotero-backup`). The job runs `backup` and then `prune` with progress as log lines, using this program's full path; `--profile` and `--config` are passed on (another profile gets its own job, e.g. `org.zotero-backup.work`). Default time 06:00.
+
+- Store the key first (`zotero-backup key set`): the job reads it from your keychain.
+- It never overwrites or removes a setup it did not write itself (e.g. one copied from below by hand): it says so and stops.
+- Install zotero-backup in its final place first: the job keeps the path of the program it was set up **with** (`upgrade` replaces the file in place, so the job stays valid). `install` and `show` say so when that is not the `zotero-backup` on your `PATH`; running `schedule install` again with the right one replaces the job.
+- For runs **while nobody is logged in**, use the manual setups [below](#when-nobody-is-logged-in).
+
+## By hand
+
 The setups below run while you are logged in (a locked screen is fine). For runs **when nobody is logged in**, see [below](#when-nobody-is-logged-in): the schedule is easy, the key is the point, because a keychain is only unlocked by logging in.
 
 **macOS** (launchd): save as `~/Library/LaunchAgents/org.zotero-backup.plist`, then `launchctl load ~/Library/LaunchAgents/org.zotero-backup.plist`. Runs as you, so the keychain entry is available.
@@ -55,6 +73,21 @@ then `systemctl --user enable --now zotero-backup.timer` (and `loginctl enable-l
 ```bat
 schtasks /Create /SC DAILY /ST 06:00 /TN "zotero-backup" /TR "cmd /c \"C:\Tools\zotero-backup.exe backup && C:\Tools\zotero-backup.exe prune\""
 ```
+
+## Notifications
+
+A scheduled backup that fails says so only in its log. To hear about it, set in the profile ([Configuration](configuration.md)):
+
+```json
+"notify_macos": true,
+"notify_command": ["/usr/bin/mail", "-s", "zotero-backup failed", "me@example.org"]
+```
+
+- Sent after a backup that **failed** (a library could not be backed up, no key, …) or reported **problems** in `meta.json`; not for attachments whose file never reached the server (`missing_files`), which are common.
+- `notify_command` is a program and its arguments, run without a shell, with the summary on stdin and `ZB_STATUS` (`failed`, `problems`) and `ZB_LIBRARIES_FAILED` in the environment; `ZOTERO_API_KEY` is removed from its environment. Any tool works: `mail`, `curl` to [ntfy](https://ntfy.sh) (`["curl", "-T", "-", "https://ntfy.sh/my-topic"]`), a script of your own.
+- `notify_macos` shows a macOS notification (Notification Center). Under a LaunchDaemon (nobody logged in) there is no one to show it to: use `notify_command` there.
+- A notification that fails is reported in the log and does not change the backup's result.
+- Try it: `zotero-backup notify-test`.
 
 ## When nobody is logged in
 

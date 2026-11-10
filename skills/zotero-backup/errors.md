@@ -51,6 +51,20 @@ Errors print `zotero-backup: <message>` on stderr; the exit status is 1. Show th
 | `upload to storage: HTTP 413` | the owner's Zotero storage is full | free storage or upgrade it at zotero.org; or restore everything but the files with `--exclude files` (new `--dry-run` and yes) |
 | `upload to storage: …` (other) | the file upload failed | run `--dry-run` and restore again after a yes |
 | `no Last-Modified-Version in the answer; run restore again to take them out of the trash` | subcollections could not be touched | `--dry-run`, restore again after a yes |
+| `--trash-new / --erase-new act on the whole library: not with --items` / `--trash-new or --erase-new, not both` | wrong combination | one of them, without `--items` |
+| `FAILED items K: not erased, K2 below it is in the backup` | `--erase-new` would have erased an object of the backup with its parent (a write before failed) | sync, `--dry-run`, restore again after a yes |
+| `FAILED trash … ` / `FAILED erasing …` | removing failed (e.g. the object changed meanwhile) | sync, `--dry-run`, restore again after a yes |
 | `restored, but checking the result failed` | the restore ran; reading the library afterwards failed | `zotero-backup diff BACKUP` shows the state |
+
+## Upgrade
+
+| Message (start) | Meaning | Next step |
+|---|---|---|
+| `an update is available: zotero-backup upgrade …` | `--check` found a newer release (exit status 1 on purpose) | show it; update only after the user's yes |
+| `… is not a release build` / `installed with Homebrew` | built with `go install`, or a Homebrew install | update the way it was installed (the message says how) |
+| `… nothing was replaced. Download it from …` (signature not valid, checksum, unexpected address, the new file reports another version) | a check failed: the download is not trusted | do not work around it; the user downloads the release by hand from the page, and reports it (bug report) |
+| `this build cannot verify updates` | an older build without the update key | download the release by hand |
+| `cannot write to …: run it again with sudo` | the program sits in a folder the user cannot write to | the user runs the shown command themselves |
+| `not on a terminal: update with zotero-backup upgrade … --yes` / `name the channel` | it needs a yes or a channel | ask the user, then `upgrade stable --yes` or `beta --yes` |
 
 For anything else: show the message and the command, and point to a bug report (no API keys, no private library content): <https://github.com/rkrug/zotero-backup/issues/new?template=bug_report.md>.

@@ -12,8 +12,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: gofmt
@@ -27,8 +27,8 @@ jobs:
   keychain-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - run: sudo apt-get update -q && sudo apt-get install -y -q gnome-keyring libsecret-tools dbus-x11
@@ -38,9 +38,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Build all release targets
         run: .github/build.sh "dev-${GITHUB_SHA::7}"
+      # The release signs SHA256SUMS with this secret; it must belong to the public key in
+      # upgrade.go. Secrets are not given to pull requests from forks: then only a notice.
+      - name: Update signing key matches upgrade.go
+        env:
+          ZB_UPDATE_SIGNING_KEY: ${{ secrets.ZB_UPDATE_SIGNING_KEY }}
+        run: |
+          if [ -z "$ZB_UPDATE_SIGNING_KEY" ]; then echo "::notice::ZB_UPDATE_SIGNING_KEY not available"; exit 0; fi
+          out=$(go run tools/sign.go sign dist/SHA256SUMS)
+          want=$(sed -n 's/^const updatePublicKey = "\(.*\)"$/\1/p' upgrade.go)
+          case "$out" in *"(public key $want)"*) echo "signed with the key of updatePublicKey" ;;
+            *) echo "::error::ZB_UPDATE_SIGNING_KEY does not belong to updatePublicKey in upgrade.go"; exit 1 ;; esac

@@ -13,6 +13,7 @@ Report security problems **privately**, not as a public issue: on the repository
 - **Restores:** `restore` writing into a library other than the backup's, or changing more than its plan shows.
 - **Backups and prune:** files written or deleted outside the backup folder (e.g. through names from the library).
 - **Release archives:** a mismatch with `SHA256SUMS`.
+- **`zotero-backup upgrade`:** installing anything not signed with the update key (Ed25519 signature over `SHA256SUMS`), downloading from anywhere but this repository's releases, or replacing the program although a check failed; and the signing key itself (GitHub secret `ZB_UPDATE_SIGNING_KEY`, public key in `upgrade.go`).
 
 Not in scope: the security of the Zotero servers, Zotero desktop or the systems' keychains themselves; report those to their makers.
 

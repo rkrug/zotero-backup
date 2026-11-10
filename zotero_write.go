@@ -139,6 +139,35 @@ func (c *Client) writeObjects(libPath, kind string, objs []map[string]any) (Writ
 	return res, nil
 }
 
+// deleteObjects erases objects for good, in batches of 50 (DELETE with
+// itemKey / collectionKey / searchKey). The API takes the library version as
+// precondition here, not per-object versions: when it moved meanwhile (412),
+// the version is read again and the batch sent again, up to 3 times.
+func (c *Client) deleteObjects(libPath, kind string, keys []string) error {
+	param := map[string]string{"items": "itemKey", "collections": "collectionKey", "searches": "searchKey"}[kind]
+	for i := 0; i < len(keys); i += 50 {
+		path := libPath + "/" + kind + "?" + param + "=" + strings.Join(keys[i:min(i+50, len(keys))], ",")
+		for try := 0; ; try++ {
+			_, h, err := c.get(libPath + "/settings")
+			if err != nil {
+				return err
+			}
+			code, _, b, err := c.write("DELETE", path, nil, map[string]string{"If-Unmodified-Since-Version": h.Get("Last-Modified-Version")}, true)
+			if err != nil {
+				return err
+			}
+			if code == http.StatusPreconditionFailed && try < 3 {
+				continue
+			}
+			if code != http.StatusNoContent {
+				return &HTTPError{path, code, strings.TrimSpace(string(b))}
+			}
+			break
+		}
+	}
+	return nil
+}
+
 // writeSettings POSTs settings ({"name": {"value": …}}) with the library
 // version as precondition.
 func (c *Client) writeSettings(libPath string, settings map[string]any, libVersion int) error {

@@ -4,10 +4,40 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
-- **Documentation per version:** the [site](https://rkrug.github.io/zotero-backup/) keeps the documentation of each release (version menu in the header); `dev` shows the unreleased state.
+## v0.3.0 (2026-11-10)
+
+It includes the pre-releases v0.3.0-rc.1 to rc.3.
+
+**Restore**
+
+- **`restore --trash-new` / `--erase-new`:** also move everything not in the backup to the Zotero trash, or erase it for good (the trash too), so the library ends up exactly as in the backup. Command line only, not with `--items`; shown in the plan and in the question with a count.
+- **Fix:** parts a backup left out (`--exclude notes`, `attachments`, `annotations`, `trash`) no longer count as "only in the library, not in the backup" (with the options above they would have been removed).
+- `--exclude` also applies to `diff` and `restore` (it leaves those parts out of the plan); the help said backup only.
+
+**Looking into backups** (offline, no key)
+
+- **`find TEXT`** searches the backups for items by title, creators, DOI, key, note text or file name: in which backups each is, and whether it is gone from the newest.
+- **`show BACKUP KEY`** prints an item from a backup with its notes, attachments and annotations; `--save DIR` copies its files out.
+- **`diff BACKUP1 BACKUP2`** compares two backups of a library: added, removed, changed, files, settings.
+
+**Scheduled backups**
+
+- **`schedule install [--at HH:MM] | show [raw] | remove`** sets up the daily backup (then prune) with the system's scheduler: a LaunchAgent on macOS, a systemd user timer on Linux, a scheduled task on Windows; never touches a setup made by hand.
+- **Notifications** after a backup that failed or reported problems: `notify_command` (any program, summary on stdin, never an API key) and `notify_macos`; `zotero-backup notify-test`.
+- Log lines before the first library no longer start with ": ".
+
+**Updating**
+
+- **`zotero-backup upgrade [stable|beta]`** updates zotero-backup from the GitHub releases: shows the newest stable and beta release and asks; `--check` only shows; `--yes` without asking; `stable --downgrade` back from a pre-release. Every update is checked (Ed25519 signature over `SHA256SUMS`, then the archive's checksum, then the new version) before anything is replaced. Releases now include `SHA256SUMS.sig`. (Updating to v0.3.0 itself is by hand: v0.2.0 has no `upgrade`.)
+
+**Documentation**
+
+- **Per version:** the [site](https://rkrug.github.io/zotero-backup/) keeps the documentation of each release (version menu in the header); pre-releases and `dev` are marked as newer than the latest release.
+- **New pages:** Over SSH (setting up another computer, a read-only key only, restoring from a copy), Off-site copies (rsync / tar keep the hard links, cloud folders do not; encryption; checking a copy).
+- **Keys:** create two keys, a read-only one for backups and a read/write one for restores, and store both.
 - **AI assistants:** an Agent Skill (`skills/zotero-backup/`) for using zotero-backup safely through an assistant such as Claude Code, with what each error message means and how to read a stress test report.
-- `--help`: `--exclude` also applies to `diff` and `restore` (it leaves the parts out of the plan); the help said backup only.
-- **For contributors:** [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) (private reports), issue templates for bug reports and Windows / Linux test reports, and `CITATION.cff` ("Cite this repository" on GitHub).
+
+**For contributors:** [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) (private reports), issue templates for bug reports and Windows / Linux test reports, `CITATION.cff` ("Cite this repository" on GitHub), Dependabot for the GitHub Actions.
 
 ## v0.2.0 (2026-11-09)
 

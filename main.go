@@ -26,10 +26,25 @@ commands:
   list        list the backups in the profile's backup folder
   diff BACKUP     compare a backup (a backup folder, or a library folder for its
                   newest backup) with the library today
+  diff BACKUP1 BACKUP2  compare two backups of a library on disk (offline):
+                  what was added, removed or changed between them
   restore BACKUP  make the library match the backup again, keeping all keys;
                   shows the plan and asks first (--dry-run: only show it;
                   --yes: do not ask; --items K1,K2: only these items, their
-                  children and what they need)
+                  children and what they need). Objects not in the backup are
+                  kept, unless --trash-new (moved to the trash) or --erase-new
+                  (erased for good, the trash too)
+  find TEXT [LIBRARY_FOLDER]  search the backups (offline) for items whose
+              title, creators, DOI, key, note or file name contains TEXT: in
+              which backups each is, and whether it is gone from the newest
+  show BACKUP KEY  print an item from a backup with its notes, attachments and
+              annotations (offline); --save DIR copies its files out
+  schedule install [--at HH:MM] | show [raw] | remove  a daily backup, then prune,
+              with the system's scheduler (macOS LaunchAgent, systemd user
+              timer, Windows task) while you are logged in; --profile and
+              --config are passed on
+  notify-test  send a test notification with the profile's notify_command /
+              notify_macos (sent after a backup that failed or had problems)
   prune       delete backups not kept by keep_daily / keep_weekly / keep_monthly
               (newest per day, ISO week and month); --dry-run only shows them
   key set [NAME]     store an API key in the system keychain under NAME (default:
@@ -38,12 +53,24 @@ commands:
   key remove [NAME]  delete the keychain entry
   config      print the effective configuration (all options with their values)
   version     print the version
+  upgrade [stable|beta]  replace this program with the newest release from
+              GitHub (signed and checked); without a channel it shows what
+              there is and asks (--check: only show; --yes: do not ask;
+              stable --downgrade: from a pre-release back to stable)
 
 options:
   --config PATH       configuration file (default: %s)
   --profile NAME      profile to use (default: default)
   --dry-run           prune, restore: show what would be done, do nothing
-  --yes               restore: do not ask for confirmation
+  --yes               restore, upgrade: do not ask for confirmation
+  --trash-new         restore: also move objects not in the backup to the trash
+  --erase-new         restore: also erase objects not in the backup for good,
+                      also those in the trash (command line only, never from
+                      the configuration; not with --items)
+  --save DIR          show: copy the item's files (ZIPs unpacked) into DIR/<key>/
+  --check             upgrade: only show what is available (exit status 1 if
+                      an update is available)
+  --downgrade         upgrade stable: go back from a pre-release
   --items K1,K2       diff, restore: only these items (with children and parents)
   --progress MODE     auto (default), line, log or quiet: how progress is shown
                       on stderr (profile option "progress"; "progress_interval"
@@ -64,6 +91,7 @@ Service (secret-tool).
 `
 
 func main() {
+	removeOldExe()
 	if err := run(os.Args[1:], os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, "zotero-backup:", err)
 		os.Exit(1)
@@ -76,7 +104,13 @@ func run(args []string, out io.Writer) error {
 	profileName := fs.String("profile", "default", "profile to use")
 	excludeFlag := fs.String("exclude", "", "parts to leave out")
 	dryRun := fs.Bool("dry-run", false, "prune / restore: only show what would be done")
-	yes := fs.Bool("yes", false, "restore: do not ask")
+	yes := fs.Bool("yes", false, "restore, upgrade: do not ask")
+	trashNew := fs.Bool("trash-new", false, "restore: move objects not in the backup to the trash")
+	eraseNew := fs.Bool("erase-new", false, "restore: erase objects not in the backup")
+	scheduleAt := fs.String("at", "06:00", "schedule install: the daily time, HH:MM")
+	saveDir := fs.String("save", "", "show: copy the item's files into this folder")
+	check := fs.Bool("check", false, "upgrade: only show what is available")
+	downgrade := fs.Bool("downgrade", false, "upgrade stable: back from a pre-release")
 	itemsFlag := fs.String("items", "", "diff / restore: only these item keys")
 	progressFlag := fs.String("progress", "", "auto, line, log or quiet")
 	quiet := fs.Bool("quiet", false, "only the summary and errors")
@@ -121,6 +155,16 @@ func run(args []string, out io.Writer) error {
 		}
 		pos, rest = append(pos, fs.Arg(0)), fs.Args()[1:]
 	}
+	if cmd == "upgrade" { // needs no configuration
+		if len(pos) > 1 || (len(pos) == 1 && pos[0] != "stable" && pos[0] != "beta") {
+			return errors.New("usage: zotero-backup upgrade [stable|beta] [--check] [--yes] [--downgrade]")
+		}
+		u, err := newUpdater(out)
+		if err != nil {
+			return err
+		}
+		return u.run(strings.Join(pos, ""), *check, *yes, *downgrade)
+	}
 
 	cfg, err := loadConfig(*cfgPath)
 	if err != nil {
@@ -152,6 +196,7 @@ func run(args []string, out io.Writer) error {
 	case "config":
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
+		enc.SetEscapeHTML(false)
 		return enc.Encode(cfg)
 	case "key check", "key set", "key remove":
 		if len(pos) > 1 {
@@ -168,26 +213,68 @@ func run(args []string, out io.Writer) error {
 		}
 		return keyCheckAll(profile, newClient, out)
 	case "backup":
-		return runBackup(clientsFor(profile, newClient), profile, out, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
+		return backupAndNotify(clientsFor(profile, newClient), profile, out, os.Stderr, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
+	case "schedule":
+		raw := len(pos) == 2 && pos[0] == "show" && pos[1] == "raw"
+		if len(pos) != 1 && !raw {
+			return errors.New("usage: zotero-backup schedule install [--at HH:MM] | show [raw] | remove")
+		}
+		cfgArg := ""
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "config" {
+				cfgArg, _ = filepath.Abs(expandHome(*cfgPath))
+			}
+		})
+		return runSchedule(pos[0], *scheduleAt, *profileName, cfgArg, raw, out)
+	case "notify-test":
+		return notifyTest(profile, out)
 	case "list":
 		return listBackups(expandHome(profile.To), out)
 	case "diff", "restore":
-		if len(pos) != 1 {
-			return fmt.Errorf("%s needs one backup folder", cmd)
+		if len(pos) != 1 && !(cmd == "diff" && len(pos) == 2) {
+			return fmt.Errorf("%s needs one backup folder (diff: or two, to compare them)", cmd)
 		}
 		var sel []string
 		if *itemsFlag != "" {
 			sel = splitList(*itemsFlag)
 		}
+		remove := ""
+		switch {
+		case *trashNew && *eraseNew:
+			return errors.New("--trash-new or --erase-new, not both")
+		case (*trashNew || *eraseNew) && cmd != "restore":
+			return errors.New("--trash-new / --erase-new are for restore")
+		case *trashNew:
+			remove = "trash"
+		case *eraseNew:
+			remove = "erase"
+		}
+		if cmd == "diff" && len(pos) == 2 {
+			return runDiffBackups(expandHome(pos[0]), expandHome(pos[1]), profile, sel, out)
+		}
 		if cmd == "diff" {
 			return runDiff(clientsFor(profile, newClient), expandHome(pos[0]), profile, sel, out)
 		}
-		return runRestore(clientsFor(profile.forRestore(), newClient), expandHome(pos[0]), profile, sel, *dryRun, *yes, out,
+		return runRestore(clientsFor(profile.forRestore(), newClient), expandHome(pos[0]), profile, sel, remove, *dryRun, *yes, out,
 			newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
 	case "stresstest":
 		return runStresstest(profile, stressOptions{libraries: stressLibs, scenarios: splitList(*stressScen),
 			ops: splitList(*stressOpsFlag), report: *stressReportDir, keep: *stressKeep, zoteroProfile: *zoteroProfile, cleanup: *stressCleanupRun},
 			os.Stdin, out, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
+	case "find":
+		if len(pos) < 1 || len(pos) > 2 {
+			return errors.New("usage: zotero-backup find TEXT [LIBRARY_FOLDER]")
+		}
+		lib := ""
+		if len(pos) == 2 {
+			lib = expandHome(pos[1])
+		}
+		return runFind(expandHome(profile.To), lib, pos[0], out)
+	case "show":
+		if len(pos) != 2 {
+			return errors.New("usage: zotero-backup show BACKUP KEY [--save DIR]")
+		}
+		return runShow(expandHome(pos[0]), pos[1], expandHome(*saveDir), out)
 	case "prune":
 		return prune(expandHome(profile.To), profile, *dryRun, out)
 	case "help", "-h", "--help":
@@ -296,22 +383,26 @@ func expandHome(p string) string {
 
 // runBackup backs up every library of the profile; a failing library does not
 // stop the others, but makes the command fail at the end.
-func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer, pr *progress) error {
+// runBackup backs up the profile's libraries; it returns the number of
+// problems reported and the libraries that failed.
+func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer, pr *progress) (int, []string, error) {
 	jobs, skipped, err := libraryJobs(p, clientFor)
 	if err != nil {
-		return err
+		return 0, nil, err
 	}
 	for _, s := range skipped {
 		pr.Warnf("skipped %s", s)
 	}
 	root := expandHome(p.To)
-	failed := 0
+	failed, problems := 0, 0
+	var failedLibs []string
 	for i, j := range jobs {
 		lib := j.lib
 		pr.SetPrefix(fmt.Sprintf("%d/%d %s", i+1, len(jobs), lib.Dir()))
 		dir, m, err := backupLibrary(j.c, lib, root, p.Exclude, time.Now(), pr)
 		if err != nil {
 			failed++
+			failedLibs = append(failedLibs, lib.Label())
 			pr.Warnf("FAILED: %v", err)
 			fmt.Fprintf(out, "%s: FAILED: %v\n", lib.Label(), err)
 			continue
@@ -319,11 +410,12 @@ func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer
 		fmt.Fprintf(out, "%s: %s  version %d, %d items, %d files (%d downloaded, %.1f MB; %d linked), %d missing, %d problems, %.0f s\n",
 			lib.Label(), dir, m.Version, itemCount(m.Counts), m.Counts["files"], m.Downloaded, float64(m.DownBytes)/1e6,
 			m.Linked, len(m.Missing), len(m.Problems), m.Seconds)
+		problems += len(m.Problems)
 	}
 	if failed > 0 {
-		return fmt.Errorf("%d of %d libraries failed", failed, len(jobs))
+		return problems, failedLibs, fmt.Errorf("%d of %d libraries failed", failed, len(jobs))
 	}
-	return nil
+	return problems, nil, nil
 }
 
 // itemCount sums the item counts (the counts that are item types).

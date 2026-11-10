@@ -478,7 +478,7 @@ func (s *stress) backup() (*backupSet, error) {
 
 func (s *stress) restore(sc string, b *backupSet, step string) {
 	var out strings.Builder
-	err := runRestore(fixedClient(s.c), b.dir, s.profile, nil, false, true, &out, quietProgress())
+	err := runRestore(fixedClient(s.c), b.dir, s.profile, nil, "", false, true, &out, quietProgress())
 	s.record(sc, "*", step, err == nil, "%v", err)
 	if err != nil {
 		s.pr.Logf("%s", out.String())
@@ -830,26 +830,26 @@ func (s *stress) extras() error {
 	// dry run writes nothing
 	_, h, _ := s.c.get(s.lib.Path + "/items?limit=1")
 	before := h.Get("Last-Modified-Version")
-	err = runRestore(fixedClient(s.c), b0.dir, s.profile, nil, true, false, io.Discard, quietProgress())
+	err = runRestore(fixedClient(s.c), b0.dir, s.profile, nil, "", true, false, io.Discard, quietProgress())
 	_, h, _ = s.c.get(s.lib.Path + "/items?limit=1")
 	s.record(sc, "dry-run", "library version unchanged", err == nil && before == h.Get("Last-Modified-Version"), "%v %s→%s", err, before, h.Get("Last-Modified-Version"))
 
 	// selection: only the first family
-	err = runRestore(fixedClient(s.c), b0.dir, s.profile, []string{fams[0].Parent}, false, true, io.Discard, quietProgress())
+	err = runRestore(fixedClient(s.c), b0.dir, s.profile, []string{fams[0].Parent}, "", false, true, io.Discard, quietProgress())
 	now, _ := readLibrary(s.c, s.lib.Path)
 	p0, p1 := makePlan(b0, now, nil, presentKeys(b0, fams[0])), makePlan(b0, now, nil, presentKeys(b0, fams[1]))
 	s.record(sc, "--items", "selected family restored, the other not", err == nil && p0.empty() && !p1.empty(), "%v", err)
 
 	// read-only key is refused
 	if s.readOnly != nil {
-		err = runRestore(fixedClient(s.readOnly), b0.dir, s.profile, nil, false, true, io.Discard, quietProgress())
+		err = runRestore(fixedClient(s.readOnly), b0.dir, s.profile, nil, "", false, true, io.Discard, quietProgress())
 		s.record(sc, "read-only key", "restore refused", err != nil && strings.Contains(err.Error(), "may not write"), "%v", err)
 	}
 
 	// full restore twice: the second finds nothing
 	s.restore(sc, b0, "restore")
 	var out strings.Builder
-	err = runRestore(fixedClient(s.c), b0.dir, s.profile, nil, false, true, &out, quietProgress())
+	err = runRestore(fixedClient(s.c), b0.dir, s.profile, nil, "", false, true, &out, quietProgress())
 	s.record(sc, "restore twice", "second restore has nothing to do", err == nil && strings.Contains(out.String(), "The library matches the backup."), "%v", err)
 	s.sync(sc, "sync", "fail")
 
@@ -876,6 +876,7 @@ func (s *stress) extras() error {
 	s.record(sc, "interrupted backup", "next run completes and reuses downloaded files", err == nil && findPartial(libI) == "" && resumed > 0, "%v, %d resumed", err, resumed)
 
 	s.zipChecks()
+	s.removeNewChecks()
 
 	// prune on the test backups
 	pr := s.profile

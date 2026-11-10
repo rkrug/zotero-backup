@@ -34,10 +34,12 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Install: install.md
+  - Over SSH: ssh.md
   - Keys: keys.md
   - Configuration: configuration.md
   - Backups: backups.md
   - Restore: restore.md
   - Scheduled backups: scheduled.md
+  - Off-site copies: offsite.md
   - Stress test: stresstest.md
   - Disclaimer: disclaimer.md

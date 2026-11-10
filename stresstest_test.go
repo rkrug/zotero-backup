@@ -272,3 +272,24 @@ func TestZipVariant(t *testing.T) {
 		t.Error("zipVariant changed the source files.json")
 	}
 }
+
+func TestStressRemoveNewOnlyOwnObjects(t *testing.T) {
+	now := &libraryNow{
+		items: map[string]map[string]any{
+			"OWN00001": {"tags": []any{map[string]any{"tag": "zb-e2e"}}},
+			"OWNNOTE1": {"parentItem": "OWN00001"},
+			"FOREIGN1": {"tags": []any{map[string]any{"tag": "other"}}},
+			"FORNOTE1": {"parentItem": "FOREIGN1"},
+		},
+		collections: map[string]map[string]any{"OWNCOLL1": {"name": "[zb-e2e] run x"}, "FORCOLL1": {"name": "Mine"}},
+	}
+	var cs []change
+	for _, k := range []string{"OWN00001", "OWNNOTE1", "FOREIGN1", "FORNOTE1"} {
+		cs = append(cs, change{Kind: "items", Key: k})
+	}
+	cs = append(cs, change{Kind: "collections", Key: "OWNCOLL1"}, change{Kind: "collections", Key: "FORCOLL1"}, change{Kind: "searches", Key: "SEARCH01"})
+	got := notOwn(cs, now)
+	if want := []string{"FOREIGN1", "FORNOTE1", "FORCOLL1", "searches SEARCH01"}; !sameSet(got, want) {
+		t.Errorf("not own: %v, want %v", got, want)
+	}
+}

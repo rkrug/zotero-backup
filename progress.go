@@ -58,7 +58,7 @@ func (p *progress) Logf(format string, args ...any) {
 		return
 	}
 	p.endLine()
-	fmt.Fprintf(p.w, "%s: %s\n", p.prefix, fmt.Sprintf(format, args...))
+	fmt.Fprintln(p.w, p.prefixed(fmt.Sprintf(format, args...)))
 }
 
 // Warnf prints a message line in every mode, quiet included.
@@ -66,7 +66,7 @@ func (p *progress) Warnf(format string, args ...any) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.endLine()
-	fmt.Fprintf(p.w, "%s: %s\n", p.prefix, fmt.Sprintf(format, args...))
+	fmt.Fprintln(p.w, p.prefixed(fmt.Sprintf(format, args...)))
 }
 
 // Phase starts counting towards total (0: unknown).
@@ -124,7 +124,7 @@ func (p *progress) show(final bool) {
 
 func (p *progress) render(now time.Time) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s: %s", p.prefix, p.phase)
+	b.WriteString(p.prefixed(p.phase))
 	if p.total > 0 {
 		fmt.Fprintf(&b, " %d/%d (%d%%)", p.done, p.total, 100*p.done/p.total)
 	} else if p.done > 0 {
@@ -147,4 +147,12 @@ func (p *progress) endLine() {
 		fmt.Fprintln(p.w)
 		p.open = false
 	}
+}
+
+// prefixed puts the prefix (the library) before a message, if there is one.
+func (p *progress) prefixed(msg string) string {
+	if p.prefix == "" {
+		return msg
+	}
+	return p.prefix + ": " + msg
 }

@@ -465,6 +465,24 @@ This is not the documentation of the latest release.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-quick-way" class="md-nav__link">
+    <span class="md-ellipsis">
+      The quick way
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#by-hand" class="md-nav__link">
+    <span class="md-ellipsis">
+      By hand
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#notifications" class="md-nav__link">
     <span class="md-ellipsis">
       Notifications
@@ -561,6 +579,24 @@ This is not the documentation of the latest release.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-quick-way" class="md-nav__link">
+    <span class="md-ellipsis">
+      The quick way
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#by-hand" class="md-nav__link">
+    <span class="md-ellipsis">
+      By hand
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#notifications" class="md-nav__link">
     <span class="md-ellipsis">
       Notifications
@@ -600,6 +636,19 @@ This is not the documentation of the latest release.
 <h1 id="scheduled-backups">Scheduled backups<a class="headerlink" href="#scheduled-backups" title="Permanent link">&para;</a></h1>
 <p>Run <code>backup</code> and then <code>prune</code>, e.g. daily. With no terminal, progress is written as plain lines every <code>progress_interval</code> seconds; use <code>--quiet</code> for only the summary and errors.</p>
 <p>The computer has to be on and online at that time; Zotero desktop does not need to run (backups use the web API only). Use a <strong>read-only</strong> key for scheduled backups, so a key that is stored for unattended runs cannot change any library.</p>
+<h2 id="the-quick-way">The quick way<a class="headerlink" href="#the-quick-way" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>schedule<span class="w"> </span>install<span class="w"> </span>--at<span class="w"> </span><span class="m">02</span>:30<span class="w">    </span><span class="c1"># daily backup, then prune</span>
+zotero-backup<span class="w"> </span>schedule<span class="w"> </span>show<span class="w">                  </span><span class="c1"># what is installed, its state and next run</span>
+zotero-backup<span class="w"> </span>schedule<span class="w"> </span>remove
+</code></pre></div>
+<p>It sets up what the sections below describe, with your system's own scheduler, running while you are logged in: a <strong>LaunchAgent</strong> on macOS (<code>~/Library/LaunchAgents/org.zotero-backup.plist</code>, log <code>~/Library/Logs/zotero-backup.log</code>), a <strong>systemd user timer</strong> on Linux (<code>~/.config/systemd/user/zotero-backup.timer</code>, log in the journal) or a <strong>scheduled task</strong> on Windows (log in <code>%LOCALAPPDATA%\zotero-backup</code>). The job runs <code>backup</code> and then <code>prune</code> with progress as log lines, using this program's full path; <code>--profile</code> and <code>--config</code> are passed on (another profile gets its own job, e.g. <code>org.zotero-backup.work</code>). Default time 06:00.</p>
+<ul>
+<li>Store the key first (<code>zotero-backup key set</code>): the job reads it from your keychain.</li>
+<li>It never overwrites or removes a setup it did not write itself (e.g. one copied from below by hand): it says so and stops.</li>
+<li>Install zotero-backup in its final place first: the job keeps the path it was set up from (<code>upgrade</code> replaces the file in place, so the job stays valid).</li>
+<li>For runs <strong>while nobody is logged in</strong>, use the manual setups <a href="#when-nobody-is-logged-in">below</a>.</li>
+</ul>
+<h2 id="by-hand">By hand<a class="headerlink" href="#by-hand" title="Permanent link">&para;</a></h2>
 <p>The setups below run while you are logged in (a locked screen is fine). For runs <strong>when nobody is logged in</strong>, see <a href="#when-nobody-is-logged-in">below</a>: the schedule is easy, the key is the point, because a keychain is only unlocked by logging in.</p>
 <p><strong>macOS</strong> (launchd): save as <code>~/Library/LaunchAgents/org.zotero-backup.plist</code>, then <code>launchctl load ~/Library/LaunchAgents/org.zotero-backup.plist</code>. Runs as you, so the keychain entry is available.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>

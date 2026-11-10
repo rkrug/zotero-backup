@@ -465,6 +465,15 @@ This is not the documentation of the latest release.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#notifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      Notifications
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#when-nobody-is-logged-in" class="md-nav__link">
     <span class="md-ellipsis">
       When nobody is logged in
@@ -552,6 +561,15 @@ This is not the documentation of the latest release.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#notifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      Notifications
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#when-nobody-is-logged-in" class="md-nav__link">
     <span class="md-ellipsis">
       When nobody is logged in
@@ -620,6 +638,18 @@ This is not the documentation of the latest release.
 <p><strong>Windows</strong> (Task Scheduler), in a command prompt:</p>
 <div class="highlight"><pre><span></span><code>schtasks /Create /SC DAILY /ST 06:00 /TN <span class="s2">"zotero-backup"</span> /TR <span class="s2">"cmd /c \"</span>C:\Tools\zotero-backup.exe backup <span class="p">&amp;&amp;</span> C:\Tools\zotero-backup.exe prune\<span class="s2">""</span>
 </code></pre></div>
+<h2 id="notifications">Notifications<a class="headerlink" href="#notifications" title="Permanent link">&para;</a></h2>
+<p>A scheduled backup that fails says so only in its log. To hear about it, set in the profile (<a href="../configuration/">Configuration</a>):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">"notify_macos"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="nt">"notify_command"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"/usr/bin/mail"</span><span class="p">,</span><span class="w"> </span><span class="s2">"-s"</span><span class="p">,</span><span class="w"> </span><span class="s2">"zotero-backup failed"</span><span class="p">,</span><span class="w"> </span><span class="s2">"me@example.org"</span><span class="p">]</span>
+</code></pre></div>
+<ul>
+<li>Sent after a backup that <strong>failed</strong> (a library could not be backed up, no key, …) or reported <strong>problems</strong> in <code>meta.json</code>; not for attachments whose file never reached the server (<code>missing_files</code>), which are common.</li>
+<li><code>notify_command</code> is a program and its arguments, run without a shell, with the summary on stdin and <code>ZB_STATUS</code> (<code>failed</code>, <code>problems</code>) and <code>ZB_LIBRARIES_FAILED</code> in the environment; <code>ZOTERO_API_KEY</code> is removed from its environment. Any tool works: <code>mail</code>, <code>curl</code> to <a href="https://ntfy.sh">ntfy</a> (<code>["curl", "-T", "-", "https://ntfy.sh/my-topic"]</code>), a script of your own.</li>
+<li><code>notify_macos</code> shows a macOS notification (Notification Center). Under a LaunchDaemon (nobody logged in) there is no one to show it to: use <code>notify_command</code> there.</li>
+<li>A notification that fails is reported in the log and does not change the backup's result.</li>
+<li>Try it: <code>zotero-backup notify-test</code>.</li>
+</ul>
 <h2 id="when-nobody-is-logged-in">When nobody is logged in<a class="headerlink" href="#when-nobody-is-logged-in" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

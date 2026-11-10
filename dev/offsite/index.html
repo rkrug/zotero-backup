@@ -728,7 +728,8 @@ This is the documentation of the <strong>unreleased</strong> development version
 <h2 id="checking-a-copy">Checking a copy<a class="headerlink" href="#checking-a-copy" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>zotero-backup list</code> and <code>find</code> work on a copy as well (<code>--config</code> with a profile whose <code>to</code> is the copy, or <code>find TEXT LIBRARY_FOLDER</code> with a library folder of the copy).</li>
-<li><code>zotero-backup diff COPY ORIGINAL</code> (two backup folders) compares the copy's metadata with the original's: "No differences." means the same items, collections, settings and file checksums. It does not read the files themselves; <code>rsync -aHc --dry-run --itemize-changes SOURCE/ COPY/</code> lists files whose content differs. A full check of a backup's files is planned (<a href="https://github.com/rkrug/zotero-backup/issues/23">#23</a>).</li>
+<li><strong><code>zotero-backup verify all</code></strong> with the copy as the backup folder (<code>--config</code> with a profile whose <code>to</code> is the copy, or <code>verify LIBRARY_FOLDER</code> on the copy) reads every file of the copy and checks its md5 against the backup's own records (<a href="../backups/#checking-backups">Checking backups</a>).</li>
+<li><code>zotero-backup diff COPY ORIGINAL</code> (two backup folders) compares the copy's metadata with the original's: "No differences." means the same items, collections, settings and file checksums.</li>
 <li>Restoring from a copy works like from the original: <code>restore</code> reads only the backup folder you give it.</li>
 </ul>
 

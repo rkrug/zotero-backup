@@ -447,6 +447,15 @@ This is the documentation of the <strong>unreleased</strong> development version
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#checking-backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      Checking backups
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#running-and-stopping" class="md-nav__link">
     <span class="md-ellipsis">
       Running and stopping
@@ -609,6 +618,15 @@ This is the documentation of the <strong>unreleased</strong> development version
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#checking-backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      Checking backups
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#running-and-stopping" class="md-nav__link">
     <span class="md-ellipsis">
       Running and stopping
@@ -665,6 +683,21 @@ This is the documentation of the <strong>unreleased</strong> development version
 <li><strong>One run per library at a time.</strong> While a backup or prune works on a library, its folder holds a <code>.lock</code> file (process ID, computer, program, start time, command). A second run that finds it skips that library with "a backup of … is already running (PID …)" and counts it as failed (exit status 1, a <a href="../scheduled/#notifications">notification</a> if set up); the other libraries go on. A lock left by a run that no longer runs on this computer (a crash, a power cut) is taken over by the next run, with a warning; a lock from another computer (a backup folder on a shared disk) never is: the message says which file to remove once no backup runs there.</li>
 <li>Attachments whose file never reached the Zotero server cannot be backed up; they are listed in <code>meta.json</code> and by <code>backup</code>, so they can be uploaded from the computer that has them.</li>
 </ul>
+<h2 id="checking-backups">Checking backups<a class="headerlink" href="#checking-backups" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>verify<span class="w">                 </span><span class="c1"># the newest backup of each library</span>
+zotero-backup<span class="w"> </span>verify<span class="w"> </span>all<span class="w">             </span><span class="c1"># every backup (files shared by hard links are read once)</span>
+zotero-backup<span class="w"> </span>verify<span class="w"> </span>~/zotero-backups/group-6719916-Safe_Edit_Test<span class="w">   </span><span class="c1"># one library's newest, or a backup folder</span>
+zotero-backup<span class="w"> </span>verify<span class="w"> </span>--quick<span class="w">         </span><span class="c1"># sizes only, no checksums: fast, e.g. daily; the full check e.g. weekly</span>
+</code></pre></div>
+<p>Offline, without a key. For each backup:</p>
+<ul>
+<li>the JSON files can be read, and (for backups made with v0.3.1 or later) are unchanged since the backup: their md5 is recorded in <code>meta.json</code>;</li>
+<li>the counts (items per type, collections, searches, full text, files) match <code>meta.json</code>;</li>
+<li>every file is there, has its size and its md5 (for a ZIP, the md5 of the file inside, as Zotero records it);</li>
+<li>every attachment whose file is on the Zotero server is backed up or listed in <code>missing_files</code>;</li>
+<li>a leftover <code>.partial</code> folder is mentioned (not a problem).</li>
+</ul>
+<p>One line per backup, <code>OK</code> or <code>PROBLEMS</code> with each problem; the exit status is 0 only if all are fine. A damaged backup is best replaced: the next <code>backup</code> makes a complete one again, and <code>prune</code> removes the damaged one in time (or delete it by hand).</p>
 <h2 id="running-and-stopping">Running and stopping<a class="headerlink" href="#running-and-stopping" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>status<span class="w">                 </span><span class="c1"># the backups running now: library, PID, computer, since, command</span>
 zotero-backup<span class="w"> </span>stop<span class="w">                   </span><span class="c1"># stop every backup running on this computer in the backup folder</span>

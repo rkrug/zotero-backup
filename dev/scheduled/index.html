@@ -509,6 +509,15 @@ This is the documentation of the <strong>unreleased</strong> development version
 </li>
       
         <li class="md-nav__item">
+  <a href="#checking-the-backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      Checking the backups
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#notifications" class="md-nav__link">
     <span class="md-ellipsis">
       Notifications
@@ -645,6 +654,15 @@ This is the documentation of the <strong>unreleased</strong> development version
 </li>
       
         <li class="md-nav__item">
+  <a href="#checking-the-backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      Checking the backups
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#notifications" class="md-nav__link">
     <span class="md-ellipsis">
       Notifications
@@ -737,6 +755,8 @@ zotero-backup<span class="w"> </span>schedule<span class="w"> </span>remove
 <p><strong>Windows</strong> (Task Scheduler), in a command prompt:</p>
 <div class="highlight"><pre><span></span><code>schtasks /Create /SC DAILY /ST 06:00 /TN <span class="s2">"zotero-backup"</span> /TR <span class="s2">"cmd /c \"</span>C:\Tools\zotero-backup.exe backup <span class="p">&amp;&amp;</span> C:\Tools\zotero-backup.exe prune\<span class="s2">""</span>
 </code></pre></div>
+<h2 id="checking-the-backups">Checking the backups<a class="headerlink" href="#checking-the-backups" title="Permanent link">&para;</a></h2>
+<p><code>zotero-backup verify</code> checks the newest backups offline (files, checksums, JSON; <a href="../backups/#checking-backups">Backups → Checking backups</a>). To check after every run, add it to the job by hand, or run it e.g. weekly with <code>verify all</code>; its exit status is 1 when a backup has problems.</p>
 <h2 id="notifications">Notifications<a class="headerlink" href="#notifications" title="Permanent link">&para;</a></h2>
 <p>A scheduled backup that fails says so only in its log. To hear about it, set in the profile (<a href="../configuration/">Configuration</a>):</p>
 <div class="highlight"><pre><span></span><code><span class="nt">"notify_macos"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>

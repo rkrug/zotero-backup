@@ -1,0 +1,32 @@
+# Same metadata as .zenodo.json (which Zenodo reads): keep the two in step.
+cff-version: 1.2.0
+message: "If you use zotero-backup, please cite it as below."
+type: software
+title: "zotero-backup: backup and restore of Zotero libraries, keeping the item keys"
+abstract: >-
+  Back up and restore Zotero libraries (personal library and groups) through
+  the Zotero web API, keeping the item keys, so restored items are the same
+  items and citations in Word, LibreOffice and Google Docs keep working.
+authors:
+  - family-names: Krug
+    given-names: Rainer M.
+    affiliation: SIB Swiss Institute of Bioinformatics
+    orcid: "https://orcid.org/0000-0002-7490-0066"
+doi: 10.5281/zenodo.24090287
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.24090287
+    description: All versions (each release has its own DOI on Zenodo)
+repository-code: "https://github.com/rkrug/zotero-backup"
+url: "https://rkrug.github.io/zotero-backup/"
+license: MIT
+keywords:
+  - Zotero
+  - backup
+  - restore
+  - reference management
+  - bibliography
+  - citations
+  - Zotero web API
+  - command-line tool
+  - Go

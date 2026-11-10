@@ -58,6 +58,10 @@ The plan and the tests behind the design are in [Issue #1](https://github.com/rk
 
 First [install](install.md) it; more about [keys](keys.md), [backups](backups.md) and [restore](restore.md).
 
+**AI assistants:** [skills/zotero-backup/SKILL.md](https://github.com/rkrug/zotero-backup/blob/main/skills/zotero-backup/SKILL.md) is an Agent Skill that tells an assistant (e.g. Claude Code) how to use zotero-backup safely: keys only typed by you, a preview and your yes before every `restore` and `prune`. For Claude Code, copy the folder `skills/zotero-backup` into `~/.claude/skills/`.
+
+**Contributing:** reports, tests on Windows and Linux, and pull requests are welcome, see [CONTRIBUTING.md](https://github.com/rkrug/zotero-backup/blob/main/CONTRIBUTING.md); security problems are reported privately, see [SECURITY.md](https://github.com/rkrug/zotero-backup/blob/main/SECURITY.md). What changed per version: [CHANGELOG.md](https://github.com/rkrug/zotero-backup/blob/main/CHANGELOG.md).
+
 ## Not covered
 
 - Linked files (only the link is on the Zotero server).

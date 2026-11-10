@@ -1,0 +1,9 @@
+# Keeps the action versions in .github/workflows up to date; the Go code has
+# no dependencies. Pull requests go into dev, like all changes.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: monthly

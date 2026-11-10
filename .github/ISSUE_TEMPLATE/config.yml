@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://rkrug.github.io/zotero-backup/
+    about: Install, keys, configuration, backups, restore and scheduled runs.
+  - name: Security problem
+    url: https://github.com/rkrug/zotero-backup/security/advisories/new
+    about: Report it privately, not as an issue.

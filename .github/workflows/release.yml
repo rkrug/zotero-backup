@@ -27,10 +27,21 @@ jobs:
           go-version-file: go.mod
       - run: go test ./...
       - run: .github/build.sh "$GITHUB_REF_NAME"
+      # Ed25519 signature over SHA256SUMS for zotero-backup upgrade (tools/sign.go). Without the
+      # secret the release is still built, but upgrade only points to the release page.
+      - name: Sign SHA256SUMS
+        env:
+          ZB_UPDATE_SIGNING_KEY: ${{ secrets.ZB_UPDATE_SIGNING_KEY }}
+        run: |
+          if [ -z "$ZB_UPDATE_SIGNING_KEY" ]; then
+            echo "::warning::ZB_UPDATE_SIGNING_KEY is not set; publishing without an update signature."
+            exit 0
+          fi
+          go run tools/sign.go sign dist/SHA256SUMS
       - name: Create the release with the archives
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           pre=""
           case "$GITHUB_REF_NAME" in *-*) pre="--prerelease";; esac   # v0.1.0-rc.1 etc.
-          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.zip dist/SHA256SUMS --title "$GITHUB_REF_NAME" --generate-notes $pre
+          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.zip dist/SHA256SUMS* --title "$GITHUB_REF_NAME" --generate-notes $pre

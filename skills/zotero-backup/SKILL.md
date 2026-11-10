@@ -42,6 +42,8 @@ description: Back up, list, compare, restore and prune Zotero libraries (persona
 | What a restore would do | `zotero-backup restore BACKUP --dry-run [--items K1,K2]` |
 | Restore (after the user's yes) | `zotero-backup restore BACKUP --yes [--items K1,K2] [--key WRITEKEY]` |
 | Which backups prune would delete | `zotero-backup prune --dry-run` |
+| Is a newer version available | `zotero-backup upgrade --check` |
+| Update zotero-backup (after the user's yes) | `zotero-backup upgrade stable --yes` (or `beta`) |
 
 - `BACKUP` is a backup folder, or a library folder (then its newest backup). Find the backup of a given date with `list`; names are **UTC** times, so an evening backup may carry the next day's date: when the user's date is ambiguous, show the candidates and ask.
 - Which libraries `backup` reads, where backups go (`to`) and how many prune keeps come from the profile (`zotero-backup config`): `library` is `all`, `user` or `group:<id>`. To back up only some libraries, the user adds a profile to the configuration file (documentation: Configuration) and you use `--profile`; there is no option to pick a library on the command line.
@@ -51,6 +53,7 @@ description: Back up, list, compare, restore and prune Zotero libraries (persona
 - `--profile NAME` and `--config PATH` select another profile or configuration file. Progress goes to stderr: `--progress auto|line|log|quiet` (`log` for scheduled runs and log files), `--quiet` = only the summary and errors.
 - Configuration (JSON, `profiles` by name; documentation: Configuration): `library`, `to` (backup folder), `key` (read key), `keys` (a key per library: `"user"` / `"group:<id>"` → keychain entry), `write_key` (for restore), `exclude`, `keep_daily` / `keep_weekly` / `keep_monthly` (prune), `progress`. Unknown fields are errors.
 - `zotero-backup key remove [NAME]` deletes a keychain entry: only when the user asks.
+- `upgrade` replaces the program itself (checked: signature, checksum, version). Run `upgrade --check` first, show what it offers, and update only after the user's yes; `stable` never goes back from a pre-release unless `--downgrade` is given. Built with `go install` or installed with Homebrew: it refuses and says how to update instead.
 
 ## Reading the output
 

@@ -364,6 +364,15 @@ This is not the documentation of the latest release.
 </li>
       
         <li class="md-nav__item">
+  <a href="#updating" class="md-nav__link">
+    <span class="md-ellipsis">
+      Updating
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-key" class="md-nav__link">
     <span class="md-ellipsis">
       API key
@@ -570,6 +579,15 @@ This is not the documentation of the latest release.
 </li>
       
         <li class="md-nav__item">
+  <a href="#updating" class="md-nav__link">
+    <span class="md-ellipsis">
+      Updating
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-key" class="md-nav__link">
     <span class="md-ellipsis">
       API key
@@ -600,7 +618,7 @@ This is not the documentation of the latest release.
 <h1 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h1>
 <p>Download the archive for your system from the <a href="https://github.com/rkrug/zotero-backup/releases">releases</a>, unpack it and put <code>zotero-backup</code> (<code>zotero-backup.exe</code> on Windows) somewhere on your <code>PATH</code>.</p>
 <p>Or build it with Go: <code>go install github.com/rkrug/zotero-backup@latest</code>.</p>
-<p>Check the version with <code>zotero-backup version</code>.</p>
+<p>Check the version with <code>zotero-backup version</code>. Later versions: see <a href="#updating">Updating</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Windows and Linux: not yet tried on a real system</p>
 <p>Only the macOS version has been checked by hand so far; the Windows and Linux versions pass the unit tests in CI but are untested in real use (<a href="https://github.com/rkrug/zotero-backup/issues/15">#15</a>, <a href="https://github.com/rkrug/zotero-backup/issues/16">#16</a>). See <a href="../">Platform status</a>.</p>
@@ -616,6 +634,21 @@ This is not the documentation of the latest release.
 </li>
 </ul>
 <p>Either is needed once per downloaded binary. Archives downloaded with <code>curl</code> or <code>gh release download</code> carry no quarantine flag and start without this.</p>
+<h2 id="updating">Updating<a class="headerlink" href="#updating" title="Permanent link">&para;</a></h2>
+<p>From version 0.3.0 on, zotero-backup updates itself from the <a href="https://github.com/rkrug/zotero-backup/releases">releases</a>:</p>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>upgrade<span class="w">            </span><span class="c1"># shows the newest stable and beta release, asks which</span>
+zotero-backup<span class="w"> </span>upgrade<span class="w"> </span>stable<span class="w">     </span><span class="c1"># the newest normal release</span>
+zotero-backup<span class="w"> </span>upgrade<span class="w"> </span>beta<span class="w">       </span><span class="c1"># the newest release, pre-releases included</span>
+zotero-backup<span class="w"> </span>upgrade<span class="w"> </span>--check<span class="w">    </span><span class="c1"># only shows what there is (exit status 1: an update is available)</span>
+</code></pre></div>
+<ul>
+<li>It shows the release page and asks before it changes anything; <code>--yes</code> skips the question (needed off a terminal, e.g. in scripts). It never runs on its own, and never during a backup or restore.</li>
+<li><strong><code>stable</code> never goes back:</strong> on a pre-release it installs a stable release only once one is newer. To go back from a pre-release to the newest stable release: <code>zotero-backup upgrade stable --downgrade</code>.</li>
+<li><strong>Checked before anything is replaced:</strong> it downloads the archive for your system, <code>SHA256SUMS</code> and its signature, only from this repository's releases over HTTPS; checks the signature (Ed25519, the key is built into zotero-backup), then the archive's checksum; unpacks only the program next to the running one; and checks that the new file reports the expected version. Then it puts the new file in place of the old one. If anything fails, nothing is replaced and the release page is shown.</li>
+<li><strong>Where zotero-backup sits in a folder you cannot write to</strong> (e.g. <code>/usr/local/bin</code>), it says so: run it with <code>sudo</code> (Windows: as administrator).</li>
+<li>On macOS, a program updated this way starts without the Gatekeeper question above (it was not downloaded by a browser).</li>
+<li>Built with <code>go install</code> (version <code>dev</code>): update it with <code>go install github.com/rkrug/zotero-backup@latest</code> instead.</li>
+</ul>
 <h2 id="api-key">API key<a class="headerlink" href="#api-key" title="Permanent link">&para;</a></h2>
 <p>Create a key at <a href="https://www.zotero.org/settings/keys">https://www.zotero.org/settings/keys</a>. For backups a <strong>read-only</strong> key is enough (personal library with notes and files, groups read). Restore needs a key with <strong>write</strong> access; keep that one for restores only.</p>
 <p>The key is read from the environment variable <code>ZOTERO_API_KEY</code>, or else from the system keychain entry named by the profile's <code>key</code> (see <a href="../keys/">Keys</a>). It is never written to the configuration, the backups or the logs, and never taken as a command-line argument.</p>

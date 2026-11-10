@@ -87,7 +87,7 @@
           <div class="md-banner__inner md-grid md-typeset">
             
             
-zotero-backup v0.3.0-rc.1 · No warranty: you are responsible for your data.
+zotero-backup v0.3.0-rc.2 · No warranty: you are responsible for your data.
 Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
           </div>
@@ -451,6 +451,24 @@ This is not the documentation of the latest release.
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#removing-what-is-not-in-the-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Removing what is not in the backup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#selected-items" class="md-nav__link">
+    <span class="md-ellipsis">
+      Selected items
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -560,6 +578,24 @@ This is not the documentation of the latest release.
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#removing-what-is-not-in-the-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Removing what is not in the backup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#selected-items" class="md-nav__link">
+    <span class="md-ellipsis">
+      Selected items
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -588,10 +624,12 @@ This is not the documentation of the latest release.
 zotero-backup<span class="w"> </span>restore<span class="w"> </span>BACKUP<span class="w"> </span>--dry-run<span class="w">        </span><span class="c1"># what restore would do</span>
 zotero-backup<span class="w"> </span>restore<span class="w"> </span>BACKUP<span class="w">                  </span><span class="c1"># shows the plan, asks, restores, checks</span>
 zotero-backup<span class="w"> </span>restore<span class="w"> </span>BACKUP<span class="w"> </span>--items<span class="w"> </span>ABCD1234,EFGH5678
+zotero-backup<span class="w"> </span>restore<span class="w"> </span>BACKUP<span class="w"> </span>--trash-new<span class="w">      </span><span class="c1"># also move what is not in the backup to the trash</span>
+zotero-backup<span class="w"> </span>restore<span class="w"> </span>BACKUP<span class="w"> </span>--erase-new<span class="w">      </span><span class="c1"># also erase what is not in the backup, for good</span>
 </code></pre></div>
 <p><code>BACKUP</code> is a backup folder, or a library folder for its newest backup. Restore writes into the <strong>same library</strong> the backup came from: missing items, collections and searches are recreated with their old keys, changed ones set back, items taken out of (or put back into) the trash, files uploaded (or attached again if Zotero still has them), tag colours set back. Items added since the backup are kept. <code>--items</code> restores only these items, with their children (attachments, notes, annotations), their parents and the collections they need. At the end the library is read again and compared with the backup.</p>
 <h2 id="what-restore-changes-and-what-it-keeps">What restore changes and what it keeps<a class="headerlink" href="#what-restore-changes-and-what-it-keeps" title="Permanent link">&para;</a></h2>
-<p>Restore <strong>never deletes</strong> anything that is not in the backup. Everything that <strong>is</strong> in the backup is set back to its state at the time of the backup.</p>
+<p>Restore <strong>never deletes</strong> anything that is not in the backup, unless asked to with <code>--trash-new</code> or <code>--erase-new</code> (<a href="#removing-what-is-not-in-the-backup">below</a>). Everything that <strong>is</strong> in the backup is set back to its state at the time of the backup.</p>
 <table>
 <thead>
 <tr>
@@ -623,6 +661,19 @@ zotero-backup<span class="w"> </span>restore<span class="w"> </span>BACKUP<span 
 </tbody>
 </table>
 <p>So changes made since the backup to anything that was in the backup are lost. The plan lists every object that will change before you confirm, and <code>diff</code> or <code>--dry-run</code> show it beforehand; objects that are only in the library are listed as "only in the library, not in the backup (restore keeps them)".</p>
+<h2 id="removing-what-is-not-in-the-backup">Removing what is not in the backup<a class="headerlink" href="#removing-what-is-not-in-the-backup" title="Permanent link">&para;</a></h2>
+<p>By default restore keeps everything created after the backup. To get the library back <strong>exactly</strong> as it was:</p>
+<ul>
+<li><strong><code>--trash-new</code></strong> also moves everything that is not in the backup to the Zotero <strong>trash</strong>: new items (their attachments, notes and annotations go with them), new notes, attachments and annotations under items that are in the backup, new collections and subcollections, new saved searches. From the trash they can be brought back, and citations of them in Word or Google Docs still work until the trash is emptied. What is already in the trash stays there.</li>
+<li><strong><code>--erase-new</code></strong> <strong>erases</strong> all of that for good, including what is not in the backup but already in the trash. Erased items cannot be brought back (only from another backup), their files are gone from the Zotero storage, and citations of them in documents no longer resolve.</li>
+</ul>
+<p>Both are given on the command line each time (they cannot be set in the configuration), cannot be combined with <code>--items</code>, and show in the plan as their own section ("not in the backup: moved to the trash" or "ERASED FOR GOOD") with a count, and in the question. Run <code>--dry-run</code> with them first.</p>
+<ul>
+<li><strong>What a backup left out is never removed:</strong> a backup made with <code>--exclude notes</code> has no notes, so the library's notes do not count as "not in the backup" (the same for attachments, annotations and the trash).</li>
+<li>Removing happens after everything in the backup was written back, so an object that had been moved under a new item or collection is back in place before that is removed. Erasing never takes an object that is in the backup with it.</li>
+<li>As for any restore: <strong>sync every Zotero app first</strong>. An app with unsynced new items uploads them again afterwards.</li>
+</ul>
+<h2 id="selected-items">Selected items<a class="headerlink" href="#selected-items" title="Permanent link">&para;</a></h2>
 <p>With <code>--items</code>, only the chosen items change (with their children, parents and the collections they need); library settings are left alone.</p>
 <p><strong>Before a restore, sync every Zotero app that works on the library.</strong> If the restore changed an object that a Zotero app has unsynced changes to, that app shows the conflict window on its next sync (even when the two changes are in different fields), and whatever is chosen there wins over the restore. Unsynced changes to objects the restore did not change are uploaded as usual and stay. If that happened, run <code>restore</code> again; or, on that computer, use Zotero → Settings → Sync → Reset → <strong>Restore from Online Library</strong> (not "Replace Online Library", which goes the other way).</p>
 <p>Restoring files counts against the library owner's Zotero storage.</p>

@@ -1,10 +1,36 @@
 # Install
 
-Download the archive for your system from the [releases](https://github.com/rkrug/zotero-backup/releases), unpack it and put `zotero-backup` (`zotero-backup.exe` on Windows) somewhere on your `PATH`.
+Install **v0.3.0** (the first release that can update itself), then let it bring itself to the newest release. The commands stay the same for every future release, and the update is checked with zotero-backup's signature.
 
-Or build it with Go: `go install github.com/rkrug/zotero-backup@latest`.
+**macOS and Linux**, in Terminal. `SYS` is your system: `uname -sm` prints e.g. `Darwin arm64` (→ `darwin-arm64`), `Darwin x86_64` (→ `darwin-amd64`), `Linux x86_64` (→ `linux-amd64`), `Linux aarch64` (→ `linux-arm64`).
 
-Check the version with `zotero-backup version`. Later versions: see [Updating](#updating). On another computer, from a terminal: [Over SSH](ssh.md).
+```bash
+VERSION=v0.3.0 SYS=darwin-arm64
+cd /tmp
+curl -LO "https://github.com/rkrug/zotero-backup/releases/download/$VERSION/zotero-backup-$VERSION-$SYS.tar.gz"
+curl -LO "https://github.com/rkrug/zotero-backup/releases/download/$VERSION/SHA256SUMS"
+shasum -a 256 -c --ignore-missing SHA256SUMS      # Linux: sha256sum -c --ignore-missing SHA256SUMS; must say OK
+tar -xzf "zotero-backup-$VERSION-$SYS.tar.gz"
+mkdir -p ~/bin && mv "zotero-backup-$VERSION-$SYS/zotero-backup" ~/bin/
+~/bin/zotero-backup upgrade stable --yes          # to the newest normal release, if there is a newer one
+```
+
+Put `~/bin` on the `PATH`, now and for every later login (Linux with bash: `~/.profile` instead of `~/.zshrc`), and check:
+
+```bash
+case ":$PATH:" in *":$HOME/bin:"*) ;; *) echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc; export PATH="$HOME/bin:$PATH" ;; esac
+zotero-backup version
+```
+
+A file downloaded with `curl` has no quarantine flag, so macOS does not block its first start.
+
+**Windows**: the same in PowerShell ([Over SSH](ssh.md#1-install) has the commands; they work locally too).
+
+**With a browser instead:** download the archive for your system from the [releases](https://github.com/rkrug/zotero-backup/releases), unpack it and put `zotero-backup` (`zotero-backup.exe` on Windows) somewhere on your `PATH`; on macOS the first start is then blocked once ([below](#macos-the-first-start-is-blocked)). Then `zotero-backup upgrade stable`.
+
+Or build it with Go: `go install github.com/rkrug/zotero-backup@latest` (updated the same way, not with `upgrade`).
+
+Later versions: `zotero-backup upgrade stable` ([Updating](#updating)). On another computer, from a terminal: [Over SSH](ssh.md).
 
 !!! note "Windows and Linux: not yet tried on a real system"
     Only the macOS version has been checked by hand so far; the Windows and Linux versions pass the unit tests in CI but are untested in real use ([#15](https://github.com/rkrug/zotero-backup/issues/15), [#16](https://github.com/rkrug/zotero-backup/issues/16)). See [Platform status](index.md).

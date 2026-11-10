@@ -4,6 +4,8 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+- Documentation (Install, README, Over SSH): install v0.3.0, then `upgrade stable` to the newest: the same commands for every release, the update signed; `~/bin` on the `PATH` as a step of its own. Over SSH now tried on macOS.
+
 ## v0.3.0 (2026-11-10)
 
 It includes the pre-releases v0.3.0-rc.1 to rc.3.

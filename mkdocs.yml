@@ -34,6 +34,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Install: install.md
+  - Over SSH: ssh.md
   - Keys: keys.md
   - Configuration: configuration.md
   - Backups: backups.md

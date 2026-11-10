@@ -39,6 +39,10 @@ commands:
               which backups each is, and whether it is gone from the newest
   show BACKUP KEY  print an item from a backup with its notes, attachments and
               annotations (offline); --save DIR copies its files out
+  schedule install [--at HH:MM] | show | remove  a daily backup, then prune,
+              with the system's scheduler (macOS LaunchAgent, systemd user
+              timer, Windows task) while you are logged in; --profile and
+              --config are passed on
   notify-test  send a test notification with the profile's notify_command /
               notify_macos (sent after a backup that failed or had problems)
   prune       delete backups not kept by keep_daily / keep_weekly / keep_monthly
@@ -103,6 +107,7 @@ func run(args []string, out io.Writer) error {
 	yes := fs.Bool("yes", false, "restore, upgrade: do not ask")
 	trashNew := fs.Bool("trash-new", false, "restore: move objects not in the backup to the trash")
 	eraseNew := fs.Bool("erase-new", false, "restore: erase objects not in the backup")
+	scheduleAt := fs.String("at", "06:00", "schedule install: the daily time, HH:MM")
 	saveDir := fs.String("save", "", "show: copy the item's files into this folder")
 	check := fs.Bool("check", false, "upgrade: only show what is available")
 	downgrade := fs.Bool("downgrade", false, "upgrade stable: back from a pre-release")
@@ -209,6 +214,17 @@ func run(args []string, out io.Writer) error {
 		return keyCheckAll(profile, newClient, out)
 	case "backup":
 		return backupAndNotify(clientsFor(profile, newClient), profile, out, os.Stderr, newProgress(profile.Progress, profile.ProgressInterval, os.Stderr))
+	case "schedule":
+		if len(pos) != 1 {
+			return errors.New("usage: zotero-backup schedule install [--at HH:MM] | show | remove")
+		}
+		cfgArg := ""
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "config" {
+				cfgArg, _ = filepath.Abs(expandHome(*cfgPath))
+			}
+		})
+		return runSchedule(pos[0], *scheduleAt, *profileName, cfgArg, out)
 	case "notify-test":
 		return notifyTest(profile, out)
 	case "list":

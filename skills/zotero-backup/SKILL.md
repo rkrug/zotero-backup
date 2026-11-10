@@ -59,6 +59,7 @@ description: Back up, list, compare, restore and prune Zotero libraries (persona
 - `--profile NAME` and `--config PATH` select another profile or configuration file. Progress goes to stderr: `--progress auto|line|log|quiet` (`log` for scheduled runs and log files), `--quiet` = only the summary and errors.
 - Configuration (JSON, `profiles` by name; documentation: Configuration): `library`, `to` (backup folder), `key` (read key), `keys` (a key per library: `"user"` / `"group:<id>"` → keychain entry), `write_key` (for restore), `exclude`, `keep_daily` / `keep_weekly` / `keep_monthly` (prune), `progress`. Unknown fields are errors.
 - `zotero-backup key remove [NAME]` deletes a keychain entry: only when the user asks.
+- A daily schedule: `zotero-backup schedule install [--at HH:MM]` (then `schedule show`); it changes the user's system scheduler, so only when they ask, after saying what it sets up. `schedule remove` undoes it.
 - Notifications after a failed backup: `notify_command` (program and arguments, no shell) and `notify_macos` in the profile; `zotero-backup notify-test` sends a test (it runs the configured command: check it first).
 - `upgrade` replaces the program itself (checked: signature, checksum, version). Run `upgrade --check` first, show what it offers, and update only after the user's yes; `stable` never goes back from a pre-release unless `--downgrade` is given. Built with `go install` or installed with Homebrew: it refuses and says how to update instead.
 

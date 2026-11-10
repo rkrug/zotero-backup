@@ -40,5 +40,6 @@ Backups contain your whole library: notes, PDFs, annotations. A copy that leaves
 ## Checking a copy
 
 - `zotero-backup list` and `find` work on a copy as well (`--config` with a profile whose `to` is the copy, or `find TEXT LIBRARY_FOLDER` with a library folder of the copy).
-- `zotero-backup diff COPY ORIGINAL` (two backup folders) compares the copy's metadata with the original's: "No differences." means the same items, collections, settings and file checksums. It does not read the files themselves; `rsync -aHc --dry-run --itemize-changes SOURCE/ COPY/` lists files whose content differs. A full check of a backup's files is planned ([#23](https://github.com/rkrug/zotero-backup/issues/23)).
+- **`zotero-backup verify all`** with the copy as the backup folder (`--config` with a profile whose `to` is the copy, or `verify LIBRARY_FOLDER` on the copy) reads every file of the copy and checks its md5 against the backup's own records ([Checking backups](backups.md#checking-backups)).
+- `zotero-backup diff COPY ORIGINAL` (two backup folders) compares the copy's metadata with the original's: "No differences." means the same items, collections, settings and file checksums.
 - Restoring from a copy works like from the original: `restore` reads only the backup folder you give it.

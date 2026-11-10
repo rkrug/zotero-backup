@@ -4,6 +4,23 @@ Run `backup` and then `prune`, e.g. daily. With no terminal, progress is written
 
 The computer has to be on and online at that time; Zotero desktop does not need to run (backups use the web API only). Use a **read-only** key for scheduled backups, so a key that is stored for unattended runs cannot change any library.
 
+## The quick way
+
+```bash
+zotero-backup schedule install --at 02:30    # daily backup, then prune
+zotero-backup schedule show                  # what is installed, its state and next run
+zotero-backup schedule remove
+```
+
+It sets up what the sections below describe, with your system's own scheduler, running while you are logged in: a **LaunchAgent** on macOS (`~/Library/LaunchAgents/org.zotero-backup.plist`, log `~/Library/Logs/zotero-backup.log`), a **systemd user timer** on Linux (`~/.config/systemd/user/zotero-backup.timer`, log in the journal) or a **scheduled task** on Windows (log in `%LOCALAPPDATA%\zotero-backup`). The job runs `backup` and then `prune` with progress as log lines, using this program's full path; `--profile` and `--config` are passed on (another profile gets its own job, e.g. `org.zotero-backup.work`). Default time 06:00.
+
+- Store the key first (`zotero-backup key set`): the job reads it from your keychain.
+- It never overwrites or removes a setup it did not write itself (e.g. one copied from below by hand): it says so and stops.
+- Install zotero-backup in its final place first: the job keeps the path it was set up from (`upgrade` replaces the file in place, so the job stays valid).
+- For runs **while nobody is logged in**, use the manual setups [below](#when-nobody-is-logged-in).
+
+## By hand
+
 The setups below run while you are logged in (a locked screen is fine). For runs **when nobody is logged in**, see [below](#when-nobody-is-logged-in): the schedule is easy, the key is the point, because a keychain is only unlocked by logging in.
 
 **macOS** (launchd): save as `~/Library/LaunchAgents/org.zotero-backup.plist`, then `launchctl load ~/Library/LaunchAgents/org.zotero-backup.plist`. Runs as you, so the keychain entry is available.

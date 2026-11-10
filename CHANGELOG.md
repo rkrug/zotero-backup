@@ -4,7 +4,7 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
-- Documentation (Install, Over SSH): install any release from v0.3.0 on, then `upgrade stable`: the same commands for every release, the update signed; Over SSH now tried on macOS.
+- Documentation (Install, README, Over SSH): install v0.3.0, then `upgrade stable` to the newest: the same commands for every release, the update signed; `~/bin` on the `PATH` as a step of its own. Over SSH now tried on macOS.
 - `schedule show` names the profile the job uses (also `default`) and its configuration file.
 
 ## v0.3.0 (2026-11-10)

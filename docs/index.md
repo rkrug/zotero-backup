@@ -58,6 +58,8 @@ The plan and the tests behind the design are in [Issue #1](https://github.com/rk
 
 First [install](install.md) it; more about [keys](keys.md), [backups](backups.md) and [restore](restore.md).
 
+**Contributing:** reports, tests on Windows and Linux, and pull requests are welcome, see [CONTRIBUTING.md](https://github.com/rkrug/zotero-backup/blob/main/CONTRIBUTING.md); security problems are reported privately, see [SECURITY.md](https://github.com/rkrug/zotero-backup/blob/main/SECURITY.md). What changed per version: [CHANGELOG.md](https://github.com/rkrug/zotero-backup/blob/main/CHANGELOG.md).
+
 ## Not covered
 
 - Linked files (only the link is on the Zotero server).

@@ -75,16 +75,20 @@ go build -o zotero-backup .
 
 Releases are built by GitHub Actions for each tag `v*`. See `CLAUDE.md` for the structure.
 
-The documentation site is built with [MkDocs](https://www.mkdocs.org/) (Material theme) from `docs/` and published to the `gh-pages` branch by `.github/workflows/docs.yml` on every push to `main` and every normal release tag (not from `dev` or pre-releases):
+The documentation site is built with [MkDocs](https://www.mkdocs.org/) (Material theme) from `docs/` and published to the `gh-pages` branch by `.github/workflows/docs.yml` with [mike](https://github.com/jimporter/mike), one version per minor release (`0.2`, with `latest` as the default) plus `dev` (unreleased):
 
 ```bash
 pip install mkdocs-material==9.6.14
 mkdocs serve          # preview at http://127.0.0.1:8000
 ```
 
+## Contributing
+
+Reports, tests on Windows and Linux, and pull requests (into `dev`) are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md). Security problems: report them privately, see [SECURITY.md](SECURITY.md). What changed per version: [CHANGELOG.md](CHANGELOG.md).
+
 ## Citing
 
-zotero-backup is archived on Zenodo: [10.5281/zenodo.24090287](https://doi.org/10.5281/zenodo.24090287) cites all versions; each release has its own DOI there.
+zotero-backup is archived on Zenodo: [10.5281/zenodo.24090287](https://doi.org/10.5281/zenodo.24090287) cites all versions; each release has its own DOI there. GitHub's "Cite this repository" (from [CITATION.cff](CITATION.cff)) gives the reference.
 
 ## Licence
 

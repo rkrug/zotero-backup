@@ -2,6 +2,8 @@
 
 Download the archive for your system from the [releases](https://github.com/rkrug/zotero-backup/releases), unpack it and put `zotero-backup` (`zotero-backup.exe` on Windows) somewhere on your `PATH`.
 
+Any release from v0.3.0 on can update itself: install one, then run `zotero-backup upgrade stable` to get the newest ([Updating](#updating)). From a terminal or over SSH, without a browser: [Over SSH](ssh.md).
+
 Or build it with Go: `go install github.com/rkrug/zotero-backup@latest`.
 
 Check the version with `zotero-backup version`. Later versions: see [Updating](#updating). On another computer, from a terminal: [Over SSH](ssh.md).

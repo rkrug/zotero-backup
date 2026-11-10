@@ -26,6 +26,8 @@ Download the archive for your system from the [releases](https://github.com/rkru
 
 Or build it with Go: `go install github.com/rkrug/zotero-backup@latest`.
 
+From v0.3.0 on, `zotero-backup upgrade` updates it from the releases (signed and checked; [Updating](https://rkrug.github.io/zotero-backup/latest/install/#updating)).
+
 ## Quick start
 
 1. **Create an API key** at <https://www.zotero.org/settings/keys>. For backups, a **read-only** key is enough: allow library access and notes for the personal library, and read access to the groups. **Store it** in the system keychain:
@@ -74,6 +76,15 @@ go build -o zotero-backup .
 ```
 
 Releases are built by GitHub Actions for each tag `v*`. See `CLAUDE.md` for the structure.
+
+**Update signing key** (for `zotero-backup upgrade`): the release workflow signs `SHA256SUMS` with the Ed25519 key in the secret `ZB_UPDATE_SIGNING_KEY` (`SHA256SUMS.sig`); `updatePublicKey` in `upgrade.go` is its public key. To create a key pair (once; a new key needs a release with the new public key, and older binaries then only point to the release page):
+
+```bash
+go run tools/sign.go keygen zb-update-key        # writes the private key (readable only by you), prints the public key
+gh secret set ZB_UPDATE_SIGNING_KEY < zb-update-key
+```
+
+Keep `zb-update-key` somewhere safe (not in the repository).
 
 The documentation site is built with [MkDocs](https://www.mkdocs.org/) (Material theme) from `docs/` and published to the `gh-pages` branch by `.github/workflows/docs.yml` with [mike](https://github.com/jimporter/mike), one version per minor release (`0.2`, with `latest` as the default) plus `dev` (unreleased):
 

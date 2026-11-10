@@ -44,3 +44,14 @@ jobs:
           go-version-file: go.mod
       - name: Build all release targets
         run: .github/build.sh "dev-${GITHUB_SHA::7}"
+      # The release signs SHA256SUMS with this secret; it must belong to the public key in
+      # upgrade.go. Secrets are not given to pull requests from forks: then only a notice.
+      - name: Update signing key matches upgrade.go
+        env:
+          ZB_UPDATE_SIGNING_KEY: ${{ secrets.ZB_UPDATE_SIGNING_KEY }}
+        run: |
+          if [ -z "$ZB_UPDATE_SIGNING_KEY" ]; then echo "::notice::ZB_UPDATE_SIGNING_KEY not available"; exit 0; fi
+          out=$(go run tools/sign.go sign dist/SHA256SUMS)
+          want=$(sed -n 's/^const updatePublicKey = "\(.*\)"$/\1/p' upgrade.go)
+          case "$out" in *"(public key $want)"*) echo "signed with the key of updatePublicKey" ;;
+            *) echo "::error::ZB_UPDATE_SIGNING_KEY does not belong to updatePublicKey in upgrade.go"; exit 1 ;; esac

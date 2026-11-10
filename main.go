@@ -38,12 +38,19 @@ commands:
   key remove [NAME]  delete the keychain entry
   config      print the effective configuration (all options with their values)
   version     print the version
+  upgrade [stable|beta]  replace this program with the newest release from
+              GitHub (signed and checked); without a channel it shows what
+              there is and asks (--check: only show; --yes: do not ask;
+              stable --downgrade: from a pre-release back to stable)
 
 options:
   --config PATH       configuration file (default: %s)
   --profile NAME      profile to use (default: default)
   --dry-run           prune, restore: show what would be done, do nothing
-  --yes               restore: do not ask for confirmation
+  --yes               restore, upgrade: do not ask for confirmation
+  --check             upgrade: only show what is available (exit status 1 if
+                      an update is available)
+  --downgrade         upgrade stable: go back from a pre-release
   --items K1,K2       diff, restore: only these items (with children and parents)
   --progress MODE     auto (default), line, log or quiet: how progress is shown
                       on stderr (profile option "progress"; "progress_interval"
@@ -64,6 +71,7 @@ Service (secret-tool).
 `
 
 func main() {
+	removeOldExe()
 	if err := run(os.Args[1:], os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, "zotero-backup:", err)
 		os.Exit(1)
@@ -76,7 +84,9 @@ func run(args []string, out io.Writer) error {
 	profileName := fs.String("profile", "default", "profile to use")
 	excludeFlag := fs.String("exclude", "", "parts to leave out")
 	dryRun := fs.Bool("dry-run", false, "prune / restore: only show what would be done")
-	yes := fs.Bool("yes", false, "restore: do not ask")
+	yes := fs.Bool("yes", false, "restore, upgrade: do not ask")
+	check := fs.Bool("check", false, "upgrade: only show what is available")
+	downgrade := fs.Bool("downgrade", false, "upgrade stable: back from a pre-release")
 	itemsFlag := fs.String("items", "", "diff / restore: only these item keys")
 	progressFlag := fs.String("progress", "", "auto, line, log or quiet")
 	quiet := fs.Bool("quiet", false, "only the summary and errors")
@@ -120,6 +130,16 @@ func run(args []string, out io.Writer) error {
 			break
 		}
 		pos, rest = append(pos, fs.Arg(0)), fs.Args()[1:]
+	}
+	if cmd == "upgrade" { // needs no configuration
+		if len(pos) > 1 || (len(pos) == 1 && pos[0] != "stable" && pos[0] != "beta") {
+			return errors.New("usage: zotero-backup upgrade [stable|beta] [--check] [--yes] [--downgrade]")
+		}
+		u, err := newUpdater(out)
+		if err != nil {
+			return err
+		}
+		return u.run(strings.Join(pos, ""), *check, *yes, *downgrade)
 	}
 
 	cfg, err := loadConfig(*cfgPath)

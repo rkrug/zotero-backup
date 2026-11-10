@@ -4,6 +4,8 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+- **`zotero-backup upgrade [stable|beta]`** updates zotero-backup from the GitHub releases: shows the newest stable and beta release and asks; `--check` only shows; `--yes` without asking; `stable --downgrade` back from a pre-release. Every update is checked (Ed25519 signature over `SHA256SUMS`, then the archive's checksum, then the new version) before anything is replaced. Releases now include `SHA256SUMS.sig`.
+
 - **Documentation per version:** the [site](https://rkrug.github.io/zotero-backup/) keeps the documentation of each release (version menu in the header); `dev` shows the unreleased state.
 - **AI assistants:** an Agent Skill (`skills/zotero-backup/`) for using zotero-backup safely through an assistant such as Claude Code, with what each error message means and how to read a stress test report.
 - `--help`: `--exclude` also applies to `diff` and `restore` (it leaves the parts out of the plan); the help said backup only.

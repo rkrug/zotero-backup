@@ -999,6 +999,7 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
 <li>The same in the form backups made before v0.2.0 kept ZIPs in (under the file's own name, with the ZIP's own md5, no <code>"zip"</code>): recognised as a ZIP, no file difference to the library; with a changed page, restore uploads it as a ZIP and the server has the page's md5.</li>
 </ul>
 </li>
+<li><strong>Removing what is not in the backup</strong> (operation <code>remove-new</code>): after a backup, a new item with a child note, a note under a fixture item and a collection with a subcollection are made through the API; <code>restore --trash-new</code> puts them in the trash (the child note with its item) on the server and, after a sync, in Zotero desktop; <code>restore --erase-new</code> then erases them there too. Before each restore the plan is checked to remove only this test's own objects (tag <code>zb-e2e</code>, collections <code>[zb-e2e]…</code>); otherwise the step is refused.</li>
 <li><code>prune --dry-run</code> with one daily backup kept lists all but the newest backup.</li>
 </ul>
 <h2 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">&para;</a></h2>

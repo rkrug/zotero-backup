@@ -621,6 +621,7 @@ This is not the documentation of the latest release.
 <p>Run <code>diff</code> and <code>restore --dry-run</code> first, and sync every Zotero app before restoring. You are responsible for the result: see the <a href="../disclaimer/">disclaimer</a>.</p>
 </div>
 <div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>diff<span class="w"> </span>BACKUP<span class="w">                     </span><span class="c1"># what differs from the library today</span>
+zotero-backup<span class="w"> </span>diff<span class="w"> </span>BACKUP1<span class="w"> </span>BACKUP2<span class="w">            </span><span class="c1"># what changed between two backups (offline)</span>
 zotero-backup<span class="w"> </span>restore<span class="w"> </span>BACKUP<span class="w"> </span>--dry-run<span class="w">        </span><span class="c1"># what restore would do</span>
 zotero-backup<span class="w"> </span>restore<span class="w"> </span>BACKUP<span class="w">                  </span><span class="c1"># shows the plan, asks, restores, checks</span>
 zotero-backup<span class="w"> </span>restore<span class="w"> </span>BACKUP<span class="w"> </span>--items<span class="w"> </span>ABCD1234,EFGH5678

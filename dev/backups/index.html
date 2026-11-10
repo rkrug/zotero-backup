@@ -608,7 +608,14 @@ zotero-backup<span class="w"> </span>show<span class="w"> </span>~/zotero-backup
 <ul>
 <li><strong><code>find TEXT</code></strong> searches every backup for items whose title, creators, DOI, key, note or annotation text or file name contains TEXT (upper and lower case alike). For each item it shows its key and title (from the newest backup that has it), its parent for notes and attachments, and in which backups it is: how many, the first and the last, and whether it is <strong>not in the newest backup</strong> (deleted since) or in the trash there. That is the way to find the backup to restore an item from.</li>
 <li><strong><code>show BACKUP KEY</code></strong> prints the item from that backup (<code>BACKUP</code> is a backup folder, or a library folder for its newest backup): its fields, creators, tags and collections, then its attachments, notes (as text) and annotations.</li>
-<li><strong><code>--save DIR</code></strong> copies the files of the item and its attachments out of the backup into <code>DIR/&lt;attachment key&gt;/</code>, ZIPs unpacked. It never overwrites a file and refuses a folder inside the backups.</li>
+<li>
+<p><strong><code>--save DIR</code></strong> copies the files of the item and its attachments out of the backup into <code>DIR/&lt;attachment key&gt;/</code>, ZIPs unpacked. It never overwrites a file and refuses a folder inside the backups.</p>
+</li>
+<li>
+<p><strong><code>diff BACKUP1 BACKUP2</code></strong> compares two backups of the same library: what was <strong>added</strong>, <strong>removed</strong> and <strong>changed</strong> (with the fields) between them, files changed and settings changed. The order does not matter; parts either backup left out are not compared.</p>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>diff<span class="w"> </span>~/zotero-backups/group-6719916-Safe_Edit_Test/2026-11-05T204338Z<span class="w"> </span>~/zotero-backups/group-6719916-Safe_Edit_Test/2026-11-10T102736Z
+</code></pre></div>
+</li>
 </ul>
 <p>To put an item back into the library: <code>zotero-backup restore BACKUP --items KEY</code> (<a href="../restore/">Restore</a>).</p>
 

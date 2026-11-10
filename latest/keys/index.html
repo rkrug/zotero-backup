@@ -10,10 +10,10 @@
       
       
       
-        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.2/keys/">
+        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.3/keys/">
       
       
-        <link rel="prev" href="../install/">
+        <link rel="prev" href="../ssh/">
       
       
         <link rel="next" href="../configuration/">
@@ -87,7 +87,7 @@
           <div class="md-banner__inner md-grid md-typeset">
             
             
-zotero-backup v0.2.0 · No warranty: you are responsible for your data.
+zotero-backup v0.3.0 · No warranty: you are responsible for your data.
 Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
           </div>
@@ -101,7 +101,11 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
           <aside class="md-banner md-banner--warning">
             <div class="md-banner__inner md-grid md-typeset">
               
-This is not the documentation of the latest release.
+
+
+
+This is the documentation of an <strong>older release (v0.3.0)</strong>.
+
 <a href="../.."><strong>Go to the latest release.</strong></a>
 
             </div>
@@ -324,6 +328,28 @@ This is not the documentation of the latest release.
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../ssh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Over SSH
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -336,6 +362,19 @@ This is not the documentation of the latest release.
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Keys
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -347,6 +386,43 @@ This is not the documentation of the latest release.
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#two-keys-one-to-back-up-one-to-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      Two keys: one to back up, one to restore
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#names-and-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Names and commands
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -447,6 +523,28 @@ This is not the documentation of the latest release.
   
   
     <li class="md-nav__item">
+      <a href="../offsite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Off-site copies
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../stresstest/" class="md-nav__link">
         
   
@@ -504,6 +602,32 @@ This is not the documentation of the latest release.
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#two-keys-one-to-back-up-one-to-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      Two keys: one to back up, one to restore
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#names-and-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Names and commands
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -522,13 +646,43 @@ This is not the documentation of the latest release.
 
 
 <h1 id="keys">Keys<a class="headerlink" href="#keys" title="Permanent link">&para;</a></h1>
+<h2 id="two-keys-one-to-back-up-one-to-restore">Two keys: one to back up, one to restore<a class="headerlink" href="#two-keys-one-to-back-up-one-to-restore" title="Permanent link">&para;</a></h2>
+<p>Create <strong>two</strong> API keys at <a href="https://www.zotero.org/settings/keys">https://www.zotero.org/settings/keys</a> (<strong>Create new private key</strong>), one for each job:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Settings at zotero.org</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>read-only</strong>, e.g. "zotero-backup read"</td>
+<td>Personal Library: <em>Allow library access</em> and <em>Allow notes access</em>, <strong>not</strong> <em>Allow write access</em>; Default Group Permissions: <strong>Read Only</strong></td>
+<td><code>backup</code>, <code>list</code>, <code>diff</code>, scheduled backups</td>
+</tr>
+<tr>
+<td><strong>read/write</strong>, e.g. "zotero-backup restore"</td>
+<td>the same plus <em>Allow write access</em>; Default Group Permissions: <strong>Read/Write</strong></td>
+<td><code>restore</code> only</td>
+</tr>
+</tbody>
+</table>
+<p>Store <strong>both</strong> on the computer you work and restore on, under two names, and tell the profile which is which:</p>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>key<span class="w"> </span><span class="nb">set</span><span class="w">                  </span><span class="c1"># the read-only key, stored as "zotero-backup" (the profile's "key")</span>
+zotero-backup<span class="w"> </span>key<span class="w"> </span><span class="nb">set</span><span class="w"> </span>zotero-write<span class="w">     </span><span class="c1"># the read/write key; then "write_key": "zotero-write" in the profile</span>
+zotero-backup<span class="w"> </span>key<span class="w"> </span>check<span class="w">                </span><span class="c1"># both, and what each may do</span>
+</code></pre></div>
+<p>Then backups, including scheduled ones, can never change a library, and <code>restore</code> uses the write key by itself. A computer that only makes backups (a server, a computer you reach over SSH) gets <strong>only the read-only key</strong> (<a href="../ssh/">Over SSH</a>).</p>
+<h2 id="names-and-commands">Names and commands<a class="headerlink" href="#names-and-commands" title="Permanent link">&para;</a></h2>
 <p>Keys are stored in the system keychain under a name; the configuration only holds the name (the profile's <code>key</code>, default <code>zotero-backup</code>):</p>
 <div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>key<span class="w"> </span><span class="nb">set</span><span class="w">              </span><span class="c1"># asks for the key (no echo), checks it with Zotero, stores it as "zotero-backup"</span>
 zotero-backup<span class="w"> </span>key<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="nb">readonly</span><span class="w">     </span><span class="c1"># …under another name; use it with "key": "readonly" in a profile</span>
 zotero-backup<span class="w"> </span>key<span class="w"> </span>check<span class="w"> </span><span class="nb">readonly</span><span class="w">   </span><span class="c1"># user, libraries and rights of that key</span>
 zotero-backup<span class="w"> </span>key<span class="w"> </span>check<span class="w">            </span><span class="c1"># every key the profile uses, and what each is for</span>
 </code></pre></div>
-<p>A read-only key as <code>key</code> and a write key as <code>write_key</code> keep scheduled backups from ever changing a library, while <code>restore</code> uses the write key without further options:</p>
+<p>A read-only key as <code>key</code> and a write key as <code>write_key</code> (see above) keep scheduled backups from ever changing a library, while <code>restore</code> uses the write key without further options:</p>
 <div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>key<span class="w"> </span><span class="nb">set</span><span class="w"> </span>zotero-write<span class="w">    </span><span class="c1"># then "write_key": "zotero-write" in the profile</span>
 zotero-backup<span class="w"> </span>key<span class="w"> </span>remove<span class="w"> </span><span class="nb">readonly</span><span class="w">  </span><span class="c1"># deletes the keychain entry (the key stays valid at zotero.org)</span>
 </code></pre></div>
@@ -589,7 +743,7 @@ zotero-backup<span class="w"> </span>key<span class="w"> </span>remove<span clas
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../install/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Install">
+          <a href="../ssh/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Over SSH">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -599,7 +753,7 @@ zotero-backup<span class="w"> </span>key<span class="w"> </span>remove<span clas
                 Previous
               </span>
               <div class="md-ellipsis">
-                Install
+                Over SSH
               </div>
             </div>
           </a>

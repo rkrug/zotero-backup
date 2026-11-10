@@ -87,7 +87,7 @@
           <div class="md-banner__inner md-grid md-typeset">
             
             
-zotero-backup v0.3.0-rc.3 · No warranty: you are responsible for your data.
+zotero-backup v0.3.0 · No warranty: you are responsible for your data.
 Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
           </div>
@@ -104,7 +104,7 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
 
 
-This is the documentation of the <strong>pre-release v0.3.0-rc.3</strong>, newer than the latest release.
+This is the documentation of an <strong>older release (v0.3.0)</strong>.
 
 <a href="../.."><strong>Go to the latest release.</strong></a>
 
@@ -417,6 +417,15 @@ This is the documentation of the <strong>pre-release v0.3.0-rc.3</strong>, newer
 </li>
       
         <li class="md-nav__item">
+  <a href="#restoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Restoring
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a-computer-that-is-always-logged-in" class="md-nav__link">
     <span class="md-ellipsis">
       A computer that is always logged in
@@ -672,6 +681,15 @@ This is the documentation of the <strong>pre-release v0.3.0-rc.3</strong>, newer
 </li>
       
         <li class="md-nav__item">
+  <a href="#restoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Restoring
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a-computer-that-is-always-logged-in" class="md-nav__link">
     <span class="md-ellipsis">
       A computer that is always logged in
@@ -737,7 +755,12 @@ mkdir<span class="w"> </span>-p<span class="w"> </span>~/bin<span class="w"> </s
 <li>Later versions: <code>zotero-backup upgrade stable</code> over SSH (<a href="../install/#updating">Updating</a>). It replaces the file in place, so the schedule keeps working.</li>
 </ul>
 <h2 id="2-store-the-key">2. Store the key<a class="headerlink" href="#2-store-the-key" title="Permanent link">&para;</a></h2>
-<p>Use a <strong>read-only</strong> key for a computer that only makes backups (<a href="../keys/">Keys</a>). <code>key set</code> asks for it without showing it; over SSH the typed key travels encrypted and never lands in a command line or the shell history.</p>
+<div class="admonition warning">
+<p class="admonition-title">Only a read-only key here</p>
+<p>A computer you set up over SSH runs unattended, can be reached from elsewhere, and keeps its keychain unlocked for a long time. Store <strong>only a read-only key</strong> there: if the computer or its account is ever misused, the key can read your libraries but never change or delete anything in them. No <code>write_key</code> in its profile.</p>
+<p>Create the read-only key at <a href="https://www.zotero.org/settings/keys">https://www.zotero.org/settings/keys</a>: <em>Allow library access</em> and <em>Allow notes access</em>, <strong>not</strong> <em>Allow write access</em>, Default Group Permissions <strong>Read Only</strong> (<a href="../keys/#two-keys-one-to-back-up-one-to-restore">Keys → Two keys</a>). Keep the read/write key for restores on the computer you work on.</p>
+</div>
+<p><code>key set</code> asks for the key without showing it; over SSH the typed key travels encrypted and never lands in a command line or the shell history. <code>key check</code> shows what the key may do: it must say read-only for every library.</p>
 <p><strong>macOS.</strong> The login keychain is unlocked while the account is logged in, but an SSH session often cannot use it until it is unlocked there too. Unlock it (it asks for the account's password), then store and check the key:</p>
 <div class="highlight"><pre><span></span><code>security<span class="w"> </span>unlock-keychain<span class="w"> </span>~/Library/Keychains/login.keychain-db
 zotero-backup<span class="w"> </span>key<span class="w"> </span><span class="nb">set</span>
@@ -769,6 +792,8 @@ zotero-backup<span class="w"> </span>schedule<span class="w"> </span>show
 tail<span class="w"> </span>-50<span class="w"> </span>~/Library/Logs/zotero-backup.log<span class="w">        </span><span class="c1"># macOS; Linux: journalctl --user -u zotero-backup</span>
 </code></pre></div>
 <p>To hear about failures without logging in: <code>notify_command</code> in the profile, e.g. mail or <a href="https://ntfy.sh">ntfy</a> (<a href="../scheduled/#notifications">Scheduled backups → Notifications</a>).</p>
+<h2 id="restoring">Restoring<a class="headerlink" href="#restoring" title="Permanent link">&para;</a></h2>
+<p>Restore on the computer you work on, with the read/write key stored there, from a copy of the server's backups (<a href="../offsite/">Off-site copies</a>, e.g. <code>rsync -aH server@macmini.local:zotero-backups/ ~/zotero-backups-server/</code>): <code>restore</code> reads only the backup folder you give it. If a restore must run on the server itself, store the write key there only for that (<code>zotero-backup key set zotero-write</code>, then <code>restore … --key zotero-write</code>), remove it afterwards (<code>zotero-backup key remove zotero-write</code>), and delete that key at zotero.org.</p>
 <h2 id="a-computer-that-is-always-logged-in">A computer that is always logged in<a class="headerlink" href="#a-computer-that-is-always-logged-in" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>The keychain must stay unlocked.</strong> By default the macOS login keychain does not lock on its own; if it is set to lock after some time or on sleep (Keychain Access → login keychain → Change Settings), scheduled runs fail with "no API key … the keychain could not be read". A <a href="../scheduled/#notifications">notification</a> tells you.</li>

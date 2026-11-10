@@ -10,10 +10,10 @@
       
       
       
-        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.2/stresstest/">
+        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.3/stresstest/">
       
       
-        <link rel="prev" href="../scheduled/">
+        <link rel="prev" href="../offsite/">
       
       
         <link rel="next" href="../disclaimer/">
@@ -87,7 +87,7 @@
           <div class="md-banner__inner md-grid md-typeset">
             
             
-zotero-backup v0.2.0 · No warranty: you are responsible for your data.
+zotero-backup v0.3.0 · No warranty: you are responsible for your data.
 Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
           </div>
@@ -101,7 +101,11 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
           <aside class="md-banner md-banner--warning">
             <div class="md-banner__inner md-grid md-typeset">
               
-This is not the documentation of the latest release.
+
+
+
+This is the documentation of an <strong>older release (v0.3.0)</strong>.
+
 <a href="../.."><strong>Go to the latest release.</strong></a>
 
             </div>
@@ -327,6 +331,28 @@ This is not the documentation of the latest release.
   
   
     <li class="md-nav__item">
+      <a href="../ssh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Over SSH
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../keys/" class="md-nav__link">
         
   
@@ -421,6 +447,28 @@ This is not the documentation of the latest release.
   
   <span class="md-ellipsis">
     Scheduled backups
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../offsite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Off-site copies
     
   </span>
   
@@ -999,6 +1047,7 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
 <li>The same in the form backups made before v0.2.0 kept ZIPs in (under the file's own name, with the ZIP's own md5, no <code>"zip"</code>): recognised as a ZIP, no file difference to the library; with a changed page, restore uploads it as a ZIP and the server has the page's md5.</li>
 </ul>
 </li>
+<li><strong>Removing what is not in the backup</strong> (operation <code>remove-new</code>): after a backup, a new item with a child note, a note under a fixture item and a collection with a subcollection are made through the API; <code>restore --trash-new</code> puts them in the trash (the child note with its item) on the server and, after a sync, in Zotero desktop; <code>restore --erase-new</code> then erases them there too. Before each restore the plan is checked to remove only this test's own objects (tag <code>zb-e2e</code>, collections <code>[zb-e2e]…</code>); otherwise the step is refused.</li>
 <li><code>prune --dry-run</code> with one daily backup kept lists all but the newest backup.</li>
 </ul>
 <h2 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">&para;</a></h2>
@@ -1107,7 +1156,7 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../scheduled/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Scheduled backups">
+          <a href="../offsite/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Off-site copies">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1117,7 +1166,7 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
                 Previous
               </span>
               <div class="md-ellipsis">
-                Scheduled backups
+                Off-site copies
               </div>
             </div>
           </a>

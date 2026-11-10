@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.2/">
+        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.3/">
       
       
       
@@ -85,7 +85,7 @@
           <div class="md-banner__inner md-grid md-typeset">
             
             
-zotero-backup v0.2.0 · No warranty: you are responsible for your data.
+zotero-backup v0.3.0 · No warranty: you are responsible for your data.
 Read the <a href="disclaimer/">disclaimer</a> before you restore or prune.
 
           </div>
@@ -99,7 +99,11 @@ Read the <a href="disclaimer/">disclaimer</a> before you restore or prune.
           <aside class="md-banner md-banner--warning">
             <div class="md-banner__inner md-grid md-typeset">
               
-This is not the documentation of the latest release.
+
+
+
+This is the documentation of an <strong>older release (v0.3.0)</strong>.
+
 <a href="../."><strong>Go to the latest release.</strong></a>
 
             </div>
@@ -385,6 +389,28 @@ This is not the documentation of the latest release.
   
   
     <li class="md-nav__item">
+      <a href="ssh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Over SSH
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="keys/" class="md-nav__link">
         
   
@@ -479,6 +505,28 @@ This is not the documentation of the latest release.
   
   <span class="md-ellipsis">
     Scheduled backups
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="offsite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Off-site copies
     
   </span>
   
@@ -601,6 +649,7 @@ This is not the documentation of the latest release.
 <li><strong>Complete backups.</strong> Every backup is a folder with the whole library: items (with notes, annotations and the trash), collections, saved searches, library settings such as tag colours, the full-text index, and the attachment files.</li>
 <li><strong>Small and fast after the first run.</strong> Files that did not change since the previous backup are hard links to it: not downloaded again, not stored twice.</li>
 <li><strong>Restore into the same library</strong>, everything or selected items, with a preview first.</li>
+<li><strong>Look into backups without restoring</strong> (<code>find</code>, <code>show</code>, <code>diff</code> of two backups), <strong>schedule</strong> the daily backup with one command, and <strong>update</strong> zotero-backup itself (<code>upgrade</code>, signed).</li>
 <li>One executable for Windows, macOS and Linux; nothing else to install.</li>
 </ul>
 <div class="admonition note">
@@ -616,7 +665,7 @@ This is not the documentation of the latest release.
 <h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <ol>
 <li>
-<p><strong>Create an API key</strong> at <a href="https://www.zotero.org/settings/keys">https://www.zotero.org/settings/keys</a>. For backups, a <strong>read-only</strong> key is enough: allow library access and notes for the personal library, and read access to the groups. <strong>Store it</strong> in the system keychain:</p>
+<p><strong>Create an API key</strong> at <a href="https://www.zotero.org/settings/keys">https://www.zotero.org/settings/keys</a>. For backups, a <strong>read-only</strong> key is enough: allow library access and notes for the personal library, and read access to the groups. For restores, create a second, <strong>read/write</strong> key (step 3): store both (<a href="keys/#two-keys-one-to-back-up-one-to-restore">two keys</a>). <strong>Store it</strong> in the system keychain:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># asks for the key (not shown), checks it with Zotero, stores it</span>
 zotero-backup<span class="w"> </span>key<span class="w"> </span><span class="nb">set</span>
 <span class="c1"># the key's user, its libraries and what it may do in each</span>

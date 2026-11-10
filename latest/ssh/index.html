@@ -1,0 +1,903 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Backup and restore of Zotero libraries through the Zotero web API, keeping the item keys">
+      
+      
+      
+        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.3/ssh/">
+      
+      
+        <link rel="prev" href="../install/">
+      
+      
+        <link rel="next" href="../keys/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
+    
+    
+      
+        <title>Over SSH - zotero-backup</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.342714a4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#another-computer-over-ssh" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+zotero-backup v0.3.0 · No warranty: you are responsible for your data.
+Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
+
+          </div>
+          
+        </aside>
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+
+
+
+This is the documentation of an <strong>older release (v0.3.0)</strong>.
+
+<a href="../.."><strong>Go to the latest release.</strong></a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL(".."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="zotero-backup" class="md-header__button md-logo" aria-label="zotero-backup" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            zotero-backup
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Over SSH
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/rkrug/zotero-backup" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    rkrug/zotero-backup
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="zotero-backup" class="md-nav__button md-logo" aria-label="zotero-backup" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    zotero-backup
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/rkrug/zotero-backup" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    rkrug/zotero-backup
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Install
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Over SSH
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Over SSH
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Install
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-store-the-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Store the key
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-a-first-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. A first backup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-the-daily-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. The daily backup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#restoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Restoring
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-computer-that-is-always-logged-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      A computer that is always logged in
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../keys/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Keys
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Backups
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../restore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Restore
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../scheduled/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Scheduled backups
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../offsite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Off-site copies
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stresstest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Stress test
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../disclaimer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Disclaimer
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Install
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-store-the-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Store the key
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-a-first-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. A first backup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-the-daily-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. The daily backup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#restoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Restoring
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-computer-that-is-always-logged-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      A computer that is always logged in
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="another-computer-over-ssh">Another computer over SSH<a class="headerlink" href="#another-computer-over-ssh" title="Permanent link">&para;</a></h1>
+<p>Setting up zotero-backup on another computer from a terminal, over SSH: install, store the key, set up the daily backup. Written for an account that is <strong>logged in on that computer</strong> (at its screen, or with automatic login), e.g. a Mac mini with a server account that is always logged in. For a computer where nobody is logged in, see <a href="../scheduled/#when-nobody-is-logged-in">Scheduled backups → When nobody is logged in</a>.</p>
+<p>Log in over SSH <strong>as the account that will own the backups</strong>: the program, the key and the schedule all belong to that account.</p>
+<div class="highlight"><pre><span></span><code>ssh<span class="w"> </span>server@macmini.local
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">What has been tried</p>
+<p>Each step is what zotero-backup does on macOS (install with <code>curl</code>, <code>key set</code>, <code>schedule install</code>), checked there locally. The whole workflow over SSH, and the Linux and Windows parts, are written from how those systems work but not yet tried on a real system (<a href="https://github.com/rkrug/zotero-backup/issues/15">#15</a> Windows, <a href="https://github.com/rkrug/zotero-backup/issues/16">#16</a> Linux). Reports are welcome.</p>
+</div>
+<h2 id="1-install">1. Install<a class="headerlink" href="#1-install" title="Permanent link">&para;</a></h2>
+<p>Find out which archive fits: <code>uname -sm</code> prints e.g. <code>Darwin arm64</code> (→ <code>darwin-arm64</code>), <code>Darwin x86_64</code> (→ <code>darwin-amd64</code>), <code>Linux x86_64</code> (→ <code>linux-amd64</code>), <code>Linux aarch64</code> (→ <code>linux-arm64</code>). Then, with the version from the <a href="https://github.com/rkrug/zotero-backup/releases">releases</a>:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">VERSION</span><span class="o">=</span>v0.3.0<span class="w"> </span><span class="nv">SYS</span><span class="o">=</span>darwin-arm64
+<span class="nb">cd</span><span class="w"> </span>/tmp
+curl<span class="w"> </span>-LO<span class="w"> </span><span class="s2">"https://github.com/rkrug/zotero-backup/releases/download/</span><span class="nv">$VERSION</span><span class="s2">/zotero-backup-</span><span class="nv">$VERSION</span><span class="s2">-</span><span class="nv">$SYS</span><span class="s2">.tar.gz"</span>
+curl<span class="w"> </span>-LO<span class="w"> </span><span class="s2">"https://github.com/rkrug/zotero-backup/releases/download/</span><span class="nv">$VERSION</span><span class="s2">/SHA256SUMS"</span>
+shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>-c<span class="w"> </span>--ignore-missing<span class="w"> </span>SHA256SUMS<span class="w">      </span><span class="c1"># Linux: sha256sum -c --ignore-missing SHA256SUMS</span>
+tar<span class="w"> </span>-xzf<span class="w"> </span><span class="s2">"zotero-backup-</span><span class="nv">$VERSION</span><span class="s2">-</span><span class="nv">$SYS</span><span class="s2">.tar.gz"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>~/bin<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mv<span class="w"> </span><span class="s2">"zotero-backup-</span><span class="nv">$VERSION</span><span class="s2">-</span><span class="nv">$SYS</span><span class="s2">/zotero-backup"</span><span class="w"> </span>~/bin/
+~/bin/zotero-backup<span class="w"> </span>version
+</code></pre></div>
+<p><strong>Windows</strong> (PowerShell over OpenSSH; <code>curl.exe</code> and <code>tar</code> come with Windows 10 and 11):</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$V</span> <span class="p">=</span> <span class="s2">"v0.3.0"</span><span class="p">;</span> <span class="nv">$S</span> <span class="p">=</span> <span class="s2">"windows-amd64"</span>
+<span class="nb">cd </span><span class="nv">$env:TEMP</span>
+<span class="n">curl</span><span class="p">.</span><span class="n">exe</span> <span class="n">-LO</span> <span class="s2">"https://github.com/rkrug/zotero-backup/releases/download/$V/zotero-backup-$V-$S.zip"</span>
+<span class="n">curl</span><span class="p">.</span><span class="n">exe</span> <span class="n">-LO</span> <span class="s2">"https://github.com/rkrug/zotero-backup/releases/download/$V/SHA256SUMS"</span>
+<span class="p">(</span><span class="nb">Get-FileHash</span> <span class="s2">"zotero-backup-$V-$S.zip"</span> <span class="n">-Algorithm</span> <span class="n">SHA256</span><span class="p">).</span><span class="n">Hash</span><span class="p">.</span><span class="n">ToLower</span><span class="p">()</span>   <span class="c"># must equal its line in SHA256SUMS</span>
+<span class="n">tar</span> <span class="n">-xf</span> <span class="s2">"zotero-backup-$V-$S.zip"</span>
+<span class="n">mkdir</span> <span class="n">-Force</span> <span class="nv">$HOME</span><span class="p">\</span><span class="n">bin</span><span class="p">;</span> <span class="nb">move </span><span class="s2">"zotero-backup-$V-$S\zotero-backup.exe"</span> <span class="nv">$HOME</span><span class="p">\</span><span class="n">bin</span><span class="p">\</span>
+<span class="no">[Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s2">"Path"</span><span class="p">,</span> <span class="no">[Environment]</span><span class="p">::</span><span class="n">GetEnvironmentVariable</span><span class="p">(</span><span class="s2">"Path"</span><span class="p">,</span> <span class="s2">"User"</span><span class="p">)</span> <span class="p">+</span> <span class="s2">";$HOME\bin"</span><span class="p">,</span> <span class="s2">"User"</span><span class="p">)</span>
+</code></pre></div>
+<p>(the <code>Path</code> change counts from the next login).</p>
+<ul>
+<li>The checksum line must say <code>OK</code> for the archive.</li>
+<li><code>~/bin</code> must be on the <code>PATH</code> (<code>echo $PATH</code>); if not, add <code>export PATH="$HOME/bin:$PATH"</code> to <code>~/.zshrc</code> (macOS) or <code>~/.profile</code> (Linux) and log in again.</li>
+<li>A file downloaded with <code>curl</code> has no quarantine flag: macOS does not block its first start (unlike a browser download, see <a href="../install/">Install</a>).</li>
+<li>Later versions: <code>zotero-backup upgrade stable</code> over SSH (<a href="../install/#updating">Updating</a>). It replaces the file in place, so the schedule keeps working.</li>
+</ul>
+<h2 id="2-store-the-key">2. Store the key<a class="headerlink" href="#2-store-the-key" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Only a read-only key here</p>
+<p>A computer you set up over SSH runs unattended, can be reached from elsewhere, and keeps its keychain unlocked for a long time. Store <strong>only a read-only key</strong> there: if the computer or its account is ever misused, the key can read your libraries but never change or delete anything in them. No <code>write_key</code> in its profile.</p>
+<p>Create the read-only key at <a href="https://www.zotero.org/settings/keys">https://www.zotero.org/settings/keys</a>: <em>Allow library access</em> and <em>Allow notes access</em>, <strong>not</strong> <em>Allow write access</em>, Default Group Permissions <strong>Read Only</strong> (<a href="../keys/#two-keys-one-to-back-up-one-to-restore">Keys → Two keys</a>). Keep the read/write key for restores on the computer you work on.</p>
+</div>
+<p><code>key set</code> asks for the key without showing it; over SSH the typed key travels encrypted and never lands in a command line or the shell history. <code>key check</code> shows what the key may do: it must say read-only for every library.</p>
+<p><strong>macOS.</strong> The login keychain is unlocked while the account is logged in, but an SSH session often cannot use it until it is unlocked there too. Unlock it (it asks for the account's password), then store and check the key:</p>
+<div class="highlight"><pre><span></span><code>security<span class="w"> </span>unlock-keychain<span class="w"> </span>~/Library/Keychains/login.keychain-db
+zotero-backup<span class="w"> </span>key<span class="w"> </span><span class="nb">set</span>
+zotero-backup<span class="w"> </span>key<span class="w"> </span>check
+</code></pre></div>
+<p>Without the unlock, <code>key set</code> fails with a message like "User interaction is not allowed".</p>
+<p><strong>Linux.</strong> The keyring (GNOME Keyring, KWallet) belongs to the desktop session; an SSH session usually cannot reach it, even while you are logged in at the screen. Run <code>key set</code> in a terminal on the computer itself, or, on a server without a desktop, give the key as an encrypted systemd credential instead (<a href="../scheduled/">Scheduled backups</a>, the Linux service).</p>
+<p><strong>Windows</strong> (OpenSSH server, unchecked): <code>zotero-backup key set</code> stores the key in the Credential Manager of the SSH session's account. Windows may refuse that in an SSH session that logged in with an SSH key instead of the account's password; then log in with the password, or run <code>key set</code> at the computer.</p>
+<h2 id="3-a-first-backup">3. A first backup<a class="headerlink" href="#3-a-first-backup" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>backup
+zotero-backup<span class="w"> </span>list
+</code></pre></div>
+<p>The backups go to <code>~/zotero-backups</code> of that account (<code>zotero-backup config</code> shows the folder; change it in the <a href="../configuration/">configuration</a>). Before the first scheduled run, look at what <code>prune</code> would delete:</p>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>prune<span class="w"> </span>--dry-run
+</code></pre></div>
+<h2 id="4-the-daily-backup">4. The daily backup<a class="headerlink" href="#4-the-daily-backup" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>schedule<span class="w"> </span>install<span class="w"> </span>--at<span class="w"> </span><span class="m">02</span>:30
+zotero-backup<span class="w"> </span>schedule<span class="w"> </span>show
+</code></pre></div>
+<p><code>schedule show</code> must name <code>~/bin/zotero-backup</code> (the program you installed); if it says the job's program is not the <code>zotero-backup</code> on your <code>PATH</code>, run <code>schedule install</code> again with the right one (<a href="../scheduled/#the-quick-way">Scheduled backups → The quick way</a>).</p>
+<ul>
+<li><strong>macOS:</strong> a LaunchAgent in the account's login session. Over SSH this works because the account is logged in at the screen; if it is not, <code>launchctl</code> refuses and the job cannot run.</li>
+<li><strong>Linux:</strong> a systemd user timer. It runs while the account has a session; for runs at night without one, <code>loginctl enable-linger $USER</code> (once, may need <code>sudo</code>). With the key as a systemd credential, use the service from <a href="../scheduled/">Scheduled backups</a> instead of <code>schedule install</code>.</li>
+<li><strong>Windows</strong> (unchecked): a scheduled task for the SSH session's account, which runs while that account is logged on.</li>
+</ul>
+<p>Check the next day:</p>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>list
+zotero-backup<span class="w"> </span>schedule<span class="w"> </span>show
+tail<span class="w"> </span>-50<span class="w"> </span>~/Library/Logs/zotero-backup.log<span class="w">        </span><span class="c1"># macOS; Linux: journalctl --user -u zotero-backup</span>
+</code></pre></div>
+<p>To hear about failures without logging in: <code>notify_command</code> in the profile, e.g. mail or <a href="https://ntfy.sh">ntfy</a> (<a href="../scheduled/#notifications">Scheduled backups → Notifications</a>).</p>
+<h2 id="restoring">Restoring<a class="headerlink" href="#restoring" title="Permanent link">&para;</a></h2>
+<p>Restore on the computer you work on, with the read/write key stored there, from a copy of the server's backups (<a href="../offsite/">Off-site copies</a>, e.g. <code>rsync -aH server@macmini.local:zotero-backups/ ~/zotero-backups-server/</code>): <code>restore</code> reads only the backup folder you give it. If a restore must run on the server itself, store the write key there only for that (<code>zotero-backup key set zotero-write</code>, then <code>restore … --key zotero-write</code>), remove it afterwards (<code>zotero-backup key remove zotero-write</code>), and delete that key at zotero.org.</p>
+<h2 id="a-computer-that-is-always-logged-in">A computer that is always logged in<a class="headerlink" href="#a-computer-that-is-always-logged-in" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>The keychain must stay unlocked.</strong> By default the macOS login keychain does not lock on its own; if it is set to lock after some time or on sleep (Keychain Access → login keychain → Change Settings), scheduled runs fail with "no API key … the keychain could not be read". A <a href="../scheduled/#notifications">notification</a> tells you.</li>
+<li><strong>After a restart</strong> nothing runs until the account is logged in again: automatic login (System Settings → Users &amp; Groups), and with FileVault on, someone must unlock the disk at the login screen first.</li>
+<li><strong>Sleep:</strong> a run missed while the computer slept follows when it wakes; for a server, turn off sleep or schedule a wake (System Settings → Energy).</li>
+<li><strong>Disk space:</strong> the backups grow with every changed file; <code>prune</code> keeps the newest of each of the last 7 days, 5 weeks and 12 months by default. A second copy elsewhere: <a href="../offsite/">Off-site copies</a>.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../install/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Install">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Install
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../keys/" class="md-footer__link md-footer__link--next" aria-label="Next: Keys">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Keys
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      MIT licence · no warranty · not affiliated with Zotero
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy", "navigation.footer"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.13a4f30d.min.js"></script>
+      
+    
+  </body>
+</html>

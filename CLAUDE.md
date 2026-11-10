@@ -56,7 +56,9 @@ One `main` package, kept flat: `main.go` (command dispatch, key lookup, `key che
 
 ## Documentation
 
-`docs/` is the documentation site (MkDocs, Material theme, `mkdocs.yml`; `overrides/main.html` puts the version and the no-warranty notice on every page). `.github/workflows/docs.yml` builds it with `--strict` on every push and publishes it to the `gh-pages` branch (GitHub Pages, https://rkrug.github.io/zotero-backup/) from `main` and normal release tags only. The README is short and links there; user-facing details go into `docs/`. Preview: `pip install mkdocs-material==9.6.14 && mkdocs serve`.
+`docs/` is the documentation site (MkDocs, Material theme, `mkdocs.yml`; `overrides/main.html` puts the version and the no-warranty notice on every page). `.github/workflows/docs.yml` builds it with `--strict` on every push and publishes it with **mike** to the `gh-pages` branch (GitHub Pages, https://rkrug.github.io/zotero-backup/), one folder per version with a version menu: a normal tag `vX.Y.Z` deploys `X.Y` (patch releases overwrite it) and moves the alias `latest` (the default; the site root redirects there); a push to `main` redeploys the latest release's `X.Y` only while no Go code changed since its tag (docs-only fixes; a release pull request waits for its tag); a push to `dev` deploys `dev` (unreleased, with a "not the latest release" banner); pre-releases are not published. The banner shows `DOCS_VERSION` (the tag, or "dev (unreleased)"). The README is short and links there; user-facing details go into `docs/`. Preview: `pip install mkdocs-material==9.6.14 && mkdocs serve` (no version menu locally).
+
+Community files: `CONTRIBUTING.md`, `SECURITY.md`, `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`, `.github/dependabot.yml` (GitHub Actions only, PRs into `dev`), `CHANGELOG.md` (what changed for users; new entries under "Unreleased"), `CITATION.cff`. `CITATION.cff` and `.zenodo.json` describe the same thing (Zenodo reads `.zenodo.json`, GitHub's "Cite this repository" `CITATION.cff`): change both together.
 
 ## Git
 
@@ -64,9 +66,9 @@ Work on `dev` (larger tasks on feature branches into `dev`). Pre-releases (`v0.2
 
 Release order (normal release `vX.Y.Z`):
 
-1. On `dev`: changes done, CI and Docs green. Optionally a pre-release `vX.Y.Z-rc.N` tagged on `dev` (GitHub pre-release; the site is not rebuilt). A checks issue (like #10) lists what CI cannot show (stress test, install on real systems); it is closed with the release.
+1. On `dev`: changes done, CI and Docs green, `CHANGELOG.md`: "Unreleased" renamed to `vX.Y.Z (date)` and a new empty "Unreleased" above it. Optionally a pre-release `vX.Y.Z-rc.N` tagged on `dev` (GitHub pre-release; the site is not rebuilt). A checks issue (like #10) lists what CI cannot show (stress test, install on real systems); it is closed with the release.
 2. Pull request `dev` → `main`; squash merge once all checks pass.
 3. Merge `main` back into `dev` (`git merge -X ours origin/main`; the content is then identical) and push `dev`.
-4. Tag `vX.Y.Z` (annotated) on the squash commit on `main` and push the tag. `release.yml` builds the 6 archives and `SHA256SUMS` and publishes the release; `docs.yml` publishes the site with the version in the banner.
-5. Check: release not marked as pre-release, 6 archives + `SHA256SUMS`, the archive for this Mac matches its checksum and `zotero-backup version` prints `vX.Y.Z`; the site shows `vX.Y.Z`.
+4. Tag `vX.Y.Z` (annotated) on the squash commit on `main` and push the tag. `release.yml` builds the 6 archives and `SHA256SUMS` and publishes the release; `docs.yml` publishes the docs as `X.Y` and moves `latest` to it.
+5. Check: release not marked as pre-release, 6 archives + `SHA256SUMS`, the archive for this Mac matches its checksum and `zotero-backup version` prints `vX.Y.Z`; the site shows `vX.Y.Z` in the banner and `X.Y` in the version menu.
 6. Zenodo (GitHub integration, active since v0.2.0) archives every published release automatically, with the metadata from `.zenodo.json` (no version there: Zenodo takes the tag) and the source ZIP of the tag (not the release archives). Each release gets its own DOI; the README badge and the citation in README / `docs/index.md` use the all-versions DOI `10.5281/zenodo.24090287`, which never changes: no DOI to update per release. Check that the new version appears on Zenodo. Whether Zenodo also archives pre-releases: check with the next `-rc` tag and note it here.

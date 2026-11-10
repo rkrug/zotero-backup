@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 
 {% block announce %}
-zotero-backup {{ config.extra.version }} · No warranty: you are responsible for your data.
+zotero-backup {{ config.extra.release }} · No warranty: you are responsible for your data.
 Read the <a href="{{ 'disclaimer/' | url }}">disclaimer</a> before you restore or prune.
+{% endblock %}
+
+{% block outdated %}
+This is not the documentation of the latest release.
+<a href="{{ '../' ~ base_url }}"><strong>Go to the latest release.</strong></a>
 {% endblock %}

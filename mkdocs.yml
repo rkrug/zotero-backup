@@ -20,7 +20,10 @@ theme:
       toggle: { icon: material/brightness-7, name: Light mode }
 
 extra:
-  version: !ENV [DOCS_VERSION, dev] # the latest release tag, set by .github/workflows/docs.yml
+  release: !ENV [DOCS_VERSION, dev] # shown in the banner; set by .github/workflows/docs.yml
+  version:
+    provider: mike # version menu; versions are deployed by .github/workflows/docs.yml
+    default: latest
 
 markdown_extensions:
   - admonition

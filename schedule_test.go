@@ -33,7 +33,7 @@ func TestScheduleInstallShowRemove(t *testing.T) {
 		{"darwin", []string{"Library/LaunchAgents/org.zotero-backup.test.plist"},
 			[]string{"<string>org.zotero-backup.test</string>", "<integer>2</integer>", "<integer>30</integer>",
 				`'/opt/my tools/zotero-backup' 'backup' '--profile' 'test' '--config' '/cfg dir/c.json' '--progress' 'log' &amp;&amp; '/opt/my tools/zotero-backup' 'prune'`,
-				"Library/Logs/zotero-backup.log"},
+				filepath.Join("Library", "Logs", "zotero-backup.log")},
 			[]string{"launchctl bootout gui/501/org.zotero-backup.test", "launchctl bootstrap gui/501 "}, "launchctl bootout gui/501/org.zotero-backup.test"},
 		{"linux", []string{".config/systemd/user/zotero-backup-test.service", ".config/systemd/user/zotero-backup-test.timer"},
 			[]string{`ExecStart="/opt/my tools/zotero-backup" "backup" "--profile" "test" "--config" "/cfg dir/c.json" "--progress" "log"`,

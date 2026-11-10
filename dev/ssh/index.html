@@ -724,7 +724,7 @@ This is the documentation of the <strong>unreleased</strong> development version
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">What has been tried</p>
-<p>macOS: the whole workflow was set up over SSH on a Mac with an account that is always logged in (v0.3.0: install, key, first backup, <code>schedule install</code>). The Linux and Windows parts are written from how those systems work but not yet tried on a real system (<a href="https://github.com/rkrug/zotero-backup/issues/15">#15</a> Windows, <a href="https://github.com/rkrug/zotero-backup/issues/16">#16</a> Linux). Reports are welcome.</p>
+<p>macOS: the whole workflow was set up over SSH on a Mac with an account that is always logged in (v0.3.0: install, <code>security unlock-keychain</code> and <code>key set</code>, first backup, <code>schedule install</code>). The Linux and Windows parts are written from how those systems work but not yet tried on a real system (<a href="https://github.com/rkrug/zotero-backup/issues/15">#15</a> Windows, <a href="https://github.com/rkrug/zotero-backup/issues/16">#16</a> Linux). Reports are welcome.</p>
 </div>
 <h2 id="1-install">1. Install<a class="headerlink" href="#1-install" title="Permanent link">&para;</a></h2>
 <p>Install <strong>any</strong> release from v0.3.0 on (the first with <code>upgrade</code>), then let zotero-backup bring itself to the newest: the commands below stay the same for every future release, and the update is checked with zotero-backup's signature, not only a checksum.</p>
@@ -737,7 +737,10 @@ shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</spa
 tar<span class="w"> </span>-xzf<span class="w"> </span><span class="s2">"zotero-backup-</span><span class="nv">$VERSION</span><span class="s2">-</span><span class="nv">$SYS</span><span class="s2">.tar.gz"</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span>~/bin<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mv<span class="w"> </span><span class="s2">"zotero-backup-</span><span class="nv">$VERSION</span><span class="s2">-</span><span class="nv">$SYS</span><span class="s2">/zotero-backup"</span><span class="w"> </span>~/bin/
 ~/bin/zotero-backup<span class="w"> </span>upgrade<span class="w"> </span>stable<span class="w"> </span>--yes<span class="w">       </span><span class="c1"># to the newest normal release (signed), if there is a newer one</span>
-~/bin/zotero-backup<span class="w"> </span>version
+</code></pre></div>
+<p>Put <code>~/bin</code> on the <code>PATH</code>, now and for every later login (on Linux with bash use <code>~/.profile</code> instead of <code>~/.zshrc</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="k">case</span><span class="w"> </span><span class="s2">":</span><span class="nv">$PATH</span><span class="s2">:"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>*<span class="s2">":</span><span class="nv">$HOME</span><span class="s2">/bin:"</span>*<span class="o">)</span><span class="w"> </span><span class="p">;;</span><span class="w"> </span>*<span class="o">)</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s1">'export PATH="$HOME/bin:$PATH"'</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.zshrc<span class="p">;</span><span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">/bin:</span><span class="nv">$PATH</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span><span class="w"> </span><span class="k">esac</span>
+zotero-backup<span class="w"> </span>version
 </code></pre></div>
 <p><strong>Windows</strong> (PowerShell over OpenSSH; <code>curl.exe</code> and <code>tar</code> come with Windows 10 and 11):</p>
 <div class="highlight"><pre><span></span><code><span class="nv">$V</span> <span class="p">=</span> <span class="s2">"v0.3.0"</span><span class="p">;</span> <span class="nv">$S</span> <span class="p">=</span> <span class="s2">"windows-amd64"</span>
@@ -753,7 +756,7 @@ mkdir<span class="w"> </span>-p<span class="w"> </span>~/bin<span class="w"> </s
 <p>(the <code>Path</code> change counts from the next login).</p>
 <ul>
 <li>The checksum line must say <code>OK</code> for the archive.</li>
-<li><code>~/bin</code> must be on the <code>PATH</code> (<code>echo $PATH</code>); if not, add <code>export PATH="$HOME/bin:$PATH"</code> to <code>~/.zshrc</code> (macOS) or <code>~/.profile</code> (Linux) and log in again.</li>
+<li><code>zotero-backup version</code> must work without the path in front; if it says "command not found", the <code>PATH</code> line is missing (<code>echo $PATH</code>). The schedule itself does not need it: it runs the program by its full path.</li>
 <li>A file downloaded with <code>curl</code> has no quarantine flag: macOS does not block its first start (unlike a browser download, see <a href="../install/">Install</a>).</li>
 <li><code>upgrade stable</code> says "is up to date on the stable channel" when the installed release already is the newest; later it fetches the newest and checks it before replacing anything (<a href="../install/#updating">Updating</a>). It replaces the file in place, so a schedule keeps working; run it the same way for every later update.</li>
 </ul>

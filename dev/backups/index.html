@@ -380,6 +380,19 @@ This is not the documentation of the latest release.
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Backups
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -391,6 +404,34 @@ This is not the documentation of the latest release.
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#looking-into-a-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Looking into a backup
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -504,6 +545,23 @@ This is not the documentation of the latest release.
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#looking-into-a-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Looking into a backup
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -540,6 +598,19 @@ This is not the documentation of the latest release.
 <li>An interrupted backup leaves <code>&lt;date&gt;.partial</code>; the next run continues it.</li>
 <li>Attachments whose file never reached the Zotero server cannot be backed up; they are listed in <code>meta.json</code> and by <code>backup</code>, so they can be uploaded from the computer that has them.</li>
 </ul>
+<h2 id="looking-into-a-backup">Looking into a backup<a class="headerlink" href="#looking-into-a-backup" title="Permanent link">&para;</a></h2>
+<p>Without restoring anything, and without the network or an API key:</p>
+<div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>find<span class="w"> </span><span class="s2">"one health"</span><span class="w">                  </span><span class="c1"># all libraries below the backup folder</span>
+zotero-backup<span class="w"> </span>find<span class="w"> </span>kruger<span class="w"> </span>~/zotero-backups/group-6719916-Safe_Edit_Test
+zotero-backup<span class="w"> </span>show<span class="w"> </span>~/zotero-backups/group-6719916-Safe_Edit_Test<span class="w"> </span>9FCKFFL3
+zotero-backup<span class="w"> </span>show<span class="w"> </span>~/zotero-backups/group-6719916-Safe_Edit_Test/2026-11-05T204338Z<span class="w"> </span>9FCKFFL3<span class="w"> </span>--save<span class="w"> </span>~/Desktop/old
+</code></pre></div>
+<ul>
+<li><strong><code>find TEXT</code></strong> searches every backup for items whose title, creators, DOI, key, note or annotation text or file name contains TEXT (upper and lower case alike). For each item it shows its key and title (from the newest backup that has it), its parent for notes and attachments, and in which backups it is: how many, the first and the last, and whether it is <strong>not in the newest backup</strong> (deleted since) or in the trash there. That is the way to find the backup to restore an item from.</li>
+<li><strong><code>show BACKUP KEY</code></strong> prints the item from that backup (<code>BACKUP</code> is a backup folder, or a library folder for its newest backup): its fields, creators, tags and collections, then its attachments, notes (as text) and annotations.</li>
+<li><strong><code>--save DIR</code></strong> copies the files of the item and its attachments out of the backup into <code>DIR/&lt;attachment key&gt;/</code>, ZIPs unpacked. It never overwrites a file and refuses a folder inside the backups.</li>
+</ul>
+<p>To put an item back into the library: <code>zotero-backup restore BACKUP --items KEY</code> (<a href="../restore/">Restore</a>).</p>
 
 
 

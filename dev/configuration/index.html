@@ -621,7 +621,7 @@ This is the documentation of the <strong>unreleased</strong> development version
 </tr>
 <tr>
 <td><code>to</code></td>
-<td>folder for the backups</td>
+<td>folder for the backups. It <strong>must exist</strong>: zotero-backup never creates it, so a backup to a drive that is not mounted stops with a message instead of filling the internal disk (<code>mkdir -p</code> it once)</td>
 </tr>
 <tr>
 <td><code>exclude</code></td>
@@ -630,6 +630,10 @@ This is the documentation of the <strong>unreleased</strong> development version
 <tr>
 <td><code>keep_daily</code>, <code>keep_weekly</code>, <code>keep_monthly</code></td>
 <td><code>prune</code> keeps the newest backup of each of the last N days, ISO weeks and months (three generations); the newest backup is always kept</td>
+</tr>
+<tr>
+<td><code>log_dir</code></td>
+<td>folder for one log per run (<code>&lt;start&gt;-backup.log</code>, its result <code>&lt;start&gt;-backup.json</code>, <code>&lt;start&gt;-prune.log</code>), relative to <code>to</code> unless absolute; default <code>logs</code> (<code>~/zotero-backups/logs</code>); <code>""</code>: no run logs. <code>prune</code> moves old ones to <code>archive/</code> and compresses them there after a week (<a href="../backups/#logs">Backups → Logs</a>)</td>
 </tr>
 <tr>
 <td><code>progress</code></td>

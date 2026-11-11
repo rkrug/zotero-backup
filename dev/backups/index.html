@@ -456,6 +456,15 @@ This is the documentation of the <strong>unreleased</strong> development version
 </li>
       
         <li class="md-nav__item">
+  <a href="#logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Logs
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#checking-backups" class="md-nav__link">
     <span class="md-ellipsis">
       Checking backups
@@ -636,6 +645,15 @@ This is the documentation of the <strong>unreleased</strong> development version
 </li>
       
         <li class="md-nav__item">
+  <a href="#logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Logs
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#checking-backups" class="md-nav__link">
     <span class="md-ellipsis">
       Checking backups
@@ -691,7 +709,13 @@ This is the documentation of the <strong>unreleased</strong> development version
       files/&lt;attachment key&gt;/&lt;file name&gt;       (or &lt;file name&gt;.zip, see below)
     2026-11-06T060000Z/  …complete as well
   user-12022430-Rainer_M_Krug/
+  logs/
+    2026-11-06T060000Z-backup.log   one log per run (start time, UTC), its result in …-backup.json
+    2026-11-06T060412Z-prune.log
+    archive/                        logs of backups that are gone; .gz after a week
+  last-run.json      the result of the newest backup run
 </code></pre></div>
+<p>The backup folder (<code>to</code>) must exist: zotero-backup never creates it. A backup or prune to a folder that is not there (an external drive not connected) stops at once with a message: nothing is written, and the internal disk does not fill up instead.</p>
 <ul>
 <li>Folder names are <code>group-&lt;id&gt;-&lt;name&gt;</code> and <code>user-&lt;id&gt;-&lt;username&gt;</code> (spaces as <code>_</code>). A renamed group keeps its folder: it is found by ID and renamed.</li>
 <li>Backup names are the time in <strong>UTC</strong> (<code>YYYY-MM-DDTHHMMSSZ</code>, no colons so they work on Windows), independent of the computer's time zone and of summer time; they sort by time.</li>
@@ -714,6 +738,15 @@ backup stopped: … ; stopped: group-2333076 "IPBES LDR"
 <li>With <code>--quiet</code>: only this line, failed libraries and warnings.</li>
 </ul>
 <p>The same, per library, is written to <strong><code>last-run.json</code></strong> in the backup folder (<code>~/zotero-backups/last-run.json</code>), replaced by every run: start, end, <code>status</code> (<code>ok</code>, <code>problems</code>, <code>failed</code>, <code>stopped</code>), <code>exit_status</code>, the error if nothing could be read, and per library the result, backup folder, version, counts, files downloaded and linked, missing files with the new ones listed, and the problems. For monitoring tools and scripts; it never contains an API key. <code>zotero-backup schedule show</code> shows its line as <code>last run</code>.</p>
+<h2 id="logs">Logs<a class="headerlink" href="#logs" title="Permanent link">&para;</a></h2>
+<p>Every <code>backup</code> and <code>prune</code> writes a log of its own into <code>logs/</code> in the backup folder, named by its start time in UTC: <code>2026-11-12T020000Z-backup.log</code> (with its result, the same as <code>last-run.json</code>, in <code>2026-11-12T020000Z-backup.json</code>) and <code>…-prune.log</code>. The log has everything with the time of day, whatever the terminal shows (<code>--quiet</code>, an updating line): warnings, progress lines every <code>progress_interval</code> seconds, each library's line, the summary line. A notification names the log.</p>
+<p><code>prune</code> keeps <code>logs/</code> in step with the backups and moves the rest to <code>logs/archive/</code>:</p>
+<ul>
+<li>the log of a backup run once <strong>none of the backups it made exists</strong> any more;</li>
+<li>the log of a run that made no backup (failed, stopped, everything skipped) once a <strong>newer run succeeded</strong>: a failure stays in sight until backups work again;</li>
+<li>of the prune logs, all but the newest.</li>
+</ul>
+<p>Files in <code>archive/</code> older than a week are compressed (<code>.gz</code>; <code>gunzip -c</code>, <code>zless</code> or <code>zcat</code> read them). Nothing is ever deleted from the archive: remove old files by hand if you like. <code>prune --dry-run</code> shows what it would move. <code>log_dir</code> in the <a href="../configuration/">configuration</a> puts the logs elsewhere, or <code>""</code> turns them off.</p>
 <h2 id="checking-backups">Checking backups<a class="headerlink" href="#checking-backups" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>verify<span class="w">                 </span><span class="c1"># the newest backup of each library</span>
 zotero-backup<span class="w"> </span>verify<span class="w"> </span>all<span class="w">             </span><span class="c1"># every backup (files shared by hard links are read once)</span>

@@ -10,7 +10,14 @@
       files/<attachment key>/<file name>       (or <file name>.zip, see below)
     2026-11-06T060000Z/  …complete as well
   user-12022430-Rainer_M_Krug/
+  logs/
+    2026-11-06T060000Z-backup.log   one log per run (start time, UTC), its result in …-backup.json
+    2026-11-06T060412Z-prune.log
+    archive/                        logs of backups that are gone; .gz after a week
+  last-run.json      the result of the newest backup run
 ```
+
+The backup folder (`to`) must exist: zotero-backup never creates it. A backup or prune to a folder that is not there (an external drive not connected) stops at once with a message: nothing is written, and the internal disk does not fill up instead.
 
 - Folder names are `group-<id>-<name>` and `user-<id>-<username>` (spaces as `_`). A renamed group keeps its folder: it is found by ID and renamed.
 - Backup names are the time in **UTC** (`YYYY-MM-DDTHHMMSSZ`, no colons so they work on Windows), independent of the computer's time zone and of summer time; they sort by time.
@@ -36,6 +43,18 @@ backup stopped: … ; stopped: group-2333076 "IPBES LDR"
 - With `--quiet`: only this line, failed libraries and warnings.
 
 The same, per library, is written to **`last-run.json`** in the backup folder (`~/zotero-backups/last-run.json`), replaced by every run: start, end, `status` (`ok`, `problems`, `failed`, `stopped`), `exit_status`, the error if nothing could be read, and per library the result, backup folder, version, counts, files downloaded and linked, missing files with the new ones listed, and the problems. For monitoring tools and scripts; it never contains an API key. `zotero-backup schedule show` shows its line as `last run`.
+
+## Logs
+
+Every `backup` and `prune` writes a log of its own into `logs/` in the backup folder, named by its start time in UTC: `2026-11-12T020000Z-backup.log` (with its result, the same as `last-run.json`, in `2026-11-12T020000Z-backup.json`) and `…-prune.log`. The log has everything with the time of day, whatever the terminal shows (`--quiet`, an updating line): warnings, progress lines every `progress_interval` seconds, each library's line, the summary line. A notification names the log.
+
+`prune` keeps `logs/` in step with the backups and moves the rest to `logs/archive/`:
+
+- the log of a backup run once **none of the backups it made exists** any more;
+- the log of a run that made no backup (failed, stopped, everything skipped) once a **newer run succeeded**: a failure stays in sight until backups work again;
+- of the prune logs, all but the newest.
+
+Files in `archive/` older than a week are compressed (`.gz`; `gunzip -c`, `zless` or `zcat` read them). Nothing is ever deleted from the archive: remove old files by hand if you like. `prune --dry-run` shows what it would move. `log_dir` in the [configuration](configuration.md) puts the logs elsewhere, or `""` turns them off.
 
 ## Checking backups
 

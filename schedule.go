@@ -28,6 +28,7 @@ type scheduler struct {
 	exe             string   // absolute path of this program
 	args            []string // --config / --profile for the job
 	name            string   // org.zotero-backup[.profile] / zotero-backup[-profile]
+	logDir          string   // the profile's run logs ("" = none: progress goes to the scheduler's log)
 	run             func(name string, args ...string) (string, error)
 	out             io.Writer
 }
@@ -67,8 +68,12 @@ func runTool(name string, args ...string) (string, error) {
 
 // files are the files the job consists of, with their content.
 func (s *scheduler) files(hour, minute int) map[string]string {
-	backup := append(append([]string{s.exe, "backup"}, s.args...), "--progress", "log")
-	prune := append(append([]string{s.exe, "prune"}, s.args...), "--progress", "log")
+	progress := []string{"--progress", "log"}
+	if s.logDir != "" { // the run logs have everything; the scheduler's log keeps the summary, warnings and errors
+		progress = []string{"--quiet"}
+	}
+	backup := append(append([]string{s.exe, "backup"}, s.args...), progress...)
+	prune := append(append([]string{s.exe, "prune"}, s.args...), progress...)
 	switch s.goos {
 	case "darwin":
 		log := filepath.Join(s.home, "Library", "Logs", "zotero-backup.log")
@@ -248,6 +253,9 @@ func (s *scheduler) show(raw bool) error {
 			}
 		}
 	}
+	if s.logDir != "" {
+		fmt.Fprintf(s.out, "run logs  %s (one per run; prune archives the old ones)\n", s.logDir)
+	}
 	if log != "" {
 		fmt.Fprintf(s.out, "log       %s\n", log)
 	} else if s.goos == "linux" {
@@ -414,7 +422,7 @@ func (s *scheduler) remove() error {
 }
 
 // runSchedule is the schedule command: install, show or remove.
-func runSchedule(action, at, profile, configPath, backups string, raw bool, out io.Writer) error {
+func runSchedule(action, at, profile, configPath, backups, logDir string, raw bool, out io.Writer) error {
 	exe, err := os.Executable()
 	if err == nil {
 		exe, err = filepath.EvalSymlinks(exe)
@@ -431,6 +439,7 @@ func runSchedule(action, at, profile, configPath, backups string, raw bool, out 
 		return fmt.Errorf("schedule: not on %s; see the documentation: Scheduled backups", goos)
 	}
 	s := newScheduler(goos, home, exe, profile, configPath, out)
+	s.logDir = logDir
 	switch action {
 	case "install":
 		return s.install(at)

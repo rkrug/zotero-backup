@@ -61,6 +61,12 @@ Errors print `zotero-backup: <message>` on stderr; the exit status is 1. Show th
 | `FAILED trash … ` / `FAILED erasing …` | removing failed (e.g. the object changed meanwhile) | sync, `--dry-run`, restore again after a yes |
 | `restored, but checking the result failed` | the restore ran; reading the library afterwards failed | `zotero-backup diff BACKUP` shows the state |
 
+## Backup folder
+
+| Message (start) | Meaning | Next step |
+|---|---|---|
+| `the backup folder … does not exist: nothing was done` | `to` is not there: an external drive not connected, or never created | on an external drive: the user connects it; otherwise the user creates it once (`mkdir -p …`) or sets `to`. Never create a folder under `/Volumes` yourself: that puts backups on the internal disk |
+
 ## Upgrade
 
 | Message (start) | Meaning | Next step |

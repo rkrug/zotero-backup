@@ -1052,7 +1052,7 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
 <li><strong>Lock</strong> (operation <code>lock</code>): while the test holds the library's lock, a second backup of the library is refused; the lock is gone afterwards.</li>
 <li><code>prune --dry-run</code> with one daily backup kept lists all but the newest backup.</li>
 <li>
-<p><strong>Whole runs</strong> (operation <code>runs</code>), as the <code>backup</code> command makes them, into <code>runs/</code> in the run's folder:</p>
+<p><strong>Whole runs</strong> (operation <code>runs</code>), as the <code>backup</code> command makes them, into <code>runs/&lt;library&gt;/</code> in the run's folder (one per library, so prune sees only that library's runs):</p>
 <ul>
 <li>a backup folder that does not exist is refused and nothing is created;</li>
 <li>a library that cannot be read (item reads fail, simulated): <code>backup failed: 1 libraries (0 backed up, 1 failed, 0 skipped)</code>, exit status 1, <code>last-run.json</code> with status <code>failed</code>, its log and result file in <code>logs/</code>; the notification (a <code>notify_command</code>) starts with the summary line, names the log, has <code>ZB_STATUS=failed</code> and no API key;</li>

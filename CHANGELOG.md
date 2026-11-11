@@ -4,6 +4,8 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+## v0.4.0 (2026-11-11)
+
 - **Tab completion** (#52) for zsh, bash, fish and PowerShell: `zotero-backup completion SHELL` prints the script (setup: Install → Completion). It completes commands, options, profiles, key names, `--exclude` parts and the backup folders below `to`; it reads only the configuration and the backup folder, and stays current after an `upgrade`.
 - **The result of a backup run** (#24): `backup` ends with one summary line, also when libraries failed or the run was stopped (Ctrl-C, `zotero-backup stop`): libraries backed up / failed / skipped, problems, missing files and how many are new since the previous backup, files downloaded and linked, the duration, and which libraries failed or were skipped and why. Libraries the key may not read (`library: all`) are counted apart as "without access". The same per library goes into `last-run.json` in the backup folder, for monitoring; `schedule show` shows it as "last run"; a notification starts with it; with `--quiet` only this line, failures and warnings remain.
 - A library skipped because another run is backing it up no longer counts as failed (no exit status 1, no notification).

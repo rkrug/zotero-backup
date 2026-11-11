@@ -73,7 +73,7 @@ func lastLine(s string) string {
 
 func (s *stress) runChecks() {
 	const sc, op = "extras", "runs"
-	root := filepath.Join(s.root, "runs")
+	root := filepath.Join(s.root, "runs", s.lib.ID) // one per library: prune keeps the logs of every library's newest backup
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		s.record(sc, op, "make the folder", false, "%v", err)
 		return

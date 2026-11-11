@@ -57,7 +57,7 @@ func TestRunChecksOnTheFake(t *testing.T) {
 	if passed < want {
 		t.Errorf("%d checks passed, want at least %d", passed, want)
 	}
-	if _, err := os.Stat(filepath.Join(s.root, "runs", "logs", "archive")); err != nil {
+	if _, err := os.Stat(filepath.Join(s.root, "runs", s.lib.ID, "logs", "archive")); err != nil {
 		t.Error("nothing archived")
 	}
 	for _, r := range rep.Results {

@@ -146,7 +146,7 @@ Each scenario runs one cycle for all operations:
 - **Looking into backups** (operations `diff-backups`, `find`, `show`): after the title change, a second backup; `diff` of the two backups lists exactly the changed titles and nothing removed; `find` finds the fixture items by title in the backups; `show` lists a family with its note, attachments and annotation, and `--save` copies its PDF.
 - **Lock** (operation `lock`): while the test holds the library's lock, a second backup of the library is refused; the lock is gone afterwards.
 - `prune --dry-run` with one daily backup kept lists all but the newest backup.
-- **Whole runs** (operation `runs`), as the `backup` command makes them, into `runs/` in the run's folder:
+- **Whole runs** (operation `runs`), as the `backup` command makes them, into `runs/<library>/` in the run's folder (one per library, so prune sees only that library's runs):
     - a backup folder that does not exist is refused and nothing is created;
     - a library that cannot be read (item reads fail, simulated): `backup failed: 1 libraries (0 backed up, 1 failed, 0 skipped)`, exit status 1, `last-run.json` with status `failed`, its log and result file in `logs/`; the notification (a `notify_command`) starts with the summary line, names the log, has `ZB_STATUS=failed` and no API key;
     - a normal run: `backup finished: 1 libraries (1 backed up, …)`, exit status 0, the counts in `last-run.json` are those of the backup's `meta.json`, the backup passes verify, the run log has the progress, the library's line and the summary line (and `resuming`, after the failed run);

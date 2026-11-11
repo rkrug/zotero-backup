@@ -414,7 +414,7 @@ func (s *scheduler) remove() error {
 }
 
 // runSchedule is the schedule command: install, show or remove.
-func runSchedule(action, at, profile, configPath string, raw bool, out io.Writer) error {
+func runSchedule(action, at, profile, configPath, backups string, raw bool, out io.Writer) error {
 	exe, err := os.Executable()
 	if err == nil {
 		exe, err = filepath.EvalSymlinks(exe)
@@ -435,7 +435,11 @@ func runSchedule(action, at, profile, configPath string, raw bool, out io.Writer
 	case "install":
 		return s.install(at)
 	case "show":
-		return s.show(raw)
+		err := s.show(raw)
+		if err == nil && !raw {
+			printLastRun(backups, out) // the last backup run with this profile's folder, scheduled or not
+		}
+		return err
 	case "remove":
 		return s.remove()
 	}

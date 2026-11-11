@@ -17,8 +17,25 @@
 - Text files and web-page snapshots are kept as `<file name>.zip`: Zotero desktop uploads them zipped (a snapshot with its images and styles) and the server hands out that ZIP. Unzip it to open the file; restore uploads the ZIP the way Zotero does.
 - A file that did not change since the previous backup (same md5) is a **hard link**: deleting a backup frees only the files no other backup links to. On drives without hard links (FAT/exFAT, some network shares) files are copied instead. Never edit files inside a backup: a hard-linked file is the same file in every backup. Copy a backup folder tree with a tool that keeps hard links (e.g. `rsync -aH`), or each backup becomes a full copy: see [Off-site copies](offsite.md).
 - An interrupted backup leaves `<date>.partial`; the next run continues it.
-- **One run per library at a time.** While a backup or prune works on a library, its folder holds a `.lock` file (process ID, computer, program, start time, command). A second run that finds it skips that library with "a backup of … is already running (PID …)" and counts it as failed (exit status 1, a [notification](scheduled.md#notifications) if set up); the other libraries go on. A lock left by a run that no longer runs on this computer (a crash, a power cut) is taken over by the next run, with a warning; a lock from another computer (a backup folder on a shared disk) never is: the message says which file to remove once no backup runs there.
+- **One run per library at a time.** While a backup or prune works on a library, its folder holds a `.lock` file (process ID, computer, program, start time, command). A second run that finds it skips that library with "a backup of … is already running (PID …)" and counts it as skipped (not failed: the other run is making that backup); the other libraries go on. A lock left by a run that no longer runs on this computer (a crash, a power cut) is taken over by the next run, with a warning; a lock from another computer (a backup folder on a shared disk) never is: the message says which file to remove once no backup runs there.
 - Attachments whose file never reached the Zotero server cannot be backed up; they are listed in `meta.json` and by `backup`, so they can be uploaded from the computer that has them.
+
+## The result of a run
+
+`backup` ends with one line that sums up the run, also when libraries failed or the run was stopped:
+
+```
+backup finished: 19 libraries (19 backed up, 0 failed, 0 skipped), 0 problems, 412 missing files (0 new), 3 files downloaded (12.4 MB), 15233 linked, 1h12m5s
+backup failed: 19 libraries (17 backed up, 1 failed, 1 skipped), 2 problems, … ; failed: group-2333076 "IPBES LDR"; skipped: group-5081872 "IPBES BBA" (running: PID 4242 on server, …)
+backup stopped: … ; stopped: group-2333076 "IPBES LDR"
+```
+
+- **skipped:** another run on this computer is backing up that library ([One run per library](#running-and-stopping)), or a key in `keys` could not be used. **without access** (shown only when there are some): libraries the key may not read, normal with `library: all`; they are not counted.
+- **missing files (N new):** attachments whose file is not on the Zotero server; *new* are those not missing in the previous backup of the library (often a file still being uploaded from someone's computer).
+- **Exit status:** 0 when every library was backed up or skipped (problems and missing files included: see the line), 1 when a library failed, nothing could be read (no key, no network) or the run was stopped.
+- With `--quiet`: only this line, failed libraries and warnings.
+
+The same, per library, is written to **`last-run.json`** in the backup folder (`~/zotero-backups/last-run.json`), replaced by every run: start, end, `status` (`ok`, `problems`, `failed`, `stopped`), `exit_status`, the error if nothing could be read, and per library the result, backup folder, version, counts, files downloaded and linked, missing files with the new ones listed, and the problems. For monitoring tools and scripts; it never contains an API key. `zotero-backup schedule show` shows its line as `last run`.
 
 ## Checking backups
 

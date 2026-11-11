@@ -237,7 +237,7 @@ func run(args []string, out io.Writer) error {
 				cfgArg, _ = filepath.Abs(expandHome(*cfgPath))
 			}
 		})
-		return runSchedule(pos[0], *scheduleAt, *profileName, cfgArg, raw, out)
+		return runSchedule(pos[0], *scheduleAt, *profileName, cfgArg, expandHome(profile.To), raw, out)
 	case "notify-test":
 		return notifyTest(profile, out)
 	case "list":
@@ -428,37 +428,71 @@ func expandHome(p string) string {
 // stop the others, but makes the command fail at the end.
 // runBackup backs up the profile's libraries; it returns the number of
 // problems reported and the libraries that failed.
-func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer, pr *progress) (int, []string, error) {
+func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer, pr *progress) (*runSummary, error) {
+	root := expandHome(p.To)
+	sum := &runSummary{Started: time.Now().UTC(), Libraries: []libResult{}}
+	quiet := pr.mode == "quiet" // only the summary line (and errors)
+	done := func(err error) (*runSummary, error) {
+		sum.finish(err, false)
+		fmt.Fprintln(out, sum.line())
+		if werr := sum.write(root); werr != nil {
+			pr.Warnf("could not write %s: %v", lastRunName, werr)
+		}
+		return sum, err
+	}
+	onStop(func() {
+		sum.finish(nil, true)
+		fmt.Fprintln(out, sum.line())
+		sum.write(root)
+	})
+	defer onStop(nil)
 	jobs, skipped, err := libraryJobs(p, clientFor)
 	if err != nil {
-		return 0, nil, err
+		return done(err)
 	}
 	for _, s := range skipped {
 		pr.Warnf("skipped %s", s)
+		lib, why, _ := strings.Cut(s, ": ")
+		result := "skipped" // e.g. a key in "keys" that failed
+		if why == "no access" {
+			result = "no access" // the key may not read it: normal with library "all"
+		}
+		sum.add(libResult{Library: lib, Result: result, Reason: why})
 	}
-	root := expandHome(p.To)
-	failed, problems := 0, 0
-	var failedLibs []string
 	for i, j := range jobs {
 		lib := j.lib
 		pr.SetPrefix(fmt.Sprintf("%d/%d %s", i+1, len(jobs), lib.Dir()))
+		r := libResult{Library: lib.ID, Name: lib.Name}
+		sum.working(r)
 		dir, m, err := backupLibrary(j.c, lib, root, p.Exclude, time.Now(), pr)
-		if err != nil {
-			failed++
-			failedLibs = append(failedLibs, lib.Label())
+		switch l, here := lockedHere(err); {
+		case here:
+			r.Result, r.Reason = "skipped", "running: "+l.info.String()
+			pr.Warnf("%v", err)
+		case err != nil:
+			r.Result, r.Reason = "failed", err.Error()
 			pr.Warnf("FAILED: %v", err)
-			fmt.Fprintf(out, "%s: FAILED: %v\n", lib.Label(), err)
-			continue
+		default:
+			r.Result, r.Backup, r.Version, r.Items, r.Files = "backed up", dir, m.Version, itemCount(m.Counts), m.Counts["files"]
+			r.Downloaded, r.DownBytes, r.Linked, r.Missing = m.Downloaded, m.DownBytes, m.Linked, len(m.Missing)
+			r.NewMissing, r.Problems, r.Seconds = newMissing(dir, m), m.Problems, m.Seconds
 		}
-		fmt.Fprintf(out, "%s: %s  version %d, %d items, %d files (%d downloaded, %.1f MB; %d linked), %d missing, %d problems, %.0f s\n",
-			lib.Label(), dir, m.Version, itemCount(m.Counts), m.Counts["files"], m.Downloaded, float64(m.DownBytes)/1e6,
-			m.Linked, len(m.Missing), len(m.Problems), m.Seconds)
-		problems += len(m.Problems)
+		sum.add(r)
+		if !quiet || r.Result == "failed" {
+			fmt.Fprintln(out, libLine(r))
+		}
 	}
-	if failed > 0 {
-		return problems, failedLibs, fmt.Errorf("%d of %d libraries failed", failed, len(jobs))
+	pr.SetPrefix("")
+	var failed []string
+	for _, r := range sum.Libraries {
+		if r.Result == "failed" {
+			failed = append(failed, r.label())
+		}
 	}
-	return problems, nil, nil
+	if len(failed) > 0 {
+		return done(fmt.Errorf("%d of %d libraries failed", len(failed), len(jobs)))
+	}
+	return done(nil)
 }
 
 // itemCount sums the item counts (the counts that are item types).

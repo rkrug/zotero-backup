@@ -160,6 +160,7 @@ func stopOnSignal(errOut io.Writer) {
 		<-ch
 		releaseHeld()
 		fmt.Fprintln(errOut, "\nzotero-backup: stopped (an unfinished backup is continued by the next run)")
+		runStopHook()
 		os.Exit(1)
 	}()
 }

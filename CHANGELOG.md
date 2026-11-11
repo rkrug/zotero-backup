@@ -4,6 +4,8 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+- **The result of a backup run** (#24): `backup` ends with one summary line, also when libraries failed or the run was stopped (Ctrl-C, `zotero-backup stop`): libraries backed up / failed / skipped, problems, missing files and how many are new since the previous backup, files downloaded and linked, the duration, and which libraries failed or were skipped and why. Libraries the key may not read (`library: all`) are counted apart as "without access". The same per library goes into `last-run.json` in the backup folder, for monitoring; `schedule show` shows it as "last run"; a notification starts with it; with `--quiet` only this line, failures and warnings remain.
+- A library skipped because another run is backing it up no longer counts as failed (no exit status 1, no notification).
 - Documentation (Scheduled backups, Over SSH): on macOS the first scheduled run asks for access to a backup folder on another volume (or in Documents, Desktop, Downloads) and waits for the answer; how to see it and how to allow it beforehand (Full Disk Access).
 
 ## v0.3.1 (2026-11-11)

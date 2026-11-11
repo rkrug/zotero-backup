@@ -121,9 +121,10 @@ func TestBackupSkipsALockedLibrary(t *testing.T) {
 	p := defaultProfile()
 	p.Library, p.To = "group:1", root
 	var out strings.Builder
-	_, failed, err := runBackup(fixed(fakeClient(t, f)), p, &out, quietProgress())
-	if err == nil || len(failed) != 1 || !strings.Contains(out.String(), "already running (PID 4242") {
-		t.Errorf("err %v, failed %v\n%s", err, failed, out.String())
+	sum, err := runBackup(fixed(fakeClient(t, f)), p, &out, quietProgress())
+	if err != nil || sum.Skipped != 1 || sum.Failed != 0 || sum.Status != "ok" ||
+		!strings.Contains(out.String(), "1 skipped") || !strings.Contains(out.String(), "running: PID 4242") {
+		t.Errorf("err %v, summary %+v\n%s", err, sum, out.String())
 	}
 	if len(backups(filepath.Join(root, "group-1-Test_group"))) != 0 || findPartial(filepath.Join(root, "group-1-Test_group")) != "" {
 		t.Error("wrote into the locked library")

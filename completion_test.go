@@ -84,7 +84,7 @@ func TestCompleteWithTilde(t *testing.T) {
 	os.MkdirAll(filepath.Join(home, "zb", "user-7-me", "2026-11-02T020000Z"), 0o755)
 	os.WriteFile(cfg, []byte(`{"profiles": {"default": {"to": "~/zb"}}}`), 0o644)
 	got := completeWords(t, "--config", cfg, "restore", "+~/zb/u")
-	if want := "~" + string(filepath.Separator) + filepath.Join("zb", "user-7-me") + string(filepath.Separator); len(got) != 1 || got[0] != want {
+	if want := "~/zb/user-7-me/"; len(got) != 1 || got[0] != want { // typed with /: / on Windows too
 		t.Errorf("got %q, want %q", got, want)
 	}
 }

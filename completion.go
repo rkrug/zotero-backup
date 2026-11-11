@@ -204,21 +204,24 @@ func libraryFolders(root string) []string {
 
 // backupPaths gives the library folders in root (ending in the separator, to
 // go on typing) and, once cur is inside one, its backups. A cur starting
-// with ~ gets the paths with ~ too.
+// with ~ gets the paths with ~ too, one with / (on Windows) paths with /.
 func backupPaths(root, cur string, withBackups bool) []string {
 	sep := string(filepath.Separator)
 	home, _ := os.UserHomeDir()
 	show := func(p string) string {
 		if strings.HasPrefix(cur, "~") && home != "" && strings.HasPrefix(p, home+sep) {
-			return "~" + p[len(home):]
+			p = "~" + p[len(home):]
+		}
+		if strings.Contains(cur, "/") {
+			p = filepath.ToSlash(p)
 		}
 		return p
 	}
 	var c []string
 	for _, l := range libraryFolders(root) {
 		dir := filepath.Join(root, l)
-		c = append(c, show(dir)+sep)
-		if withBackups && strings.HasPrefix(cur, show(dir)+sep) {
+		c = append(c, show(dir+sep))
+		if withBackups && strings.HasPrefix(cur, show(dir+sep)) {
 			for _, b := range backups(dir) {
 				c = append(c, show(filepath.Join(dir, b)))
 			}

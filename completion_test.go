@@ -141,31 +141,41 @@ func TestCompletionHelper(t *testing.T) {
 	os.Exit(0)
 }
 
-// TestBashCompletion runs the bash script's function as bash calls it on Tab
-// (on macOS CI with bash 3.2).
-func TestBashCompletion(t *testing.T) {
+// TestShellCompletion runs the bash and zsh scripts as the shells do on Tab
+// (on macOS CI with bash 3.2), through shellComplete, which the stress test uses.
+func TestShellCompletion(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("no bash")
-	}
-	if _, err := exec.LookPath("bash"); err != nil {
-		t.Skip("no bash")
+		t.Skip("no bash or zsh")
 	}
 	cfg, root := completionSetup(t)
 	prog := filepath.Join(t.TempDir(), "zotero-backup")
-	os.WriteFile(prog, []byte("#!/bin/sh\nexec \""+os.Args[0]+"\" -test.run='^TestCompletionHelper$' -- \"$@\"\n"), 0o755)
-	var script strings.Builder
-	run([]string{"completion", "bash"}, &script)
-	test := script.String() + `
-t() { COMP_WORDS=("$@"); COMP_CWORD=$((${#COMP_WORDS[@]}-1)); COMPREPLY=(); _zotero_backup; echo "${COMPREPLY[*]}"; }
-t "$PROG" re
-t "$PROG" --config "$CFG" backup --exclude files,
-t "$PROG" --config "$CFG" restore "$ROOT/u"
-`
-	cmd := exec.Command("bash", "-c", test)
-	cmd.Env = append(os.Environ(), "ZB_COMPLETION_HELPER=1", "PROG="+prog, "CFG="+cfg, "ROOT="+root)
-	b, err := cmd.CombinedOutput()
-	want := "restore\nfiles,annotations files,attachments files,fulltext files,notes files,settings files,trash\n" + filepath.Join(root, "user-7-me") + "/\n"
-	if err != nil || string(b) != want {
-		t.Errorf("%v\n got %q\nwant %q", err, b, want)
+	os.WriteFile(prog, []byte("#!/bin/sh\nZB_COMPLETION_HELPER=1 exec \""+os.Args[0]+"\" -test.run='^TestCompletionHelper$' -- \"$@\"\n"), 0o755)
+	u7 := filepath.Join(root, "user-7-me")
+	for _, sh := range []string{"bash", "zsh"} {
+		if _, err := exec.LookPath(sh); err != nil {
+			t.Logf("%s: not installed", sh)
+			continue
+		}
+		cases := []struct {
+			words []string
+			want  string
+		}{
+			{[]string{"re"}, "restore"},
+			{[]string{"--config", cfg, "backup", "--exclude", "files,"}, "files,annotations files,attachments files,fulltext files,notes files,settings files,trash"},
+			{[]string{"--config", cfg, "restore", u7 + "/"}, u7 + "/ " + filepath.Join(u7, "2026-11-02T020000Z")},
+			{[]string{"--config", cfg, "stop", "gr"}, "group:12"},
+		}
+		if sh == "zsh" {
+			cases = append(cases, struct {
+				words []string
+				want  string
+			}{[]string{"--config", cfg, "restore", "./"}, "(files)"})
+		}
+		for _, c := range cases {
+			got, err := shellComplete(sh, prog, c.words...)
+			if err != nil || strings.Join(got, " ") != c.want {
+				t.Errorf("%s %q: %v\n got %q\nwant %q", sh, c.words, err, got, c.want)
+			}
+		}
 	}
 }

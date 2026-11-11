@@ -261,6 +261,48 @@ func (s *stress) completionCheck(root, lib string) {
 	bs := backups(lib)
 	ok := slices.Contains(libs, lib+sep) && len(bs) > 0 && len(inLib) == len(bs)+1 && slices.Contains(inLib, filepath.Join(lib, bs[len(bs)-1]))
 	s.record(sc, op, "completion: Tab after restore offers the library folder, then its backups", ok, "%v\n%v", libs, inLib)
+
+	// the same through the shells' scripts and the program itself
+	exe, err := stressSelf()
+	if err != nil || runtime.GOOS == "windows" {
+		s.note(sc, op, "completion in the shells", "not checked: %v (not on Windows)", err)
+		return
+	}
+	for _, sh := range []string{"bash", "zsh"} {
+		if _, err := exec.LookPath(sh); err != nil {
+			s.note(sc, op, "completion in "+sh, "not checked: %s is not installed", sh)
+			continue
+		}
+		got, err := shellComplete(sh, exe, "--config", cfg, "restore", lib+sep)
+		slices.Sort(got)
+		s.record(sc, op, "completion in "+sh+": Tab after restore <library folder>/ lists its backups", err == nil && slices.Equal(got, inLib), "%v\n%v", err, got)
+	}
+}
+
+// shellComplete runs the completion script of bash or zsh as the shell does
+// on Tab, for the command line prog words…, the last word the one being
+// completed, and returns the candidates. zsh runs without its line editor:
+// compadd and _files are stand-ins that print what they get ("(files)").
+func shellComplete(shell, prog string, words ...string) ([]string, error) {
+	script, err := completionScript(shell)
+	if err != nil {
+		return nil, err
+	}
+	switch shell {
+	case "bash":
+		script += `COMP_WORDS=("$@"); COMP_CWORD=$(($#-1)); COMPREPLY=(); _zotero_backup; printf '%s\n' "${COMPREPLY[@]}"`
+	case "zsh":
+		script = `compadd() { while [[ $1 != -- ]]; do shift; done; shift; print -rl -- "$@"; }
+_files() { print -r -- '(files)'; }
+compdef() { :; }
+` + script + `words=("$@"); CURRENT=$#; _zotero-backup`
+	}
+	args := append([]string{"-c", script, "zotero-backup", prog}, words...)
+	if shell == "zsh" {
+		args = append([]string{"-f"}, args...)
+	}
+	b, err := exec.Command(shell, args...).Output()
+	return strings.Fields(string(b)), err
 }
 
 // stopCheck starts the program with backup and sends it Ctrl-C once the

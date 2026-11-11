@@ -158,12 +158,12 @@ const jsPrelude = `
 let L;
 if (query.lib === 'user') {
   L = Zotero.Libraries.userLibraryID;
-  if (Zotero.Users.getCurrentUserID() !== Number(query.id) || Zotero.Users.getCurrentUsername() !== query.name)
+  // by ID only: a user name can change (an account renamed on zotero.org; Zotero keeps the old one until the next login)
+  if (Zotero.Users.getCurrentUserID() !== Number(query.id))
     throw new Error('personal library of ' + Zotero.Users.getCurrentUsername() + ' (' + Zotero.Users.getCurrentUserID() + '), expected ' + query.name + ' (' + query.id + ')');
 } else if (query.lib === 'group') {
   L = Zotero.Groups.getLibraryIDFromGroupID(Number(query.id));
-  if (!L) throw new Error('group ' + query.id + ' is not in this Zotero');
-  if (Zotero.Libraries.get(L).name !== query.name) throw new Error('library ' + L + ' is "' + Zotero.Libraries.get(L).name + '", expected "' + query.name + '"');
+  if (!L) throw new Error('group ' + query.id + ' is not in this Zotero');  // found by its ID; a renamed group keeps it
 } else {
   throw new Error('no library given');
 }

@@ -19,6 +19,7 @@ It sets up what the sections below describe, with your system's own scheduler, r
 - It never overwrites or removes a setup it did not write itself (e.g. one copied from below by hand): it says so and stops.
 - Install zotero-backup in its final place first: the job keeps the path of the program it was set up **with** (`upgrade` replaces the file in place, so the job stays valid). `install` and `show` say so when that is not the `zotero-backup` on your `PATH`; running `schedule install` again with the right one replaces the job.
 - For runs **while nobody is logged in**, use the manual setups [below](#when-nobody-is-logged-in).
+- A backup started by hand that still runs when the schedule comes up is safe: the scheduled run skips the libraries it is working on ([Backups → One run per library](backups.md)). `zotero-backup status` shows what runs, `zotero-backup stop` stops it.
 
 ## By hand
 
@@ -73,6 +74,10 @@ then `systemctl --user enable --now zotero-backup.timer` (and `loginctl enable-l
 ```bat
 schtasks /Create /SC DAILY /ST 06:00 /TN "zotero-backup" /TR "cmd /c \"C:\Tools\zotero-backup.exe backup && C:\Tools\zotero-backup.exe prune\""
 ```
+
+## Checking the backups
+
+`zotero-backup verify` checks the newest backups offline (files, checksums, JSON; [Backups → Checking backups](backups.md#checking-backups)). To check after every run, add it to the job by hand, or run it e.g. weekly with `verify all`; its exit status is 1 when a backup has problems.
 
 ## Notifications
 

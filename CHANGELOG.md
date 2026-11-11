@@ -4,7 +4,13 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+## v0.3.1 (2026-11-11)
+
+- **Stress test:** every backup it makes is checked with `verify`; new extras for `diff` of two backups, `find`, `show --save` and the lock. Libraries in Zotero desktop are recognised by ID only, so a renamed account or group no longer stops it.
+- **`zotero-backup verify [BACKUP | LIBRARY_FOLDER | all] [--quick]`** (#23) checks backups on disk, offline: the JSON files, the counts, every file's size and md5 (ZIPs: the file inside), attachments backed up or listed as missing; files hard-linked between backups are read once. New backups record the md5 of their JSON files in `meta.json`, so changes to those are found too.
+- **One run per library at a time** (#43): a backup or prune holds a lock in the library's folder; a second run (e.g. the schedule while a backup started by hand still runs) skips that library instead of writing into the same unfinished backup. Stale locks are taken over, locks from another computer never. **`zotero-backup status`** shows the runs in progress, **`zotero-backup stop [LIBRARY]`** stops them cleanly (the unfinished backup is continued by the next run). `restore` warns when its library is being backed up.
 - Documentation (Install, README, Over SSH): install v0.3.0, then `upgrade stable` to the newest: the same commands for every release, the update signed; `~/bin` on the `PATH` as a step of its own. Over SSH now tried on macOS.
+- `schedule show` names the profile the job uses (also `default`) and its configuration file.
 
 ## v0.3.0 (2026-11-10)
 

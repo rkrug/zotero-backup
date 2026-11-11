@@ -30,6 +30,11 @@ Errors print `zotero-backup: <message>` on stderr; the exit status is 1. Show th
 
 | Message (start) | Meaning | Next step |
 |---|---|---|
+| `a backup of … is already running (PID … on …, since …): skipped` | another run (by hand or from the schedule) works on that library | nothing to do: that run makes the backup; `zotero-backup status` shows it, `stop` stops it after the user's yes |
+| `… it is from another computer: if no backup runs there, remove …` | a lock in a backup folder shared with another computer | the user checks that computer; only then remove the named `.lock` file |
+| `taking over the lock of … left by a run that no longer runs` (warning) | an earlier run crashed or was killed | nothing: the new run continues its `.partial` |
+| `stopped (an unfinished backup is continued by the next run)` | the run got Ctrl-C or `zotero-backup stop` | run `backup` again, or wait for the schedule |
+| `PROBLEMS <backup>: …` from `verify` (md5 / size / missing file / JSON changed or unreadable / counts) | that backup is damaged (disk, copy, someone edited it) | do not restore from it; use another backup (`verify all` shows which are OK); the next `backup` makes a complete one; the user decides whether to delete the damaged one |
 | `N of M libraries failed` | some libraries failed, the others were backed up | the lines above name each library and its error |
 | `library changed while reading; read it again` | the library changed during the backup (3 attempts), e.g. a Zotero app syncing a lot | run `backup` again later; a leftover `.partial` is continued |
 | `GET …: got N objects, Total-Results says M` / `no Total-Results header` | the server's answer was incomplete | run `backup` again; if it repeats, report it (bug report) |

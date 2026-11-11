@@ -21,7 +21,7 @@ The unit tests (`go test ./...`, run in CI on Linux, macOS and Windows) use a fa
   ```
 
   The default is no. The question needs a terminal: a piped answer is refused, and there is no option to skip it.
-- **Pinned to one library.** Every script it runs inside Zotero first checks the library: a group by its ID **and** name, the personal library by the signed-in user's ID **and** username, which must be the key's. It stops on any mismatch. Syncs are limited to that library.
+- **Pinned to one library.** Every script it runs inside Zotero first checks the library by its ID: a group by its group ID, the personal library by the signed-in user's ID, which must be the key's. It stops on any mismatch. (Names are not compared: a group or an account renamed on zotero.org keeps its old name in Zotero desktop until the next sync or login.) Syncs are limited to that library.
 - **Only its own objects.** Items count as the test's only if their top-level item carries the tag `zb-e2e`; collections only if their name starts with `[zb-e2e]`. Every operation refuses any other object.
 - **Refuses to start** on a library if the key cannot write to it, Zotero has unsynced changes in it, it was never synced, or automatic sync is on.
 - **Safety backup first.** Before anything changes in a library, a normal backup of it goes into the profile's backup folder (`to`).
@@ -143,6 +143,8 @@ Each scenario runs one cycle for all operations:
     - A copy of the backup with a changed page (under `zip/upload` in the run's folder) is restored: restore really **uploads** the ZIP (anything in a real backup came from the server, which then only answers "exists"); the next backup gets exactly that ZIP back; after a sync Zotero desktop has both files with the right md5 in its storage folder.
     - The same in the form backups made before v0.2.0 kept ZIPs in (under the file's own name, with the ZIP's own md5, no `"zip"`): recognised as a ZIP, no file difference to the library; with a changed page, restore uploads it as a ZIP and the server has the page's md5.
 - **Removing what is not in the backup** (operation `remove-new`): after a backup, a new item with a child note, a note under a fixture item and a collection with a subcollection are made through the API; `restore --trash-new` puts them in the trash (the child note with its item) on the server and, after a sync, in Zotero desktop; `restore --erase-new` then erases them there too. Before each restore the plan is checked to remove only this test's own objects (tag `zb-e2e`, collections `[zb-e2e]…`); otherwise the step is refused.
+- **Looking into backups** (operations `diff-backups`, `find`, `show`): after the title change, a second backup; `diff` of the two backups lists exactly the changed titles and nothing removed; `find` finds the fixture items by title in the backups; `show` lists a family with its note, attachments and annotation, and `--save` copies its PDF.
+- **Lock** (operation `lock`): while the test holds the library's lock, a second backup of the library is refused; the lock is gone afterwards.
 - `prune --dry-run` with one daily backup kept lists all but the newest backup.
 
 ## Checks
@@ -158,6 +160,7 @@ After each restore and sync, every fixture family is checked on its own:
 | New items kept | the item made after the backup | still on the server, not in the trash |
 | Nothing left unsynced | Zotero desktop after each sync | 0 unsynced items and collections |
 | Hard links | files in B1 vs B0 | unchanged files are the same file on disk |
+| Verify | every backup the test makes (scenario `backups`) | `zotero-backup verify` finds no problem: JSON with its checksums, counts, every file's size and md5 |
 | Cleanup | each library vs its safety backup | identical after the fixtures are erased |
 
 Files the server has newer than the desktop (put back by a restore) are downloaded before their md5 is compared.

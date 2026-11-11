@@ -47,6 +47,9 @@ description: Back up, list, compare, restore and prune Zotero libraries (persona
 | Restore (after the user's yes) | `zotero-backup restore BACKUP --yes [--items K1,K2] [--key WRITEKEY]` |
 | Restore exactly, removing what is not in the backup | `zotero-backup restore BACKUP --dry-run --trash-new` (or `--erase-new`), then the same with `--yes` |
 | Which backups prune would delete | `zotero-backup prune --dry-run` |
+| Are the backups intact (offline) | `zotero-backup verify` (newest of each library), `verify all`, `--quick` for sizes only |
+| Which backups are running now | `zotero-backup status` |
+| Stop a running backup (after the user's yes) | `zotero-backup stop [user / group:<id>]` |
 | Is a newer version available | `zotero-backup upgrade --check` |
 | Update zotero-backup (after the user's yes) | `zotero-backup upgrade stable --yes` (or `beta`) |
 

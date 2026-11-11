@@ -146,6 +146,17 @@ Each scenario runs one cycle for all operations:
 - **Looking into backups** (operations `diff-backups`, `find`, `show`): after the title change, a second backup; `diff` of the two backups lists exactly the changed titles and nothing removed; `find` finds the fixture items by title in the backups; `show` lists a family with its note, attachments and annotation, and `--save` copies its PDF.
 - **Lock** (operation `lock`): while the test holds the library's lock, a second backup of the library is refused; the lock is gone afterwards.
 - `prune --dry-run` with one daily backup kept lists all but the newest backup.
+- **Whole runs** (operation `runs`), as the `backup` command makes them, into `runs/` in the run's folder:
+    - a backup folder that does not exist is refused and nothing is created;
+    - a library that cannot be read (item reads fail, simulated): `backup failed: 1 libraries (0 backed up, 1 failed, 0 skipped)`, exit status 1, `last-run.json` with status `failed`, its log and result file in `logs/`; the notification (a `notify_command`) starts with the summary line, names the log, has `ZB_STATUS=failed` and no API key;
+    - a normal run: `backup finished: 1 libraries (1 backed up, …)`, exit status 0, the counts in `last-run.json` are those of the backup's `meta.json`, the backup passes verify, the run log has the progress, the library's line and the summary line (and `resuming`, after the failed run);
+    - an attachment whose file was never uploaded, made through the API: the next run reports `(1 new)` missing files with its key in `last-run.json`, status still `ok`; the run after that `(0 new)`;
+    - with the library's lock held: the library is skipped, not failed (`1 skipped`, `running: PID …`, exit status 0);
+    - `prune` with one daily backup kept: one backup left, `logs/` keeps the newest run's log and result and the prune log, the other runs' logs are in `logs/archive/`;
+    - a stop: the program itself is started with `backup` and gets Ctrl-C while it reads the library: `backup stopped: … ; stopped: <library>`, exit status 1, `last-run.json` status `stopped`, no lock left, a `.partial` that the next run continues (not on Windows);
+    - with `library: all`, when the key can read only the test libraries: the libraries it may not read are counted as `N without access`, not as skipped (otherwise noted as not checked).
+
+    About 2–3 minutes per library: five short backup runs, a stopped run and a prune (and one backup of every test library for `library: all`).
 
 ## Checks
 
@@ -190,3 +201,5 @@ Files the server has newer than the desktop (put back by a restore) are download
 - Changes through Safe Edit or Fix Proposals: both need approval in a dialog.
 - Other Zotero apps on other computers: the second client is simulated through the API.
 - Group renames and very large libraries: covered by earlier real runs (IPBES LDR, 6,975 items, 3.9 GB).
+- The scheduled job (`schedule install`, `--quiet`, `run logs` and `last run` in `schedule show`): installing a real job during a test is too intrusive; unit tests, and `schedule install` on a real computer before a release.
+- Compressing archived logs after a week: the test cannot wait a week (unit test with back-dated files).

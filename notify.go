@@ -19,20 +19,23 @@ import (
 // sends the profile's notifications. A failing notification is reported on
 // stderr and does not change the backup's result.
 func backupAndNotify(clientFor func(string) (*Client, error), p Profile, out, errOut io.Writer, pr *progress) error {
-	var sum strings.Builder
-	problems, failedLibs, err := runBackup(clientFor, p, io.MultiWriter(out, &sum), pr)
-	status := ""
-	switch {
-	case err != nil:
-		status = "failed"
-		fmt.Fprintf(&sum, "zotero-backup: %v\n", err)
-	case problems > 0:
-		status = "problems"
+	sum, err := runBackup(clientFor, p, out, pr)
+	if sum.Status == "ok" || (len(p.NotifyCommand) == 0 && !p.NotifyMacOS) {
+		return err
 	}
-	if status != "" && (len(p.NotifyCommand) > 0 || p.NotifyMacOS) {
-		for _, e := range notify(p, status, sum.String(), failedLibs) {
-			fmt.Fprintf(errOut, "zotero-backup: notification failed: %v\n", e)
+	text := []string{sum.line()}
+	var failedLibs []string
+	for _, r := range sum.Libraries {
+		text = append(text, libLine(r))
+		if r.Result == "failed" {
+			failedLibs = append(failedLibs, r.label())
 		}
+	}
+	if err != nil {
+		text = append(text, "zotero-backup: "+err.Error())
+	}
+	for _, e := range notify(p, sum.Status, strings.Join(text, "\n")+"\n", failedLibs) {
+		fmt.Fprintf(errOut, "zotero-backup: notification failed: %v\n", e)
 	}
 	return err
 }

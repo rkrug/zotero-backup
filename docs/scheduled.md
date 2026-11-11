@@ -78,7 +78,7 @@ schtasks /Create /SC DAILY /ST 06:00 /TN "zotero-backup" /TR "cmd /c \"C:\Tools\
 
 ## Checking the backups
 
-`zotero-backup verify` checks the newest backups offline (files, checksums, JSON; [Backups → Checking backups](backups.md#checking-backups)). To check after every run, add it to the job by hand, or run it e.g. weekly with `verify all`; its exit status is 1 when a backup has problems.
+`zotero-backup schedule show` ends with the last run: when, its exit status and its summary line ([Backups → The result of a run](backups.md#the-result-of-a-run)); the details per library are in `last-run.json` in the backup folder. `zotero-backup verify` checks the newest backups offline (files, checksums, JSON; [Backups → Checking backups](backups.md#checking-backups)). To check after every run, add it to the job by hand, or run it e.g. weekly with `verify all`; its exit status is 1 when a backup has problems.
 
 ## Notifications
 
@@ -89,8 +89,8 @@ A scheduled backup that fails says so only in its log. To hear about it, set in 
 "notify_command": ["/usr/bin/mail", "-s", "zotero-backup failed", "me@example.org"]
 ```
 
-- Sent after a backup that **failed** (a library could not be backed up, no key, …) or reported **problems** in `meta.json`; not for attachments whose file never reached the server (`missing_files`), which are common.
-- `notify_command` is a program and its arguments, run without a shell, with the summary on stdin and `ZB_STATUS` (`failed`, `problems`) and `ZB_LIBRARIES_FAILED` in the environment; `ZOTERO_API_KEY` is removed from its environment. Any tool works: `mail`, `curl` to [ntfy](https://ntfy.sh) (`["curl", "-T", "-", "https://ntfy.sh/my-topic"]`), a script of your own.
+- Sent after a backup that **failed** (a library could not be backed up, no key, …) or reported **problems** in `meta.json`; not for a library skipped because another run is backing it up, and not for attachments whose file never reached the server (`missing_files`, also new ones), which are common.
+- `notify_command` is a program and its arguments, run without a shell, with the summary on stdin (first the [summary line](backups.md#the-result-of-a-run), then one line per library) and `ZB_STATUS` (`failed`, `problems`) and `ZB_LIBRARIES_FAILED` in the environment; `ZOTERO_API_KEY` is removed from its environment. Any tool works: `mail`, `curl` to [ntfy](https://ntfy.sh) (`["curl", "-T", "-", "https://ntfy.sh/my-topic"]`), a script of your own.
 - `notify_macos` shows a macOS notification (Notification Center). Under a LaunchDaemon (nobody logged in) there is no one to show it to: use `notify_command` there.
 - A notification that fails is reported in the log and does not change the backup's result.
 - Try it: `zotero-backup notify-test`.

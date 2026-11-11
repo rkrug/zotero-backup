@@ -377,6 +377,15 @@ This is the documentation of the <strong>unreleased</strong> development version
 </li>
       
         <li class="md-nav__item">
+  <a href="#completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Completion
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-key" class="md-nav__link">
     <span class="md-ellipsis">
       API key
@@ -636,6 +645,15 @@ This is the documentation of the <strong>unreleased</strong> development version
 </li>
       
         <li class="md-nav__item">
+  <a href="#completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Completion
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-key" class="md-nav__link">
     <span class="md-ellipsis">
       API key
@@ -714,6 +732,21 @@ zotero-backup<span class="w"> </span>upgrade<span class="w"> </span>--check<span
 <li>On macOS, a program updated this way starts without the Gatekeeper question above (it was not downloaded by a browser).</li>
 <li>Built with <code>go install</code> (version <code>dev</code>): update it with <code>go install github.com/rkrug/zotero-backup@latest</code> instead.</li>
 </ul>
+<h2 id="completion">Completion<a class="headerlink" href="#completion" title="Permanent link">&para;</a></h2>
+<p>Tab completes commands, options, profile names, key names, <code>--exclude</code> parts and the backup folders below the profile's <code>to</code> (for <code>restore</code>, <code>diff</code>, <code>verify</code>, <code>show</code>, <code>find</code>, <code>stop</code>); elsewhere the shell completes file names as usual. Set it up once for your shell:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># zsh (the macOS default): in ~/.zshrc, after compinit (add `autoload -Uz compinit &amp;&amp; compinit` above it if ~/.zshrc does not run compinit yet; oh-my-zsh does)</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s1">'eval "$(zotero-backup completion zsh)"'</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.zshrc
+<span class="c1"># bash</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s1">'eval "$(zotero-backup completion bash)"'</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.bashrc
+<span class="c1"># fish</span>
+zotero-backup<span class="w"> </span>completion<span class="w"> </span>fish<span class="w"> </span>&gt;<span class="w"> </span>~/.config/fish/completions/zotero-backup.fish
+</code></pre></div>
+<p>PowerShell: <code>zotero-backup completion powershell &gt;&gt; $PROFILE</code>.</p>
+<p>Open a new terminal, then e.g. <code>zotero-backup restore &lt;Tab&gt;</code> shows the library folders, and Tab again inside one its backups. The script asks the installed zotero-backup for the answers, so after an <code>upgrade</code> nothing needs to be set up again. Completion reads only the configuration file and the backup folder: no key, no connection to Zotero.</p>
+<div class="admonition note">
+<p class="admonition-title">What has been tried</p>
+<p>zsh and bash (3.2 and 5) on macOS. fish and PowerShell are written from their documentation but not yet tried; reports are welcome.</p>
+</div>
 <h2 id="api-key">API key<a class="headerlink" href="#api-key" title="Permanent link">&para;</a></h2>
 <p>Create a key at <a href="https://www.zotero.org/settings/keys">https://www.zotero.org/settings/keys</a>. For backups a <strong>read-only</strong> key is enough (personal library with notes and files, groups read). Restore needs a key with <strong>write</strong> access; keep that one for restores only.</p>
 <p>The key is read from the environment variable <code>ZOTERO_API_KEY</code>, or else from the system keychain entry named by the profile's <code>key</code> (see <a href="../keys/">Keys</a>). It is never written to the configuration, the backups or the logs, and never taken as a command-line argument.</p>

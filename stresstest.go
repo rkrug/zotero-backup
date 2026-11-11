@@ -882,6 +882,7 @@ func (s *stress) extras() error {
 
 	s.zipChecks()
 	s.removeNewChecks()
+	s.runChecks()
 
 	// prune on the test backups
 	pr := s.profile

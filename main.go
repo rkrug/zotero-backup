@@ -237,7 +237,7 @@ func run(args []string, out io.Writer) error {
 				cfgArg, _ = filepath.Abs(expandHome(*cfgPath))
 			}
 		})
-		return runSchedule(pos[0], *scheduleAt, *profileName, cfgArg, expandHome(profile.To), raw, out)
+		return runSchedule(pos[0], *scheduleAt, *profileName, cfgArg, expandHome(profile.To), profile.logDir(expandHome(profile.To)), raw, out)
 	case "notify-test":
 		return notifyTest(profile, out)
 	case "list":
@@ -319,7 +319,7 @@ func run(args []string, out io.Writer) error {
 		return runStop(expandHome(profile.To), lib, out)
 	case "prune":
 		stopOnSignal(os.Stderr)
-		return prune(expandHome(profile.To), profile, *dryRun, out)
+		return runPrune(expandHome(profile.To), profile, *dryRun, out)
 	case "help", "-h", "--help":
 		fs.Usage()
 		return nil
@@ -432,18 +432,33 @@ func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer
 	root := expandHome(p.To)
 	sum := &runSummary{Started: time.Now().UTC(), Libraries: []libResult{}}
 	quiet := pr.mode == "quiet" // only the summary line (and errors)
+	if err := checkRoot(root); err != nil {
+		sum.finish(err, false)
+		return sum, err // nothing written: no folder to write into
+	}
+	if f, path, err := openRunLog(p.logDir(root), sum.Started, "backup"); err != nil {
+		pr.Warnf("no run log: %v", err)
+	} else if f != nil {
+		sum.Log = path
+		pr.SetFile(f)
+		defer func() { pr.SetFile(nil); f.Close() }()
+	}
+	end := func() {
+		line := sum.line()
+		fmt.Fprintln(out, line)
+		pr.Record(line)
+		if err := sum.write(root, p.logDir(root)); err != nil {
+			pr.Warnf("could not write %s: %v", lastRunName, err)
+		}
+	}
 	done := func(err error) (*runSummary, error) {
 		sum.finish(err, false)
-		fmt.Fprintln(out, sum.line())
-		if werr := sum.write(root); werr != nil {
-			pr.Warnf("could not write %s: %v", lastRunName, werr)
-		}
+		end()
 		return sum, err
 	}
 	onStop(func() {
 		sum.finish(nil, true)
-		fmt.Fprintln(out, sum.line())
-		sum.write(root)
+		end()
 	})
 	defer onStop(nil)
 	jobs, skipped, err := libraryJobs(p, clientFor)
@@ -478,6 +493,7 @@ func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer
 			r.NewMissing, r.Problems, r.Seconds = newMissing(dir, m), m.Problems, m.Seconds
 		}
 		sum.add(r)
+		pr.Record(libLine(r))
 		if !quiet || r.Result == "failed" {
 			fmt.Fprintln(out, libLine(r))
 		}

@@ -45,6 +45,7 @@ type runSummary struct {
 	Status     string      `json:"status"` // ok, problems, failed, stopped
 	ExitStatus int         `json:"exit_status"`
 	Error      string      `json:"error,omitempty"`
+	Log        string      `json:"log,omitempty"` // this run's log file
 	BackedUp   int         `json:"backed_up"`
 	Failed     int         `json:"failed"`
 	Skipped    int         `json:"skipped"`
@@ -168,18 +169,39 @@ func libLine(r libResult) string {
 }
 
 // write saves the summary as root/last-run.json (replacing the previous one
-// in one step). A backup folder that cannot be written to is reported, not fatal.
-func (s *runSummary) write(root string) error {
+// in one step) and, with a log folder, next to the run's log as <start>-backup.json.
+func (s *runSummary) write(root, logDir string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, err := os.Stat(root); err != nil {
-		return err
+	if logDir != "" {
+		if err := writeJSON(filepath.Join(logDir, runLogName(s.Started, "backup", ".json")), s); err != nil {
+			return err
+		}
 	}
 	tmp := filepath.Join(root, lastRunName+".tmp")
 	if err := writeJSON(tmp, s); err != nil {
 		return err
 	}
 	return os.Rename(tmp, filepath.Join(root, lastRunName))
+}
+
+// runLogName is a run's file in the log folder: <start, UTC>-<command><ext>.
+func runLogName(start time.Time, command, ext string) string {
+	return start.UTC().Format(timeLayout) + "-" + command + ext
+}
+
+// openRunLog creates the log of a run in logDir (nil without a log folder).
+// The log folder is created; the backup folder itself must exist (checkRoot).
+func openRunLog(logDir string, start time.Time, command string) (*os.File, string, error) {
+	if logDir == "" {
+		return nil, "", nil
+	}
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		return nil, "", err
+	}
+	path := filepath.Join(logDir, runLogName(start, command, ".log"))
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
+	return f, path, err
 }
 
 // newMissing are the files missing in m that were not missing in the previous

@@ -25,6 +25,7 @@ type Profile struct {
 	KeepDaily   int               `json:"keep_daily"`   // prune: newest backup of each of the last N days
 	KeepWeekly  int               `json:"keep_weekly"`  // prune: newest backup of each of the last N weeks
 	KeepMonthly int               `json:"keep_monthly"` // prune: newest backup of each of the last N months
+	LogDir      string            `json:"log_dir"`      // a log per run; relative to "to" unless absolute; "" = none
 
 	Progress         string `json:"progress"`          // auto, line, log or quiet
 	ProgressInterval int    `json:"progress_interval"` // seconds between progress lines in log mode
@@ -51,6 +52,7 @@ func defaultProfile() Profile {
 		KeepDaily:   7,
 		KeepWeekly:  5,
 		KeepMonthly: 12,
+		LogDir:      "logs",
 
 		Progress:         "auto",
 		ProgressInterval: 30,
@@ -138,6 +140,33 @@ func (p Profile) validate() error {
 	}
 	if p.KeepDaily < 0 || p.KeepWeekly < 0 || p.KeepMonthly < 0 {
 		return errors.New("keep_daily, keep_weekly and keep_monthly must not be negative")
+	}
+	return nil
+}
+
+// logDir is the folder for the run logs below the backup folder root ("" = none).
+func (p Profile) logDir(root string) string {
+	switch d := expandHome(p.LogDir); {
+	case d == "":
+		return ""
+	case filepath.IsAbs(d):
+		return d
+	default:
+		return filepath.Join(root, d)
+	}
+}
+
+// checkRoot refuses a backup folder that does not exist: it is never created,
+// so a backup never fills the internal disk while an external one is not mounted.
+func checkRoot(root string) error {
+	info, err := os.Stat(root)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return fmt.Errorf("the backup folder %s does not exist: nothing was done. On an external drive: connect it. Otherwise create the folder once (mkdir -p %s), or set \"to\" in the profile", root, root)
+	case err != nil:
+		return fmt.Errorf("the backup folder %s cannot be read: %v", root, err)
+	case !info.IsDir():
+		return fmt.Errorf("the backup folder %s is not a folder", root)
 	}
 	return nil
 }

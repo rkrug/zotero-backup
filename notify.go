@@ -34,6 +34,9 @@ func backupAndNotify(clientFor func(string) (*Client, error), p Profile, out, er
 	if err != nil {
 		text = append(text, "zotero-backup: "+err.Error())
 	}
+	if sum.Log != "" {
+		text = append(text, "log: "+sum.Log)
+	}
 	for _, e := range notify(p, sum.Status, strings.Join(text, "\n")+"\n", failedLibs) {
 		fmt.Fprintf(errOut, "zotero-backup: notification failed: %v\n", e)
 	}

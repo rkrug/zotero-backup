@@ -1,6 +1,6 @@
 # Scheduled backups
 
-Run `backup` and then `prune`, e.g. daily. With no terminal, progress is written as plain lines every `progress_interval` seconds; use `--quiet` for only the summary and errors.
+Run `backup` and then `prune`, e.g. daily. Each run writes its own log into `logs/` in the backup folder ([Backups → Logs](backups.md#logs)); with no terminal, progress is also written as plain lines every `progress_interval` seconds to the output, so `--quiet` (only the summary and errors) is enough for the scheduler's own log.
 
 The computer has to be on and online at that time; Zotero desktop does not need to run (backups use the web API only). Use a **read-only** key for scheduled backups, so a key that is stored for unattended runs cannot change any library.
 
@@ -13,7 +13,7 @@ zotero-backup schedule show raw              # the files themselves and the sche
 zotero-backup schedule remove
 ```
 
-It sets up what the sections below describe, with your system's own scheduler, running while you are logged in: a **LaunchAgent** on macOS (`~/Library/LaunchAgents/org.zotero-backup.plist`, log `~/Library/Logs/zotero-backup.log`), a **systemd user timer** on Linux (`~/.config/systemd/user/zotero-backup.timer`, log in the journal) or a **scheduled task** on Windows (log in `%LOCALAPPDATA%\zotero-backup`). The job runs `backup` and then `prune` with progress as log lines, using this program's full path; `--profile` and `--config` are passed on (another profile gets its own job, e.g. `org.zotero-backup.work`). Default time 06:00.
+It sets up what the sections below describe, with your system's own scheduler, running while you are logged in: a **LaunchAgent** on macOS (`~/Library/LaunchAgents/org.zotero-backup.plist`, log `~/Library/Logs/zotero-backup.log`), a **systemd user timer** on Linux (`~/.config/systemd/user/zotero-backup.timer`, log in the journal) or a **scheduled task** on Windows (log in `%LOCALAPPDATA%\zotero-backup`). The job runs `backup` and then `prune` with `--quiet` (the run logs in `logs/` have everything; the scheduler's log keeps the summary lines, warnings and whatever goes wrong before a run log is open, e.g. a backup folder that is not there; with `log_dir: ""` progress lines instead), using this program's full path; `--profile` and `--config` are passed on (another profile gets its own job, e.g. `org.zotero-backup.work`). Default time 06:00.
 
 - Store the key first (`zotero-backup key set`): the job reads it from your keychain.
 - It never overwrites or removes a setup it did not write itself (e.g. one copied from below by hand): it says so and stops.
@@ -78,7 +78,7 @@ schtasks /Create /SC DAILY /ST 06:00 /TN "zotero-backup" /TR "cmd /c \"C:\Tools\
 
 ## Checking the backups
 
-`zotero-backup schedule show` ends with the last run: when, its exit status and its summary line ([Backups → The result of a run](backups.md#the-result-of-a-run)); the details per library are in `last-run.json` in the backup folder. `zotero-backup verify` checks the newest backups offline (files, checksums, JSON; [Backups → Checking backups](backups.md#checking-backups)). To check after every run, add it to the job by hand, or run it e.g. weekly with `verify all`; its exit status is 1 when a backup has problems.
+`zotero-backup schedule show` names the folder of the run logs and ends with the last run: when, its exit status and its summary line ([Backups → The result of a run](backups.md#the-result-of-a-run)); the details per library are in `last-run.json` in the backup folder. `zotero-backup verify` checks the newest backups offline (files, checksums, JSON; [Backups → Checking backups](backups.md#checking-backups)). To check after every run, add it to the job by hand, or run it e.g. weekly with `verify all`; its exit status is 1 when a backup has problems.
 
 ## Notifications
 

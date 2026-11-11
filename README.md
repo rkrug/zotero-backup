@@ -54,7 +54,8 @@ Then put `~/bin` on your `PATH` and check with `zotero-backup version`. Windows,
 2. **Back up** and look at what is there:
 
     ```bash
-    # all libraries the key can read, into ~/zotero-backups
+    # all libraries the key can read, into ~/zotero-backups (create it once: it is never created for you)
+    mkdir -p ~/zotero-backups
     zotero-backup backup
     zotero-backup list
     ```

@@ -95,7 +95,7 @@ func TestSummaryAfterStop(t *testing.T) {
 		t.Errorf("%q, exit %d", got, s.ExitStatus)
 	}
 	root := t.TempDir()
-	if err := s.write(root); err != nil {
+	if err := s.write(root, ""); err != nil {
 		t.Fatal(err)
 	}
 	var out strings.Builder

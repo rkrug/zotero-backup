@@ -1061,7 +1061,7 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
 <li>with the library's lock held: the library is skipped, not failed (<code>1 skipped</code>, <code>running: PID …</code>, exit status 0);</li>
 <li><code>prune</code> with one daily backup kept: one backup left, <code>logs/</code> keeps the newest run's log and result and the prune log, the other runs' logs are in <code>logs/archive/</code>;</li>
 <li>a stop: the program itself is started with <code>backup</code> and gets Ctrl-C while it reads the library: <code>backup stopped: … ; stopped: &lt;library&gt;</code>, exit status 1, <code>last-run.json</code> status <code>stopped</code>, no lock left, a <code>.partial</code> that the next run continues (not on Windows);</li>
-<li>completion: Tab after <code>restore</code> offers the library folder in that backup folder, and inside it its backups;</li>
+<li>completion: Tab after <code>restore</code> offers the library folder in that backup folder, and inside it its backups; the same through the bash and zsh scripts (<code>zotero-backup completion bash|zsh</code>) calling the program itself, where those shells are installed (zsh without its line editor: what the script hands to <code>compadd</code> is compared); not fish and PowerShell, not on Windows;</li>
 <li>with <code>library: all</code>, when the key can read only the test libraries: the libraries it may not read are counted as <code>N without access</code>, not as skipped (otherwise noted as not checked).</li>
 </ul>
 <p>About 2–3 minutes per library: five short backup runs, a stopped run and a prune (and one backup of every test library for <code>library: all</code>).</p>

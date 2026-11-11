@@ -87,7 +87,7 @@
           <div class="md-banner__inner md-grid md-typeset">
             
             
-zotero-backup v0.3.0 · No warranty: you are responsible for your data.
+zotero-backup v0.3.1 · No warranty: you are responsible for your data.
 Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
           </div>
@@ -104,7 +104,7 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
 
 
-This is the documentation of an <strong>older release (v0.3.0)</strong>.
+This is the documentation of an <strong>older release (v0.3.1)</strong>.
 
 <a href="../.."><strong>Go to the latest release.</strong></a>
 
@@ -771,7 +771,7 @@ DO ONLY RUN IT ON A TEST GROUP OR LIBRARY!
 Are you sure that the group "Safe Edit Test" (ID 6719916, 788 items on zotero.org; Zotero data folder …) is a test group or library, and you want to run the test there? [N/y]
 </code></pre></div>
 <p>The default is no. The question needs a terminal: a piped answer is refused, and there is no option to skip it.
-- <strong>Pinned to one library.</strong> Every script it runs inside Zotero first checks the library: a group by its ID <strong>and</strong> name, the personal library by the signed-in user's ID <strong>and</strong> username, which must be the key's. It stops on any mismatch. Syncs are limited to that library.
+- <strong>Pinned to one library.</strong> Every script it runs inside Zotero first checks the library by its ID: a group by its group ID, the personal library by the signed-in user's ID, which must be the key's. It stops on any mismatch. (Names are not compared: a group or an account renamed on zotero.org keeps its old name in Zotero desktop until the next sync or login.) Syncs are limited to that library.
 - <strong>Only its own objects.</strong> Items count as the test's only if their top-level item carries the tag <code>zb-e2e</code>; collections only if their name starts with <code>[zb-e2e]</code>. Every operation refuses any other object.
 - <strong>Refuses to start</strong> on a library if the key cannot write to it, Zotero has unsynced changes in it, it was never synced, or automatic sync is on.
 - <strong>Safety backup first.</strong> Before anything changes in a library, a normal backup of it goes into the profile's backup folder (<code>to</code>).
@@ -1048,6 +1048,8 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
 </ul>
 </li>
 <li><strong>Removing what is not in the backup</strong> (operation <code>remove-new</code>): after a backup, a new item with a child note, a note under a fixture item and a collection with a subcollection are made through the API; <code>restore --trash-new</code> puts them in the trash (the child note with its item) on the server and, after a sync, in Zotero desktop; <code>restore --erase-new</code> then erases them there too. Before each restore the plan is checked to remove only this test's own objects (tag <code>zb-e2e</code>, collections <code>[zb-e2e]…</code>); otherwise the step is refused.</li>
+<li><strong>Looking into backups</strong> (operations <code>diff-backups</code>, <code>find</code>, <code>show</code>): after the title change, a second backup; <code>diff</code> of the two backups lists exactly the changed titles and nothing removed; <code>find</code> finds the fixture items by title in the backups; <code>show</code> lists a family with its note, attachments and annotation, and <code>--save</code> copies its PDF.</li>
+<li><strong>Lock</strong> (operation <code>lock</code>): while the test holds the library's lock, a second backup of the library is refused; the lock is gone afterwards.</li>
 <li><code>prune --dry-run</code> with one daily backup kept lists all but the newest backup.</li>
 </ul>
 <h2 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">&para;</a></h2>
@@ -1095,6 +1097,11 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
 <td>Hard links</td>
 <td>files in B1 vs B0</td>
 <td>unchanged files are the same file on disk</td>
+</tr>
+<tr>
+<td>Verify</td>
+<td>every backup the test makes (scenario <code>backups</code>)</td>
+<td><code>zotero-backup verify</code> finds no problem: JSON with its checksums, counts, every file's size and md5</td>
 </tr>
 <tr>
 <td>Cleanup</td>

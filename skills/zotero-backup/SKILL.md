@@ -52,6 +52,7 @@ description: Back up, list, compare, restore and prune Zotero libraries (persona
 | Stop a running backup (after the user's yes) | `zotero-backup stop [user / group:<id>]` |
 | Is a newer version available | `zotero-backup upgrade --check` |
 | Update zotero-backup (after the user's yes) | `zotero-backup upgrade stable --yes` (or `beta`) |
+| Tab completion for the user's shell (they add it to their shell's startup file; documentation: Install → Completion) | `zotero-backup completion zsh` (or `bash`, `fish`, `powershell`) |
 
 - `BACKUP` is a backup folder, or a library folder (then its newest backup). Find the backup of a given date with `list`; names are **UTC** times, so an evening backup may carry the next day's date: when the user's date is ambiguous, show the candidates and ask.
 - Which libraries `backup` reads, where backups go (`to`) and how many prune keeps come from the profile (`zotero-backup config`): `library` is `all`, `user` or `group:<id>`. To back up only some libraries, the user adds a profile to the configuration file (documentation: Configuration) and you use `--profile`; there is no option to pick a library on the command line.

@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -228,11 +229,38 @@ func (s *stress) runChecks() {
 	s.record(sc, op, "prune: one backup left; logs/ keeps the newest run's log and result and the prune log, the other runs' logs are in logs/archive",
 		ok, "%v; left %v, %d archived\n%s", err, leftNames, len(archived), out.String())
 
-	// 8. a stop in the middle of a run (the program itself, Ctrl-C): 'backup stopped', the next run continues
+	// 8. completion: Tab after restore offers the library folder, then its backups
+	s.completionCheck(root, lib)
+
+	// 9. a stop in the middle of a run (the program itself, Ctrl-C): 'backup stopped', the next run continues
 	s.stopCheck(root, p, lib)
 
-	// 9. libraries the key may not read are counted apart ("N without access")
+	// 10. libraries the key may not read are counted apart ("N without access")
 	s.noAccessCheck(root, p)
+}
+
+// completionCheck asks the completion (as the shell scripts do) for the
+// backup folders below root.
+func (s *stress) completionCheck(root, lib string) {
+	const sc, op = "extras", "runs"
+	sep := string(filepath.Separator)
+	cfg := filepath.Join(s.root, "completion-config-"+s.lib.ID+".json")
+	p := defaultProfile()
+	p.To = root
+	if err := writeJSON(cfg, Config{Profiles: map[string]Profile{"default": p}}); err != nil {
+		s.record(sc, op, "completion: prepare", false, "%v", err)
+		return
+	}
+	defer os.Remove(cfg)
+	ask := func(cur string) []string {
+		var out strings.Builder
+		run([]string{"__complete", "--config", cfg, "restore", "+" + cur}, &out)
+		return strings.Fields(out.String())
+	}
+	libs, inLib := ask(root+sep), ask(lib+sep)
+	bs := backups(lib)
+	ok := slices.Contains(libs, lib+sep) && len(bs) > 0 && len(inLib) == len(bs)+1 && slices.Contains(inLib, filepath.Join(lib, bs[len(bs)-1]))
+	s.record(sc, op, "completion: Tab after restore offers the library folder, then its backups", ok, "%v\n%v", libs, inLib)
 }
 
 // stopCheck starts the program with backup and sends it Ctrl-C once the

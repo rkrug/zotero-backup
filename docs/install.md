@@ -66,6 +66,26 @@ zotero-backup upgrade --check    # only shows what there is (exit status 1: an u
 - On macOS, a program updated this way starts without the Gatekeeper question above (it was not downloaded by a browser).
 - Built with `go install` (version `dev`): update it with `go install github.com/rkrug/zotero-backup@latest` instead.
 
+## Completion
+
+Tab completes commands, options, profile names, key names, `--exclude` parts and the backup folders below the profile's `to` (for `restore`, `diff`, `verify`, `show`, `find`, `stop`); elsewhere the shell completes file names as usual. Set it up once for your shell:
+
+```bash
+# zsh (the macOS default): in ~/.zshrc, after compinit (add `autoload -Uz compinit && compinit` above it if ~/.zshrc does not run compinit yet; oh-my-zsh does)
+echo 'eval "$(zotero-backup completion zsh)"' >> ~/.zshrc
+# bash
+echo 'eval "$(zotero-backup completion bash)"' >> ~/.bashrc
+# fish
+zotero-backup completion fish > ~/.config/fish/completions/zotero-backup.fish
+```
+
+PowerShell: `zotero-backup completion powershell >> $PROFILE`.
+
+Open a new terminal, then e.g. `zotero-backup restore <Tab>` shows the library folders, and Tab again inside one its backups. The script asks the installed zotero-backup for the answers, so after an `upgrade` nothing needs to be set up again. Completion reads only the configuration file and the backup folder: no key, no connection to Zotero.
+
+!!! note "What has been tried"
+    zsh and bash (3.2 and 5) on macOS. fish and PowerShell are written from their documentation but not yet tried; reports are welcome.
+
 ## API key
 
 Create a key at <https://www.zotero.org/settings/keys>. For backups a **read-only** key is enough (personal library with notes and files, groups read). Restore needs a key with **write** access; keep that one for restores only.

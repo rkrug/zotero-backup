@@ -447,6 +447,15 @@ This is the documentation of the <strong>unreleased</strong> development version
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-result-of-a-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      The result of a run
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#checking-backups" class="md-nav__link">
     <span class="md-ellipsis">
       Checking backups
@@ -618,6 +627,15 @@ This is the documentation of the <strong>unreleased</strong> development version
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-result-of-a-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      The result of a run
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#checking-backups" class="md-nav__link">
     <span class="md-ellipsis">
       Checking backups
@@ -680,9 +698,22 @@ This is the documentation of the <strong>unreleased</strong> development version
 <li>Text files and web-page snapshots are kept as <code>&lt;file name&gt;.zip</code>: Zotero desktop uploads them zipped (a snapshot with its images and styles) and the server hands out that ZIP. Unzip it to open the file; restore uploads the ZIP the way Zotero does.</li>
 <li>A file that did not change since the previous backup (same md5) is a <strong>hard link</strong>: deleting a backup frees only the files no other backup links to. On drives without hard links (FAT/exFAT, some network shares) files are copied instead. Never edit files inside a backup: a hard-linked file is the same file in every backup. Copy a backup folder tree with a tool that keeps hard links (e.g. <code>rsync -aH</code>), or each backup becomes a full copy: see <a href="../offsite/">Off-site copies</a>.</li>
 <li>An interrupted backup leaves <code>&lt;date&gt;.partial</code>; the next run continues it.</li>
-<li><strong>One run per library at a time.</strong> While a backup or prune works on a library, its folder holds a <code>.lock</code> file (process ID, computer, program, start time, command). A second run that finds it skips that library with "a backup of … is already running (PID …)" and counts it as failed (exit status 1, a <a href="../scheduled/#notifications">notification</a> if set up); the other libraries go on. A lock left by a run that no longer runs on this computer (a crash, a power cut) is taken over by the next run, with a warning; a lock from another computer (a backup folder on a shared disk) never is: the message says which file to remove once no backup runs there.</li>
+<li><strong>One run per library at a time.</strong> While a backup or prune works on a library, its folder holds a <code>.lock</code> file (process ID, computer, program, start time, command). A second run that finds it skips that library with "a backup of … is already running (PID …)" and counts it as skipped (not failed: the other run is making that backup); the other libraries go on. A lock left by a run that no longer runs on this computer (a crash, a power cut) is taken over by the next run, with a warning; a lock from another computer (a backup folder on a shared disk) never is: the message says which file to remove once no backup runs there.</li>
 <li>Attachments whose file never reached the Zotero server cannot be backed up; they are listed in <code>meta.json</code> and by <code>backup</code>, so they can be uploaded from the computer that has them.</li>
 </ul>
+<h2 id="the-result-of-a-run">The result of a run<a class="headerlink" href="#the-result-of-a-run" title="Permanent link">&para;</a></h2>
+<p><code>backup</code> ends with one line that sums up the run, also when libraries failed or the run was stopped:</p>
+<div class="highlight"><pre><span></span><code>backup finished: 19 libraries (19 backed up, 0 failed, 0 skipped), 0 problems, 412 missing files (0 new), 3 files downloaded (12.4 MB), 15233 linked, 1h12m5s
+backup failed: 19 libraries (17 backed up, 1 failed, 1 skipped), 2 problems, … ; failed: group-2333076 "IPBES LDR"; skipped: group-5081872 "IPBES BBA" (running: PID 4242 on server, …)
+backup stopped: … ; stopped: group-2333076 "IPBES LDR"
+</code></pre></div>
+<ul>
+<li><strong>skipped:</strong> another run on this computer is backing up that library (<a href="#running-and-stopping">One run per library</a>), or a key in <code>keys</code> could not be used. <strong>without access</strong> (shown only when there are some): libraries the key may not read, normal with <code>library: all</code>; they are not counted.</li>
+<li><strong>missing files (N new):</strong> attachments whose file is not on the Zotero server; <em>new</em> are those not missing in the previous backup of the library (often a file still being uploaded from someone's computer).</li>
+<li><strong>Exit status:</strong> 0 when every library was backed up or skipped (problems and missing files included: see the line), 1 when a library failed, nothing could be read (no key, no network) or the run was stopped.</li>
+<li>With <code>--quiet</code>: only this line, failed libraries and warnings.</li>
+</ul>
+<p>The same, per library, is written to <strong><code>last-run.json</code></strong> in the backup folder (<code>~/zotero-backups/last-run.json</code>), replaced by every run: start, end, <code>status</code> (<code>ok</code>, <code>problems</code>, <code>failed</code>, <code>stopped</code>), <code>exit_status</code>, the error if nothing could be read, and per library the result, backup folder, version, counts, files downloaded and linked, missing files with the new ones listed, and the problems. For monitoring tools and scripts; it never contains an API key. <code>zotero-backup schedule show</code> shows its line as <code>last run</code>.</p>
 <h2 id="checking-backups">Checking backups<a class="headerlink" href="#checking-backups" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>verify<span class="w">                 </span><span class="c1"># the newest backup of each library</span>
 zotero-backup<span class="w"> </span>verify<span class="w"> </span>all<span class="w">             </span><span class="c1"># every backup (files shared by hard links are read once)</span>

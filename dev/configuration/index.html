@@ -641,7 +641,7 @@ This is the documentation of the <strong>unreleased</strong> development version
 </tr>
 <tr>
 <td><code>notify_command</code></td>
-<td>a program with its arguments, run after a backup that <strong>failed or reported problems</strong>, e.g. <code>["/usr/bin/mail", "-s", "zotero-backup", "me@example.org"]</code>; no shell. It gets the backup's summary on stdin and <code>ZB_STATUS</code> (<code>failed</code> or <code>problems</code>) and <code>ZB_LIBRARIES_FAILED</code> in its environment, never an API key. See <a href="../scheduled/#notifications">Scheduled backups</a></td>
+<td>a program with its arguments, run after a backup that <strong>failed or reported problems</strong>, e.g. <code>["/usr/bin/mail", "-s", "zotero-backup", "me@example.org"]</code>; no shell. It gets the backup's summary on stdin (first the summary line) and <code>ZB_STATUS</code> (<code>failed</code> or <code>problems</code>) and <code>ZB_LIBRARIES_FAILED</code> in its environment, never an API key. See <a href="../scheduled/#notifications">Scheduled backups</a></td>
 </tr>
 <tr>
 <td><code>notify_macos</code></td>

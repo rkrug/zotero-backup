@@ -50,7 +50,7 @@ func TestRunChecksOnTheFake(t *testing.T) {
 			t.Errorf("%s: %s\n%s", r.Result, r.Check, r.Detail)
 		}
 	}
-	want := 11 // 10 run checks + verify; the notification only where there is /bin/sh
+	want := 12 // 11 run checks + verify; the notification only where there is /bin/sh
 	if runtime.GOOS == "windows" {
 		want--
 	}

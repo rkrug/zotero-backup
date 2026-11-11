@@ -62,6 +62,9 @@ commands:
   key remove [NAME]  delete the keychain entry
   config      print the effective configuration (all options with their values)
   version     print the version
+  completion zsh|bash|fish|powershell  print the shell's completion script
+              (commands, options, profiles, backup folders on Tab); setup:
+              https://rkrug.github.io/zotero-backup/latest/install/#completion
   upgrade [stable|beta]  replace this program with the newest release from
               GitHub (signed and checked); without a channel it shows what
               there is and asks (--check: only show; --yes: do not ask;
@@ -145,6 +148,18 @@ func run(args []string, out io.Writer) error {
 	if cmd == "version" || cmd == "--version" {
 		fmt.Fprintln(out, "zotero-backup", version)
 		return nil
+	}
+	if cmd == "__complete" { // for the completion scripts; hidden
+		complete(fs, rest, out)
+		return nil
+	}
+	if cmd == "completion" {
+		if len(rest) != 1 {
+			return errors.New("usage: zotero-backup completion zsh|bash|fish|powershell")
+		}
+		script, err := completionScript(rest[0])
+		fmt.Fprint(out, script)
+		return err
 	}
 	if cmd == "key" && len(rest) > 0 {
 		cmd, rest = "key "+rest[0], rest[1:]

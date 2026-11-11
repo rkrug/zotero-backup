@@ -154,6 +154,7 @@ Each scenario runs one cycle for all operations:
     - with the library's lock held: the library is skipped, not failed (`1 skipped`, `running: PID …`, exit status 0);
     - `prune` with one daily backup kept: one backup left, `logs/` keeps the newest run's log and result and the prune log, the other runs' logs are in `logs/archive/`;
     - a stop: the program itself is started with `backup` and gets Ctrl-C while it reads the library: `backup stopped: … ; stopped: <library>`, exit status 1, `last-run.json` status `stopped`, no lock left, a `.partial` that the next run continues (not on Windows);
+    - completion: Tab after `restore` offers the library folder in that backup folder, and inside it its backups;
     - with `library: all`, when the key can read only the test libraries: the libraries it may not read are counted as `N without access`, not as skipped (otherwise noted as not checked).
 
     About 2–3 minutes per library: five short backup runs, a stopped run and a prune (and one backup of every test library for `library: all`).

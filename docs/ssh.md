@@ -102,6 +102,7 @@ zotero-backup schedule show
 `schedule show` must name `~/bin/zotero-backup` (the program you installed); if it says the job's program is not the `zotero-backup` on your `PATH`, run `schedule install` again with the right one ([Scheduled backups → The quick way](scheduled.md#the-quick-way)).
 
 - **macOS:** a LaunchAgent in the account's login session. Over SSH this works because the account is logged in at the screen; if it is not, `launchctl` refuses and the job cannot run.
+- **macOS, backups on another volume** (e.g. `/Volumes/Data`) or in Documents, Desktop, Downloads: the **first scheduled run asks on the screen** whether `zotero-backup` may access files there, and waits until someone answers. Your runs over SSH never asked (that permission belongs to SSH). Seen on the server: the log stopped after `skipped …` lines while `schedule show` said `running`; **Allow** in the dialog (via Screen Sharing) let it continue. To avoid it, before the first scheduled run: System Settings → Privacy & Security → **Full Disk Access** → add `~/bin/zotero-backup` (in the file dialog, Cmd-Shift-G and the path). Check again after an `upgrade`: macOS may treat the new program file as a new program.
 - **Linux:** a systemd user timer. It runs while the account has a session; for runs at night without one, `loginctl enable-linger $USER` (once, may need `sudo`). With the key as a systemd credential, use the service from [Scheduled backups](scheduled.md) instead of `schedule install`.
 - **Windows** (unchecked): a scheduled task for the SSH session's account, which runs while that account is logged on.
 
@@ -112,6 +113,8 @@ zotero-backup list
 zotero-backup schedule show
 tail -50 ~/Library/Logs/zotero-backup.log        # macOS; Linux: journalctl --user -u zotero-backup
 ```
+
+A run that is still `running` long after its time with nothing new in the log is usually waiting for the access dialog above.
 
 To hear about failures without logging in: `notify_command` in the profile, e.g. mail or [ntfy](https://ntfy.sh) ([Scheduled backups → Notifications](scheduled.md#notifications)).
 

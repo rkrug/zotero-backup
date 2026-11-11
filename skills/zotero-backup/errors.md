@@ -72,4 +72,10 @@ Errors print `zotero-backup: <message>` on stderr; the exit status is 1. Show th
 | `cannot write to …: run it again with sudo` | the program sits in a folder the user cannot write to | the user runs the shown command themselves |
 | `not on a terminal: update with zotero-backup upgrade … --yes` / `name the channel` | it needs a yes or a channel | ask the user, then `upgrade stable --yes` or `beta --yes` |
 
+## No message
+
+| Symptom | Meaning | Next step |
+|---|---|---|
+| a scheduled run on macOS stays `running` (`schedule show`), the log stops after its first lines | macOS waits for the user to allow access to the backup folder (another volume, Documents, Desktop, Downloads), in a dialog on the screen | the user clicks Allow on that computer's screen (Screen Sharing for a server), or gives the program Full Disk Access in System Settings → Privacy & Security; check again after an `upgrade` |
+
 For anything else: show the message and the command, and point to a bug report (no API keys, no private library content): <https://github.com/rkrug/zotero-backup/issues/new?template=bug_report.md>.

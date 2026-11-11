@@ -4,6 +4,8 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+- Documentation (Scheduled backups, Over SSH): on macOS the first scheduled run asks for access to a backup folder on another volume (or in Documents, Desktop, Downloads) and waits for the answer; how to see it and how to allow it beforehand (Full Disk Access).
+
 ## v0.3.1 (2026-11-11)
 
 - **Stress test:** every backup it makes is checked with `verify`; new extras for `diff` of two backups, `find`, `show --save` and the lock. Libraries in Zotero desktop are recognised by ID only, so a renamed account or group no longer stops it.

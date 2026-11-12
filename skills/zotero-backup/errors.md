@@ -61,6 +61,12 @@ Errors print `zotero-backup: <message>` on stderr; the exit status is 1. Show th
 | `FAILED trash … ` / `FAILED erasing …` | removing failed (e.g. the object changed meanwhile) | sync, `--dry-run`, restore again after a yes |
 | `restored, but checking the result failed` | the restore ran; reading the library afterwards failed | `zotero-backup diff BACKUP` shows the state |
 
+## Backup folder
+
+| Message (start) | Meaning | Next step |
+|---|---|---|
+| `the backup folder … does not exist: nothing was done` | `to` is not there: an external drive not connected, or never created | on an external drive: the user connects it; otherwise the user creates it once (`mkdir -p …`) or sets `to`. Never create a folder under `/Volumes` yourself: that puts backups on the internal disk |
+
 ## Upgrade
 
 | Message (start) | Meaning | Next step |
@@ -71,5 +77,11 @@ Errors print `zotero-backup: <message>` on stderr; the exit status is 1. Show th
 | `this build cannot verify updates` | an older build without the update key | download the release by hand |
 | `cannot write to …: run it again with sudo` | the program sits in a folder the user cannot write to | the user runs the shown command themselves |
 | `not on a terminal: update with zotero-backup upgrade … --yes` / `name the channel` | it needs a yes or a channel | ask the user, then `upgrade stable --yes` or `beta --yes` |
+
+## No message
+
+| Symptom | Meaning | Next step |
+|---|---|---|
+| a scheduled run on macOS stays `running` (`schedule show`), the log stops after its first lines | macOS waits for the user to allow access to the backup folder (another volume, Documents, Desktop, Downloads), in a dialog on the screen | the user clicks Allow on that computer's screen (Screen Sharing for a server), or gives the program Full Disk Access in System Settings → Privacy & Security; check again after an `upgrade` |
 
 For anything else: show the message and the command, and point to a bug report (no API keys, no private library content): <https://github.com/rkrug/zotero-backup/issues/new?template=bug_report.md>.

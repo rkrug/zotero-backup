@@ -16,6 +16,7 @@ type progress struct {
 	mode     string
 	interval time.Duration
 	w        io.Writer
+	file     io.Writer // the run log: plain lines every interval and every message, whatever the mode
 
 	mu      sync.Mutex
 	prefix  string
@@ -25,7 +26,8 @@ type progress struct {
 	extra   string
 	started time.Time
 	shown   time.Time
-	open    bool // an updating line is on screen
+	fshown  time.Time // last progress line in the run log
+	open    bool      // an updating line is on screen
 }
 
 // newProgress resolves "auto" to "line" on a terminal and "log" elsewhere.
@@ -50,23 +52,47 @@ func (p *progress) SetPrefix(s string) {
 	p.mu.Unlock()
 }
 
-// Logf prints a message line (not in quiet mode).
+// Logf prints a message line (not in quiet mode; always in the run log).
 func (p *progress) Logf(format string, args ...any) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	line := p.prefixed(fmt.Sprintf(format, args...))
+	p.toFile(line)
 	if p.mode == "quiet" {
 		return
 	}
 	p.endLine()
-	fmt.Fprintln(p.w, p.prefixed(fmt.Sprintf(format, args...)))
+	fmt.Fprintln(p.w, line)
 }
 
 // Warnf prints a message line in every mode, quiet included.
 func (p *progress) Warnf(format string, args ...any) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	line := p.prefixed(fmt.Sprintf(format, args...))
+	p.toFile(line)
 	p.endLine()
-	fmt.Fprintln(p.w, p.prefixed(fmt.Sprintf(format, args...)))
+	fmt.Fprintln(p.w, line)
+}
+
+// Record writes a line to the run log only (output the terminal gets elsewhere).
+func (p *progress) Record(line string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.toFile(line)
+}
+
+// SetFile sets the run log (nil: none).
+func (p *progress) SetFile(w io.Writer) {
+	p.mu.Lock()
+	p.file = w
+	p.mu.Unlock()
+}
+
+func (p *progress) toFile(line string) {
+	if p.file != nil {
+		fmt.Fprintf(p.file, "%s %s\n", time.Now().Format("15:04:05"), line)
+	}
 }
 
 // Phase starts counting towards total (0: unknown).
@@ -75,7 +101,7 @@ func (p *progress) Phase(name string, total int) {
 	defer p.mu.Unlock()
 	p.endLine()
 	p.phase, p.total, p.done, p.extra, p.started = name, total, 0, "", time.Now()
-	p.shown = time.Time{}
+	p.shown, p.fshown = time.Time{}, time.Time{}
 	p.show(false)
 }
 
@@ -104,6 +130,10 @@ func (p *progress) Done() {
 
 func (p *progress) show(final bool) {
 	now := time.Now()
+	if p.file != nil && (final || p.fshown.IsZero() || now.Sub(p.fshown) >= p.interval) {
+		p.toFile(p.render(now))
+		p.fshown = now
+	}
 	switch p.mode {
 	case "quiet":
 		return

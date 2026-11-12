@@ -4,6 +4,16 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+## v0.4.0 (2026-11-11)
+
+- **Tab completion** (#52) for zsh, bash, fish and PowerShell: `zotero-backup completion SHELL` prints the script (setup: Install → Completion). It completes commands, options, profiles, key names, `--exclude` parts and the backup folders below `to`; it reads only the configuration and the backup folder, and stays current after an `upgrade`.
+- **The result of a backup run** (#24): `backup` ends with one summary line, also when libraries failed or the run was stopped (Ctrl-C, `zotero-backup stop`): libraries backed up / failed / skipped, problems, missing files and how many are new since the previous backup, files downloaded and linked, the duration, and which libraries failed or were skipped and why. Libraries the key may not read (`library: all`) are counted apart as "without access". The same per library goes into `last-run.json` in the backup folder, for monitoring; `schedule show` shows it as "last run"; a notification starts with it; with `--quiet` only this line, failures and warnings remain.
+- A library skipped because another run is backing it up no longer counts as failed (no exit status 1, no notification).
+- **The backup folder must exist:** `backup` and `prune` stop with a message when `to` is not there (e.g. an external drive not connected), instead of creating it on the internal disk. Create it once with `mkdir -p`.
+- **Stress test:** whole backup runs (summary line, `last-run.json`, run logs and their archiving by prune, a missing backup folder, a locked library, a file missing on the server, a stop with Ctrl-C, the notification, libraries without access), and Tab completion of the backups, also through the bash and zsh scripts.
+- **A log per run** in `logs/` in the backup folder (`log_dir`, default `logs`; `""` for none): `<start>-backup.log` with its result `<start>-backup.json`, and `<start>-prune.log`; everything with the time of day, whatever the terminal shows. `prune` moves the logs of backups that are gone (and of failed runs once a newer one succeeded) to `logs/archive/` and compresses them there after a week. Scheduled jobs installed from now on run `--quiet`, so the scheduler's own log only keeps summaries, warnings and errors; `schedule show` names the run logs. Notifications name the log.
+- Documentation (Scheduled backups, Over SSH): on macOS the first scheduled run asks for access to a backup folder on another volume (or in Documents, Desktop, Downloads) and waits for the answer; how to see it and how to allow it beforehand (Full Disk Access).
+
 ## v0.3.1 (2026-11-11)
 
 - **Stress test:** every backup it makes is checked with `verify`; new extras for `diff` of two backups, `find`, `show --save` and the lock. Libraries in Zotero desktop are recognised by ID only, so a renamed account or group no longer stops it.

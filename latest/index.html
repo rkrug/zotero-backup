@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.3/">
+        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.4/">
       
       
       
@@ -85,7 +85,7 @@
           <div class="md-banner__inner md-grid md-typeset">
             
             
-zotero-backup v0.3.1 · No warranty: you are responsible for your data.
+zotero-backup v0.4.0 · No warranty: you are responsible for your data.
 Read the <a href="disclaimer/">disclaimer</a> before you restore or prune.
 
           </div>
@@ -102,7 +102,7 @@ Read the <a href="disclaimer/">disclaimer</a> before you restore or prune.
 
 
 
-This is the documentation of an <strong>older release (v0.3.1)</strong>.
+This is the documentation of an <strong>older release (v0.4.0)</strong>.
 
 <a href="../."><strong>Go to the latest release.</strong></a>
 
@@ -675,7 +675,8 @@ zotero-backup<span class="w"> </span>key<span class="w"> </span>check
 </li>
 <li>
 <p><strong>Back up</strong> and look at what is there:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># all libraries the key can read, into ~/zotero-backups</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># all libraries the key can read, into ~/zotero-backups (create it once: it is never created for you)</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>~/zotero-backups
 zotero-backup<span class="w"> </span>backup
 zotero-backup<span class="w"> </span>list
 </code></pre></div>

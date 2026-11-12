@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.3/stresstest/">
+        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.4/stresstest/">
       
       
         <link rel="prev" href="../offsite/">
@@ -87,7 +87,7 @@
           <div class="md-banner__inner md-grid md-typeset">
             
             
-zotero-backup v0.3.1 · No warranty: you are responsible for your data.
+zotero-backup v0.4.0 · No warranty: you are responsible for your data.
 Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
           </div>
@@ -104,7 +104,7 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
 
 
-This is the documentation of an <strong>older release (v0.3.1)</strong>.
+This is the documentation of an <strong>older release (v0.4.0)</strong>.
 
 <a href="../.."><strong>Go to the latest release.</strong></a>
 
@@ -1051,6 +1051,21 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
 <li><strong>Looking into backups</strong> (operations <code>diff-backups</code>, <code>find</code>, <code>show</code>): after the title change, a second backup; <code>diff</code> of the two backups lists exactly the changed titles and nothing removed; <code>find</code> finds the fixture items by title in the backups; <code>show</code> lists a family with its note, attachments and annotation, and <code>--save</code> copies its PDF.</li>
 <li><strong>Lock</strong> (operation <code>lock</code>): while the test holds the library's lock, a second backup of the library is refused; the lock is gone afterwards.</li>
 <li><code>prune --dry-run</code> with one daily backup kept lists all but the newest backup.</li>
+<li>
+<p><strong>Whole runs</strong> (operation <code>runs</code>), as the <code>backup</code> command makes them, into <code>runs/&lt;library&gt;/</code> in the run's folder (one per library, so prune sees only that library's runs):</p>
+<ul>
+<li>a backup folder that does not exist is refused and nothing is created;</li>
+<li>a library that cannot be read (item reads fail, simulated): <code>backup failed: 1 libraries (0 backed up, 1 failed, 0 skipped)</code>, exit status 1, <code>last-run.json</code> with status <code>failed</code>, its log and result file in <code>logs/</code>; the notification (a <code>notify_command</code>) starts with the summary line, names the log, has <code>ZB_STATUS=failed</code> and no API key;</li>
+<li>a normal run: <code>backup finished: 1 libraries (1 backed up, …)</code>, exit status 0, the counts in <code>last-run.json</code> are those of the backup's <code>meta.json</code>, the backup passes verify, the run log has the progress, the library's line and the summary line (and <code>resuming</code>, after the failed run);</li>
+<li>an attachment whose file was never uploaded, made through the API: the next run reports <code>(1 new)</code> missing files with its key in <code>last-run.json</code>, status still <code>ok</code>; the run after that <code>(0 new)</code>;</li>
+<li>with the library's lock held: the library is skipped, not failed (<code>1 skipped</code>, <code>running: PID …</code>, exit status 0);</li>
+<li><code>prune</code> with one daily backup kept: one backup left, <code>logs/</code> keeps the newest run's log and result and the prune log, the other runs' logs are in <code>logs/archive/</code>;</li>
+<li>a stop: the program itself is started with <code>backup</code> and gets Ctrl-C while it reads the library: <code>backup stopped: … ; stopped: &lt;library&gt;</code>, exit status 1, <code>last-run.json</code> status <code>stopped</code>, no lock left, a <code>.partial</code> that the next run continues (not on Windows);</li>
+<li>completion: Tab after <code>restore</code> offers the library folder in that backup folder, and inside it its backups; the same through the bash and zsh scripts (<code>zotero-backup completion bash|zsh</code>) calling the program itself, where those shells are installed (zsh without its line editor: what the script hands to <code>compadd</code> is compared); not fish and PowerShell, not on Windows;</li>
+<li>with <code>library: all</code>, when the key can read only the test libraries: the libraries it may not read are counted as <code>N without access</code>, not as skipped (otherwise noted as not checked).</li>
+</ul>
+<p>About 2–3 minutes per library: five short backup runs, a stopped run and a prune (and one backup of every test library for <code>library: all</code>).</p>
+</li>
 </ul>
 <h2 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">&para;</a></h2>
 <p>After each restore and sync, every fixture family is checked on its own:</p>
@@ -1133,6 +1148,8 @@ zotero-backup<span class="w"> </span>stresstest<span class="w"> </span>--key<spa
 <li>Changes through Safe Edit or Fix Proposals: both need approval in a dialog.</li>
 <li>Other Zotero apps on other computers: the second client is simulated through the API.</li>
 <li>Group renames and very large libraries: covered by earlier real runs (IPBES LDR, 6,975 items, 3.9 GB).</li>
+<li>The scheduled job (<code>schedule install</code>, <code>--quiet</code>, <code>run logs</code> and <code>last run</code> in <code>schedule show</code>): installing a real job during a test is too intrusive; unit tests, and <code>schedule install</code> on a real computer before a release.</li>
+<li>Compressing archived logs after a week: the test cannot wait a week (unit test with back-dated files).</li>
 </ul>
 
 

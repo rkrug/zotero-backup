@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.3/configuration/">
+        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.4/configuration/">
       
       
         <link rel="prev" href="../keys/">
@@ -87,7 +87,7 @@
           <div class="md-banner__inner md-grid md-typeset">
             
             
-zotero-backup v0.3.1 · No warranty: you are responsible for your data.
+zotero-backup v0.4.0 · No warranty: you are responsible for your data.
 Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
           </div>
@@ -104,7 +104,7 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
 
 
-This is the documentation of an <strong>older release (v0.3.1)</strong>.
+This is the documentation of an <strong>older release (v0.4.0)</strong>.
 
 <a href="../.."><strong>Go to the latest release.</strong></a>
 
@@ -621,7 +621,7 @@ This is the documentation of an <strong>older release (v0.3.1)</strong>.
 </tr>
 <tr>
 <td><code>to</code></td>
-<td>folder for the backups</td>
+<td>folder for the backups. It <strong>must exist</strong>: zotero-backup never creates it, so a backup to a drive that is not mounted stops with a message instead of filling the internal disk (<code>mkdir -p</code> it once)</td>
 </tr>
 <tr>
 <td><code>exclude</code></td>
@@ -630,6 +630,10 @@ This is the documentation of an <strong>older release (v0.3.1)</strong>.
 <tr>
 <td><code>keep_daily</code>, <code>keep_weekly</code>, <code>keep_monthly</code></td>
 <td><code>prune</code> keeps the newest backup of each of the last N days, ISO weeks and months (three generations); the newest backup is always kept</td>
+</tr>
+<tr>
+<td><code>log_dir</code></td>
+<td>folder for one log per run (<code>&lt;start&gt;-backup.log</code>, its result <code>&lt;start&gt;-backup.json</code>, <code>&lt;start&gt;-prune.log</code>), relative to <code>to</code> unless absolute; default <code>logs</code> (<code>~/zotero-backups/logs</code>); <code>""</code>: no run logs. <code>prune</code> moves old ones to <code>archive/</code> and compresses them there after a week (<a href="../backups/#logs">Backups → Logs</a>)</td>
 </tr>
 <tr>
 <td><code>progress</code></td>
@@ -641,7 +645,7 @@ This is the documentation of an <strong>older release (v0.3.1)</strong>.
 </tr>
 <tr>
 <td><code>notify_command</code></td>
-<td>a program with its arguments, run after a backup that <strong>failed or reported problems</strong>, e.g. <code>["/usr/bin/mail", "-s", "zotero-backup", "me@example.org"]</code>; no shell. It gets the backup's summary on stdin and <code>ZB_STATUS</code> (<code>failed</code> or <code>problems</code>) and <code>ZB_LIBRARIES_FAILED</code> in its environment, never an API key. See <a href="../scheduled/#notifications">Scheduled backups</a></td>
+<td>a program with its arguments, run after a backup that <strong>failed or reported problems</strong>, e.g. <code>["/usr/bin/mail", "-s", "zotero-backup", "me@example.org"]</code>; no shell. It gets the backup's summary on stdin (first the summary line) and <code>ZB_STATUS</code> (<code>failed</code> or <code>problems</code>) and <code>ZB_LIBRARIES_FAILED</code> in its environment, never an API key. See <a href="../scheduled/#notifications">Scheduled backups</a></td>
 </tr>
 <tr>
 <td><code>notify_macos</code></td>

@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.3/scheduled/">
+        <link rel="canonical" href="https://rkrug.github.io/zotero-backup/0.4/scheduled/">
       
       
         <link rel="prev" href="../restore/">
@@ -87,7 +87,7 @@
           <div class="md-banner__inner md-grid md-typeset">
             
             
-zotero-backup v0.3.1 · No warranty: you are responsible for your data.
+zotero-backup v0.4.0 · No warranty: you are responsible for your data.
 Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
           </div>
@@ -104,7 +104,7 @@ Read the <a href="../disclaimer/">disclaimer</a> before you restore or prune.
 
 
 
-This is the documentation of an <strong>older release (v0.3.1)</strong>.
+This is the documentation of an <strong>older release (v0.4.0)</strong>.
 
 <a href="../.."><strong>Go to the latest release.</strong></a>
 
@@ -700,7 +700,7 @@ This is the documentation of an <strong>older release (v0.3.1)</strong>.
 
 
 <h1 id="scheduled-backups">Scheduled backups<a class="headerlink" href="#scheduled-backups" title="Permanent link">&para;</a></h1>
-<p>Run <code>backup</code> and then <code>prune</code>, e.g. daily. With no terminal, progress is written as plain lines every <code>progress_interval</code> seconds; use <code>--quiet</code> for only the summary and errors.</p>
+<p>Run <code>backup</code> and then <code>prune</code>, e.g. daily. Each run writes its own log into <code>logs/</code> in the backup folder (<a href="../backups/#logs">Backups → Logs</a>); with no terminal, progress is also written as plain lines every <code>progress_interval</code> seconds to the output, so <code>--quiet</code> (only the summary and errors) is enough for the scheduler's own log.</p>
 <p>The computer has to be on and online at that time; Zotero desktop does not need to run (backups use the web API only). Use a <strong>read-only</strong> key for scheduled backups, so a key that is stored for unattended runs cannot change any library.</p>
 <h2 id="the-quick-way">The quick way<a class="headerlink" href="#the-quick-way" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>zotero-backup<span class="w"> </span>schedule<span class="w"> </span>install<span class="w"> </span>--at<span class="w"> </span><span class="m">02</span>:30<span class="w">    </span><span class="c1"># daily backup, then prune</span>
@@ -708,11 +708,12 @@ zotero-backup<span class="w"> </span>schedule<span class="w"> </span>show<span c
 zotero-backup<span class="w"> </span>schedule<span class="w"> </span>show<span class="w"> </span>raw<span class="w">              </span><span class="c1"># the files themselves and the scheduler's own output</span>
 zotero-backup<span class="w"> </span>schedule<span class="w"> </span>remove
 </code></pre></div>
-<p>It sets up what the sections below describe, with your system's own scheduler, running while you are logged in: a <strong>LaunchAgent</strong> on macOS (<code>~/Library/LaunchAgents/org.zotero-backup.plist</code>, log <code>~/Library/Logs/zotero-backup.log</code>), a <strong>systemd user timer</strong> on Linux (<code>~/.config/systemd/user/zotero-backup.timer</code>, log in the journal) or a <strong>scheduled task</strong> on Windows (log in <code>%LOCALAPPDATA%\zotero-backup</code>). The job runs <code>backup</code> and then <code>prune</code> with progress as log lines, using this program's full path; <code>--profile</code> and <code>--config</code> are passed on (another profile gets its own job, e.g. <code>org.zotero-backup.work</code>). Default time 06:00.</p>
+<p>It sets up what the sections below describe, with your system's own scheduler, running while you are logged in: a <strong>LaunchAgent</strong> on macOS (<code>~/Library/LaunchAgents/org.zotero-backup.plist</code>, log <code>~/Library/Logs/zotero-backup.log</code>), a <strong>systemd user timer</strong> on Linux (<code>~/.config/systemd/user/zotero-backup.timer</code>, log in the journal) or a <strong>scheduled task</strong> on Windows (log in <code>%LOCALAPPDATA%\zotero-backup</code>). The job runs <code>backup</code> and then <code>prune</code> with <code>--quiet</code> (the run logs in <code>logs/</code> have everything; the scheduler's log keeps the summary lines, warnings and whatever goes wrong before a run log is open, e.g. a backup folder that is not there; with <code>log_dir: ""</code> progress lines instead), using this program's full path; <code>--profile</code> and <code>--config</code> are passed on (another profile gets its own job, e.g. <code>org.zotero-backup.work</code>). Default time 06:00.</p>
 <ul>
 <li>Store the key first (<code>zotero-backup key set</code>): the job reads it from your keychain.</li>
 <li>It never overwrites or removes a setup it did not write itself (e.g. one copied from below by hand): it says so and stops.</li>
 <li>Install zotero-backup in its final place first: the job keeps the path of the program it was set up <strong>with</strong> (<code>upgrade</code> replaces the file in place, so the job stays valid). <code>install</code> and <code>show</code> say so when that is not the <code>zotero-backup</code> on your <code>PATH</code>; running <code>schedule install</code> again with the right one replaces the job.</li>
+<li><strong>macOS: the first scheduled run may ask for access.</strong> When the backup folder is on another disk or volume (e.g. <code>/Volumes/Data</code>), or in Documents, Desktop, Downloads or iCloud Drive, macOS asks whether <code>zotero-backup</code> may access files there, in a dialog on the screen. The run waits until someone answers it: the log shows nothing after its first lines, and <code>schedule show</code> says <code>running</code>. Click <strong>Allow</strong> and the run continues. A run started in Terminal or over SSH does not ask (the permission belongs to the terminal or SSH), so the first scheduled run is the one to watch, and the first one after an <code>upgrade</code> (macOS may ask again for the new program file). On a computer nobody looks at, give <code>zotero-backup</code> (its full path, e.g. <code>~/bin/zotero-backup</code>) <strong>Full Disk Access</strong> in System Settings → Privacy &amp; Security instead.</li>
 <li>For runs <strong>while nobody is logged in</strong>, use the manual setups <a href="#when-nobody-is-logged-in">below</a>.</li>
 <li>A backup started by hand that still runs when the schedule comes up is safe: the scheduled run skips the libraries it is working on (<a href="../backups/">Backups → One run per library</a>). <code>zotero-backup status</code> shows what runs, <code>zotero-backup stop</code> stops it.</li>
 </ul>
@@ -756,15 +757,15 @@ zotero-backup<span class="w"> </span>schedule<span class="w"> </span>remove
 <div class="highlight"><pre><span></span><code>schtasks /Create /SC DAILY /ST 06:00 /TN <span class="s2">"zotero-backup"</span> /TR <span class="s2">"cmd /c \"</span>C:\Tools\zotero-backup.exe backup <span class="p">&amp;&amp;</span> C:\Tools\zotero-backup.exe prune\<span class="s2">""</span>
 </code></pre></div>
 <h2 id="checking-the-backups">Checking the backups<a class="headerlink" href="#checking-the-backups" title="Permanent link">&para;</a></h2>
-<p><code>zotero-backup verify</code> checks the newest backups offline (files, checksums, JSON; <a href="../backups/#checking-backups">Backups → Checking backups</a>). To check after every run, add it to the job by hand, or run it e.g. weekly with <code>verify all</code>; its exit status is 1 when a backup has problems.</p>
+<p><code>zotero-backup schedule show</code> names the folder of the run logs and ends with the last run: when, its exit status and its summary line (<a href="../backups/#the-result-of-a-run">Backups → The result of a run</a>); the details per library are in <code>last-run.json</code> in the backup folder. <code>zotero-backup verify</code> checks the newest backups offline (files, checksums, JSON; <a href="../backups/#checking-backups">Backups → Checking backups</a>). To check after every run, add it to the job by hand, or run it e.g. weekly with <code>verify all</code>; its exit status is 1 when a backup has problems.</p>
 <h2 id="notifications">Notifications<a class="headerlink" href="#notifications" title="Permanent link">&para;</a></h2>
 <p>A scheduled backup that fails says so only in its log. To hear about it, set in the profile (<a href="../configuration/">Configuration</a>):</p>
 <div class="highlight"><pre><span></span><code><span class="nt">"notify_macos"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="nt">"notify_command"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"/usr/bin/mail"</span><span class="p">,</span><span class="w"> </span><span class="s2">"-s"</span><span class="p">,</span><span class="w"> </span><span class="s2">"zotero-backup failed"</span><span class="p">,</span><span class="w"> </span><span class="s2">"me@example.org"</span><span class="p">]</span>
 </code></pre></div>
 <ul>
-<li>Sent after a backup that <strong>failed</strong> (a library could not be backed up, no key, …) or reported <strong>problems</strong> in <code>meta.json</code>; not for attachments whose file never reached the server (<code>missing_files</code>), which are common.</li>
-<li><code>notify_command</code> is a program and its arguments, run without a shell, with the summary on stdin and <code>ZB_STATUS</code> (<code>failed</code>, <code>problems</code>) and <code>ZB_LIBRARIES_FAILED</code> in the environment; <code>ZOTERO_API_KEY</code> is removed from its environment. Any tool works: <code>mail</code>, <code>curl</code> to <a href="https://ntfy.sh">ntfy</a> (<code>["curl", "-T", "-", "https://ntfy.sh/my-topic"]</code>), a script of your own.</li>
+<li>Sent after a backup that <strong>failed</strong> (a library could not be backed up, no key, …) or reported <strong>problems</strong> in <code>meta.json</code>; not for a library skipped because another run is backing it up, and not for attachments whose file never reached the server (<code>missing_files</code>, also new ones), which are common.</li>
+<li><code>notify_command</code> is a program and its arguments, run without a shell, with the summary on stdin (first the <a href="../backups/#the-result-of-a-run">summary line</a>, then one line per library) and <code>ZB_STATUS</code> (<code>failed</code>, <code>problems</code>) and <code>ZB_LIBRARIES_FAILED</code> in the environment; <code>ZOTERO_API_KEY</code> is removed from its environment. Any tool works: <code>mail</code>, <code>curl</code> to <a href="https://ntfy.sh">ntfy</a> (<code>["curl", "-T", "-", "https://ntfy.sh/my-topic"]</code>), a script of your own.</li>
 <li><code>notify_macos</code> shows a macOS notification (Notification Center). Under a LaunchDaemon (nobody logged in) there is no one to show it to: use <code>notify_command</code> there.</li>
 <li>A notification that fails is reported in the log and does not change the backup's result.</li>
 <li>Try it: <code>zotero-backup notify-test</code>.</li>

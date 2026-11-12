@@ -1,47 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://rkrug.github.io/zotero-backup/0.3/</loc>
-         <lastmod>2026-11-11</lastmod>
+         <loc>https://rkrug.github.io/zotero-backup/0.4/</loc>
+         <lastmod>2026-11-12</lastmod>
     </url>
     <url>
-         <loc>https://rkrug.github.io/zotero-backup/0.3/backups/</loc>
-         <lastmod>2026-11-11</lastmod>
+         <loc>https://rkrug.github.io/zotero-backup/0.4/backups/</loc>
+         <lastmod>2026-11-12</lastmod>
     </url>
     <url>
-         <loc>https://rkrug.github.io/zotero-backup/0.3/configuration/</loc>
-         <lastmod>2026-11-11</lastmod>
+         <loc>https://rkrug.github.io/zotero-backup/0.4/configuration/</loc>
+         <lastmod>2026-11-12</lastmod>
     </url>
     <url>
-         <loc>https://rkrug.github.io/zotero-backup/0.3/disclaimer/</loc>
-         <lastmod>2026-11-11</lastmod>
+         <loc>https://rkrug.github.io/zotero-backup/0.4/disclaimer/</loc>
+         <lastmod>2026-11-12</lastmod>
     </url>
     <url>
-         <loc>https://rkrug.github.io/zotero-backup/0.3/install/</loc>
-         <lastmod>2026-11-11</lastmod>
+         <loc>https://rkrug.github.io/zotero-backup/0.4/install/</loc>
+         <lastmod>2026-11-12</lastmod>
     </url>
     <url>
-         <loc>https://rkrug.github.io/zotero-backup/0.3/keys/</loc>
-         <lastmod>2026-11-11</lastmod>
+         <loc>https://rkrug.github.io/zotero-backup/0.4/keys/</loc>
+         <lastmod>2026-11-12</lastmod>
     </url>
     <url>
-         <loc>https://rkrug.github.io/zotero-backup/0.3/offsite/</loc>
-         <lastmod>2026-11-11</lastmod>
+         <loc>https://rkrug.github.io/zotero-backup/0.4/offsite/</loc>
+         <lastmod>2026-11-12</lastmod>
     </url>
     <url>
-         <loc>https://rkrug.github.io/zotero-backup/0.3/restore/</loc>
-         <lastmod>2026-11-11</lastmod>
+         <loc>https://rkrug.github.io/zotero-backup/0.4/restore/</loc>
+         <lastmod>2026-11-12</lastmod>
     </url>
     <url>
-         <loc>https://rkrug.github.io/zotero-backup/0.3/scheduled/</loc>
-         <lastmod>2026-11-11</lastmod>
+         <loc>https://rkrug.github.io/zotero-backup/0.4/scheduled/</loc>
+         <lastmod>2026-11-12</lastmod>
     </url>
     <url>
-         <loc>https://rkrug.github.io/zotero-backup/0.3/ssh/</loc>
-         <lastmod>2026-11-11</lastmod>
+         <loc>https://rkrug.github.io/zotero-backup/0.4/ssh/</loc>
+         <lastmod>2026-11-12</lastmod>
     </url>
     <url>
-         <loc>https://rkrug.github.io/zotero-backup/0.3/stresstest/</loc>
-         <lastmod>2026-11-11</lastmod>
+         <loc>https://rkrug.github.io/zotero-backup/0.4/stresstest/</loc>
+         <lastmod>2026-11-12</lastmod>
     </url>
 </urlset>

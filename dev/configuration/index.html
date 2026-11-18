@@ -636,6 +636,10 @@ This is the documentation of the <strong>unreleased</strong> development version
 <td>folder for one log per run (<code>&lt;start&gt;-backup.log</code>, its result <code>&lt;start&gt;-backup.json</code>, <code>&lt;start&gt;-prune.log</code>), relative to <code>to</code> unless absolute; default <code>logs</code> (<code>~/zotero-backups/logs</code>); <code>""</code>: no run logs. <code>prune</code> moves old ones to <code>archive/</code> and compresses them there after a week (<a href="../backups/#logs">Backups → Logs</a>)</td>
 </tr>
 <tr>
+<td><code>latest_dir</code></td>
+<td>an absolute folder, outside <code>to</code>, on the same drive: after each backup, <code>&lt;latest_dir&gt;/&lt;library folder&gt;/</code> is a <strong>hard-link copy of the library's newest backup</strong>, at the same paths every time, for backup programs that do not know hard links (Backblaze); default <code>""</code> (none). It must exist (never created); trouble with it is reported as a problem of that library, the backup itself stays. See <a href="../offsite/#backup-programs-that-do-not-know-hard-links">Off-site copies</a></td>
+</tr>
+<tr>
 <td><code>progress</code></td>
 <td><code>auto</code> (an updating line on a terminal, plain lines otherwise), <code>line</code>, <code>log</code> or <code>quiet</code>; <code>--progress</code> / <code>--quiet</code> override it</td>
 </tr>

@@ -540,6 +540,15 @@ This is the documentation of the <strong>unreleased</strong> development version
 </li>
       
         <li class="md-nav__item">
+  <a href="#backup-programs-that-do-not-know-hard-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backup programs that do not know hard links
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#encryption" class="md-nav__link">
     <span class="md-ellipsis">
       Encryption
@@ -663,6 +672,15 @@ This is the documentation of the <strong>unreleased</strong> development version
 </li>
       
         <li class="md-nav__item">
+  <a href="#backup-programs-that-do-not-know-hard-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backup programs that do not know hard links
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#encryption" class="md-nav__link">
     <span class="md-ellipsis">
       Encryption
@@ -721,7 +739,19 @@ This is the documentation of the <strong>unreleased</strong> development version
 <h2 id="backup-software-and-cloud-folders">Backup software and cloud folders<a class="headerlink" href="#backup-software-and-cloud-folders" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Time Machine and similar tools</strong> back up <code>~/zotero-backups</code> like any other folder. Whether they keep the hard links depends on the tool: check the space the backups take there after a few runs.</li>
-<li><strong>Cloud folders</strong> (iCloud Drive, Dropbox, OneDrive, Google Drive) store every hard link as a file of its own: do not put the backup folder into one. Put an archive there instead, or only the newest backup (<code>zotero-backup list</code> shows it).</li>
+<li><strong>Cloud folders</strong> (iCloud Drive, Dropbox, OneDrive, Google Drive) store every hard link as a file of its own: do not put the backup folder into one. Put an archive there instead, or only the newest backup: <code>latest_dir</code> (below) keeps it at a fixed path.</li>
+</ul>
+<h2 id="backup-programs-that-do-not-know-hard-links">Backup programs that do not know hard links<a class="headerlink" href="#backup-programs-that-do-not-know-hard-links" title="Permanent link">&para;</a></h2>
+<p>Backblaze Personal and similar programs back up every path as a file of its own. Each backup is a new dated folder, so they read (and may upload) every file again each night, although on disk it is the same file.</p>
+<p><code>latest_dir</code> (<a href="../configuration/">Configuration</a>) avoids that: after each backup, zotero-backup makes <code>&lt;latest_dir&gt;/&lt;library folder&gt;/</code> a hard-link copy of the library's newest backup. The paths stay the same from one night to the next, and a file that did not change stays the same file, so such a program uploads only what changed (new and changed files, the JSON files).</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">"profiles"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"to"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/Volumes/Data/zotero-backup"</span><span class="p">,</span><span class="w"> </span><span class="nt">"latest_dir"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/Volumes/Data/zotero-latest"</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<ul>
+<li>Create the folder once (<code>mkdir -p /Volumes/Data/zotero-latest</code>); it is never created, like <code>to</code>.</li>
+<li>It must be on the <strong>same drive</strong> as <code>to</code> (hard links); it takes almost no space.</li>
+<li>Exclude <code>to</code> in the backup program (Backblaze: Settings → Exclusions; that covers every backup folder made later) and leave <code>latest_dir</code> included.</li>
+<li>The copy off-site then has the newest state (and whatever older versions the program keeps); the history stays in <code>to</code>.</li>
+<li>A library no longer backed up keeps its folder in <code>latest_dir</code> until you remove it.</li>
 </ul>
 <h2 id="encryption">Encryption<a class="headerlink" href="#encryption" title="Permanent link">&para;</a></h2>
 <p>Backups contain your whole library: notes, PDFs, annotations. A copy that leaves the house belongs on an encrypted disk or volume: an encrypted APFS volume or disk image (Disk Utility) on macOS, BitLocker on Windows, LUKS on Linux, or an encrypted NAS share. zotero-backup does not encrypt itself.</p>

@@ -715,6 +715,7 @@ This is the documentation of the <strong>unreleased</strong> development version
     archive/                        logs of backups that are gone; .gz after a week
   last-run.json      the result of the newest backup run
 </code></pre></div>
+<p>With <code>latest_dir</code> set, a second folder outside <code>to</code> holds a hard-link copy of each library's newest backup (<code>&lt;latest_dir&gt;/group-2333076-IPBES_LDR/meta.json</code>, <code>files/…</code>), for backup programs that do not know hard links: see <a href="../offsite/#backup-programs-that-do-not-know-hard-links">Off-site copies</a>.</p>
 <p>The backup folder (<code>to</code>) must exist: zotero-backup never creates it. A backup or prune to a folder that is not there (an external drive not connected) stops at once with a message: nothing is written, and the internal disk does not fill up instead.</p>
 <ul>
 <li>Folder names are <code>group-&lt;id&gt;-&lt;name&gt;</code> and <code>user-&lt;id&gt;-&lt;username&gt;</code> (spaces as <code>_</code>). A renamed group keeps its folder: it is found by ID and renamed.</li>

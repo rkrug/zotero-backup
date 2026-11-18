@@ -491,3 +491,65 @@ func TestFulltextReusedWhenUnchanged(t *testing.T) {
 		t.Errorf("changed entry not fetched again (%d fetches)", f.ftGets)
 	}
 }
+
+// sameTree fails unless got is a hard-link copy of want.
+func sameTree(t *testing.T, want, got string) {
+	t.Helper()
+	for _, d := range latestDiffers(want, got) {
+		t.Error(d)
+	}
+}
+
+func TestLatestDir(t *testing.T) {
+	root, latest := t.TempDir(), t.TempDir()
+	lib := library{Path: "/groups/1", ID: "group-1", Name: "Test group"}
+	dst := filepath.Join(latest, lib.Dir())
+	f := sampleLibrary()
+	f.addFile("PDF00002", "BOOK0001", "gone.pdf", "pdf-gone", true)
+	f.addFile("PDF00003", "BOOK0001", "changed.pdf", "pdf-old", true)
+	b1, _ := runFake(t, f, root, nil, day(1))
+	if err := refreshLatest(latest, lib, b1); err != nil {
+		t.Fatal(err)
+	}
+	sameTree(t, b1, dst)
+	unchanged, _ := os.Stat(filepath.Join(dst, "files", "PDF00001", safeName(`Report: draft?.pdf`, "")))
+
+	delete(f.items, "PDF00002")
+	f.addFile("PDF00003", "BOOK0001", "changed.pdf", "pdf-new", true)
+	f.addFile("PDF00004", "BOOK0001", "new.pdf", "pdf-new-file", true)
+	os.WriteFile(filepath.Join(dst, "stray.txt"), []byte("x"), 0o644)
+	b2, _ := runFake(t, f, root, nil, day(2))
+	if err := refreshLatest(latest, lib, b2); err != nil {
+		t.Fatal(err)
+	}
+	sameTree(t, b2, dst) // changed and new files linked, gone and stray ones removed
+	if now, err := os.Stat(filepath.Join(dst, "files", "PDF00001", safeName(`Report: draft?.pdf`, ""))); err != nil || !os.SameFile(unchanged, now) {
+		t.Errorf("an unchanged file was replaced: %v", err)
+	}
+
+	// through a backup run: refreshed after the backup; a missing latest_dir is a problem, never created
+	p := defaultProfile()
+	p.Library, p.To, p.LatestDir = "group:1", t.TempDir(), filepath.Join(t.TempDir(), "zotero-latest")
+	sum, err := runBackup(fixed(fakeClient(t, sampleLibrary())), p, io.Discard, quietProgress())
+	if err != nil || sum.Status != "problems" || len(sum.Libraries) != 1 || !strings.Contains(strings.Join(sum.Libraries[0].Problems, ""), "does not exist") {
+		t.Errorf("missing latest_dir: %v %s %+v", err, sum.Status, sum.Libraries)
+	}
+	if _, err := os.Stat(p.LatestDir); err == nil {
+		t.Error("latest_dir was created")
+	}
+	os.Mkdir(p.LatestDir, 0o755)
+	p.To = t.TempDir() // backups are named by the second
+	sum, err = runBackup(fixed(fakeClient(t, sampleLibrary())), p, io.Discard, quietProgress())
+	if err != nil || sum.Status != "ok" {
+		t.Fatalf("%v %s", err, sum.Status)
+	}
+	sameTree(t, sum.Libraries[0].Backup, filepath.Join(p.LatestDir, lib.Dir()))
+
+	// inside "to" or relative: refused
+	in := filepath.ToSlash(p.To)
+	for _, d := range []string{in + "/latest", "latest"} {
+		if _, err := parseConfig([]byte(`{"profiles":{"p":{"to":"` + in + `","latest_dir":"` + d + `"}}}`)); err == nil || !strings.Contains(err.Error(), "latest_dir") {
+			t.Errorf("latest_dir %q: %v", d, err)
+		}
+	}
+}

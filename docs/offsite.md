@@ -31,7 +31,23 @@ An archive is one file: it suits a cloud folder, a USB stick or a drive formatte
 ## Backup software and cloud folders
 
 - **Time Machine and similar tools** back up `~/zotero-backups` like any other folder. Whether they keep the hard links depends on the tool: check the space the backups take there after a few runs.
-- **Cloud folders** (iCloud Drive, Dropbox, OneDrive, Google Drive) store every hard link as a file of its own: do not put the backup folder into one. Put an archive there instead, or only the newest backup (`zotero-backup list` shows it).
+- **Cloud folders** (iCloud Drive, Dropbox, OneDrive, Google Drive) store every hard link as a file of its own: do not put the backup folder into one. Put an archive there instead, or only the newest backup: `latest_dir` (below) keeps it at a fixed path.
+
+## Backup programs that do not know hard links
+
+Backblaze Personal and similar programs back up every path as a file of its own. Each backup is a new dated folder, so they read (and may upload) every file again each night, although on disk it is the same file.
+
+`latest_dir` ([Configuration](configuration.md)) avoids that: after each backup, zotero-backup makes `<latest_dir>/<library folder>/` a hard-link copy of the library's newest backup. The paths stay the same from one night to the next, and a file that did not change stays the same file, so such a program uploads only what changed (new and changed files, the JSON files).
+
+```json
+{ "profiles": { "default": { "to": "/Volumes/Data/zotero-backup", "latest_dir": "/Volumes/Data/zotero-latest" } } }
+```
+
+- Create the folder once (`mkdir -p /Volumes/Data/zotero-latest`); it is never created, like `to`.
+- It must be on the **same drive** as `to` (hard links); it takes almost no space.
+- Exclude `to` in the backup program (Backblaze: Settings → Exclusions; that covers every backup folder made later) and leave `latest_dir` included.
+- The copy off-site then has the newest state (and whatever older versions the program keeps); the history stays in `to`.
+- A library no longer backed up keeps its folder in `latest_dir` until you remove it.
 
 ## Encryption
 

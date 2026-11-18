@@ -17,6 +17,8 @@
   last-run.json      the result of the newest backup run
 ```
 
+With `latest_dir` set, a second folder outside `to` holds a hard-link copy of each library's newest backup (`<latest_dir>/group-2333076-IPBES_LDR/meta.json`, `files/…`), for backup programs that do not know hard links: see [Off-site copies](offsite.md#backup-programs-that-do-not-know-hard-links).
+
 The backup folder (`to`) must exist: zotero-backup never creates it. A backup or prune to a folder that is not there (an external drive not connected) stops at once with a message: nothing is written, and the internal disk does not fill up instead.
 
 - Folder names are `group-<id>-<name>` and `user-<id>-<username>` (spaces as `_`). A renamed group keeps its folder: it is found by ID and renamed.

@@ -506,6 +506,12 @@ func runBackup(clientFor func(string) (*Client, error), p Profile, out io.Writer
 			r.Result, r.Backup, r.Version, r.Items, r.Files = "backed up", dir, m.Version, itemCount(m.Counts), m.Counts["files"]
 			r.Downloaded, r.DownBytes, r.Linked, r.Missing = m.Downloaded, m.DownBytes, m.Linked, len(m.Missing)
 			r.NewMissing, r.Problems, r.Seconds = newMissing(dir, m), m.Problems, m.Seconds
+			if d := expandHome(p.LatestDir); d != "" {
+				if err := refreshLatest(d, lib, dir); err != nil {
+					r.Problems = append(r.Problems, err.Error())
+					pr.Warnf("%v", err)
+				}
+			}
 		}
 		sum.add(r)
 		pr.Record(libLine(r))

@@ -4,6 +4,8 @@ What changed for users, per version. The [releases](https://github.com/rkrug/zot
 
 ## Unreleased
 
+- **`latest_dir`** (configuration): after each backup, a hard-link copy of each library's newest backup in a folder of its own (outside `to`, same drive), at the same paths every time. Backup programs that do not know hard links (Backblaze Personal) then upload only what changed, instead of every file of each new dated backup folder: exclude `to` there and include `latest_dir` (Off-site copies). Also in the stress test.
+
 ## v0.4.0 (2026-11-11)
 
 - **Tab completion** (#52) for zsh, bash, fish and PowerShell: `zotero-backup completion SHELL` prints the script (setup: Install → Completion). It completes commands, options, profiles, key names, `--exclude` parts and the backup folders below `to`; it reads only the configuration and the backup folder, and stays current after an `upgrade`.

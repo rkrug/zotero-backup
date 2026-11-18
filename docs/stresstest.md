@@ -150,6 +150,7 @@ Each scenario runs one cycle for all operations:
     - a backup folder that does not exist is refused and nothing is created;
     - a library that cannot be read (item reads fail, simulated): `backup failed: 1 libraries (0 backed up, 1 failed, 0 skipped)`, exit status 1, `last-run.json` with status `failed`, its log and result file in `logs/`; the notification (a `notify_command`) starts with the summary line, names the log, has `ZB_STATUS=failed` and no API key;
     - a normal run: `backup finished: 1 libraries (1 backed up, …)`, exit status 0, the counts in `last-run.json` are those of the backup's `meta.json`, the backup passes verify, the run log has the progress, the library's line and the summary line (and `resuming`, after the failed run);
+    - with `latest_dir` (a folder next to `runs/`) from the normal run on: after each run it is a hard-link copy of the newest backup (every file the same file, nothing left over), and a file that did not change keeps its path and stays the same file;
     - an attachment whose file was never uploaded, made through the API: the next run reports `(1 new)` missing files with its key in `last-run.json`, status still `ok`; the run after that `(0 new)`;
     - with the library's lock held: the library is skipped, not failed (`1 skipped`, `running: PID …`, exit status 0);
     - `prune` with one daily backup kept: one backup left, `logs/` keeps the newest run's log and result and the prune log, the other runs' logs are in `logs/archive/`;

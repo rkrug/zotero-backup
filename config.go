@@ -26,6 +26,7 @@ type Profile struct {
 	KeepWeekly  int               `json:"keep_weekly"`  // prune: newest backup of each of the last N weeks
 	KeepMonthly int               `json:"keep_monthly"` // prune: newest backup of each of the last N months
 	LogDir      string            `json:"log_dir"`      // a log per run; relative to "to" unless absolute; "" = none
+	LatestDir   string            `json:"latest_dir"`   // absolute; a hard-link copy of each library's newest backup at a fixed path; "" = none
 
 	Progress         string `json:"progress"`          // auto, line, log or quiet
 	ProgressInterval int    `json:"progress_interval"` // seconds between progress lines in log mode
@@ -137,6 +138,14 @@ func (p Profile) validate() error {
 	}
 	if len(p.NotifyCommand) > 0 && strings.TrimSpace(p.NotifyCommand[0]) == "" {
 		return errors.New("notify_command: the first entry must be the program")
+	}
+	if d := expandHome(p.LatestDir); d != "" {
+		if !filepath.IsAbs(d) {
+			return fmt.Errorf("latest_dir %q must be an absolute path (or start with ~)", p.LatestDir)
+		}
+		if rel, err := filepath.Rel(expandHome(p.To), d); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("latest_dir %q must not be inside \"to\" (%s): it is meant to be backed up while \"to\" is not", p.LatestDir, p.To)
+		}
 	}
 	if p.KeepDaily < 0 || p.KeepWeekly < 0 || p.KeepMonthly < 0 {
 		return errors.New("keep_daily, keep_weekly and keep_monthly must not be negative")

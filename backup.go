@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -670,6 +671,65 @@ func linkOrCopy(src, dst string) error {
 		return err
 	}
 	return out.Close()
+}
+
+// refreshLatest makes latestRoot/<library folder> a hard-link copy of the
+// library's newest backup (latest_dir), changing only what differs: a file
+// that is already the same file stays, others are replaced by renaming over
+// them, and what the backup no longer has is removed. The paths stay the same
+// from one backup to the next, so a backup program that does not know hard
+// links (Backblaze) uploads only what changed. latestRoot is never created.
+func refreshLatest(latestRoot string, lib library, backup string) error {
+	if info, err := os.Stat(latestRoot); err != nil || !info.IsDir() {
+		return fmt.Errorf("latest_dir %s does not exist or is not a folder, not updated (it is never created: mkdir -p it once)", latestRoot)
+	}
+	dst, err := libraryFolder(latestRoot, lib)
+	if err != nil {
+		return err
+	}
+	keep := map[string]bool{}
+	err = filepath.WalkDir(backup, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(backup, p)
+		keep[rel] = true
+		t := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(t, 0o755)
+		}
+		src, err := os.Stat(p)
+		if err != nil {
+			return err
+		}
+		if have, err := os.Stat(t); err == nil && os.SameFile(src, have) {
+			return nil
+		}
+		tmp := filepath.Join(filepath.Dir(t), ".zb-latest-tmp")
+		os.Remove(tmp)
+		if err := os.Link(p, tmp); err != nil {
+			return fmt.Errorf("latest_dir must be on the same drive as \"to\" (hard links): %w", err)
+		}
+		return os.Rename(tmp, t)
+	})
+	if err != nil {
+		return err
+	}
+	return filepath.WalkDir(dst, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if rel, _ := filepath.Rel(dst, p); keep[rel] {
+			return nil
+		}
+		if err := os.RemoveAll(p); err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return fs.SkipDir
+		}
+		return nil
+	})
 }
 
 func md5File(path string) (string, int64, error) {

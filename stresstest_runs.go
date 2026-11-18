@@ -5,7 +5,7 @@ package main
 // line, last-run.json and the result files, the run logs and their archiving
 // by prune, a backup folder that does not exist, a library locked by another
 // run, a file missing on the server (new, then not new), a stop in the middle
-// of a run, the notification, and libraries the key may not read.
+// of a run, the notification, libraries the key may not read, and latest_dir.
 
 import (
 	"crypto/rand"
@@ -125,6 +125,15 @@ func (s *stress) runChecks() {
 		os.Remove(notified)
 	}
 
+	// from here on with latest_dir: each run refreshes the hard-link copy of the newest backup
+	latestRoot := filepath.Join(s.root, "runs-latest", s.lib.ID)
+	if err := os.MkdirAll(latestRoot, 0o755); err != nil {
+		s.record(sc, op, "latest_dir: make the folder", false, "%v", err)
+	} else {
+		p.LatestDir = latestRoot
+	}
+	latest := filepath.Join(latestRoot, s.lib.Dir())
+
 	// 3. a normal run: summary line, last-run.json, result file and log agree with the backup
 	sum2, out2, err := run(p, client)
 	b2 := ""
@@ -143,6 +152,17 @@ func (s *stress) runChecks() {
 	}
 	r := (&verifier{seen: map[string][]os.FileInfo{}}).check(b2)
 	s.record("backups", "verify", "backup "+filepath.Base(b2)+" (runs) passes verify", len(r.problems) == 0, "%s", strings.Join(r.problems, "; "))
+	diffs := latestDiffers(b2, latest)
+	s.record(sc, op, "latest_dir: after the run it holds the newest backup, every file the same file (hard link)", len(diffs) == 0, "%s", strings.Join(diffs, "; "))
+	var kept os.FileInfo // a file that stays the same; checked after the later runs
+	keptRel := ""
+	filepath.WalkDir(filepath.Join(latest, "files"), func(p string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && keptRel == "" {
+			keptRel, _ = filepath.Rel(latest, p)
+			kept, _ = os.Stat(p)
+		}
+		return nil
+	})
 	lb, _ := os.ReadFile(sum2.Log)
 	log := string(lb)
 	s.record(sc, op, "the run log has the progress, the library's line and the summary line, with times",
@@ -200,6 +220,20 @@ func (s *stress) runChecks() {
 		s.sync(sc, "sync after the missing-file item", "fail")
 	}
 
+	// latest_dir after the later runs: the newest backup, an unchanged file not replaced
+	if bs := backups(lib); len(bs) > 0 {
+		newest := filepath.Join(lib, bs[len(bs)-1])
+		diffs := latestDiffers(newest, latest)
+		s.record(sc, op, "latest_dir: after later runs it holds the newest backup ("+bs[len(bs)-1]+"), nothing left over", len(diffs) == 0, "%s", strings.Join(diffs, "; "))
+		if keptRel == "" {
+			s.note(sc, op, "latest_dir: an unchanged file keeps its path and file", "not checked: the library has no files")
+		} else {
+			now, err := os.Stat(filepath.Join(latest, keptRel))
+			s.record(sc, op, "latest_dir: an unchanged file keeps its path and is the same file ("+keptRel+")", err == nil && os.SameFile(kept, now), "%v", err)
+		}
+	}
+	p.LatestDir = ""
+
 	// 7. prune: all but the newest backup go; the logs of runs whose backups are gone, and of
 	// runs that made none (before a newer success), move to logs/archive
 	pp := p
@@ -237,6 +271,41 @@ func (s *stress) runChecks() {
 
 	// 10. libraries the key may not read are counted apart ("N without access")
 	s.noAccessCheck(root, p)
+}
+
+// latestDiffers lists how latest differs from a hard-link copy of backup:
+// files that are not the same file at the same path, and paths left over.
+func latestDiffers(backup, latest string) []string {
+	var out []string
+	n := 0
+	filepath.WalkDir(backup, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			out = append(out, err.Error())
+			return nil
+		}
+		if d.IsDir() {
+			return nil
+		}
+		n++
+		rel, _ := filepath.Rel(backup, p)
+		a, _ := os.Stat(p)
+		if b, err := os.Stat(filepath.Join(latest, rel)); err != nil || !os.SameFile(a, b) {
+			out = append(out, rel+": not the same file")
+		}
+		return nil
+	})
+	filepath.WalkDir(latest, func(p string, d os.DirEntry, err error) error {
+		if rel, _ := filepath.Rel(latest, p); err == nil {
+			if _, err := os.Stat(filepath.Join(backup, rel)); err != nil {
+				out = append(out, rel+": left over")
+			}
+		}
+		return nil
+	})
+	if n == 0 {
+		out = append(out, "no files in "+backup)
+	}
+	return out
 }
 
 // completionCheck asks the completion (as the shell scripts do) for the
